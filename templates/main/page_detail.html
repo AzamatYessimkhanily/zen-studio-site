@@ -1,0 +1,318 @@
+{% extends "base.html" %}
+{% load static %}
+
+{# TITLE и DESCRIPTION берём из контекста, подготовленного во view #}
+{% block title %}{{ seo_title|default:page.title }}{% endblock %}
+{% block description %}{{ seo_description|default:settings.default_meta_description }}{% endblock %}
+{% block robots %}{{ seo_robots|default:settings.default_meta_robots|default:"index,follow" }}{% endblock %}
+
+{% block canonical %}
+  {% if seo_canonical %}<link rel="canonical" href="{{ seo_canonical }}">{% endif %}
+{% endblock %}
+
+{# Дополнительно: микроразметка JSON-LD для Article/Page #}
+{% block jsonld %}
+  <script type="application/ld+json">
+  {
+    "@context":"https://schema.org",
+    "@type":"WebPage",
+    "name": "{{ seo_title|default:page.title|escapejs }}",
+    "description": "{{ seo_description|default:settings.default_meta_description|escapejs }}",
+    "url": "{{ seo_url|default:request.build_absolute_uri|escapejs }}"
+  }
+  </script>
+{% endblock %}
+{# --- OPEN GRAPH --- #}
+{% block opengraph %}
+  <meta property="og:type" content="website">
+  <meta property="og:site_name" content="{{ settings.site_name|default:'Zen Studio' }}">
+  <meta property="og:title" content="{{ seo_title|default:page.meta_title|default:page.title }}">
+  <meta property="og:description" content="{{ seo_description|default:settings.default_meta_description }}">
+  {% if seo_url %}<meta property="og:url" content="{{ seo_url }}">{% endif %}
+  {% if seo_og_image %}
+    <meta property="og:image" content="{{ seo_og_image }}">
+    <meta property="og:image:alt" content="{{ seo_title|default:page.title }}">
+  {% endif %}
+{% endblock %}
+
+{# --- TWITTER CARD --- #}
+{% block twitter %}
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="{{ seo_title|default:page.meta_title|default:page.title }}">
+  <meta name="twitter:description" content="{{ seo_description|default:settings.default_meta_description }}">
+  {% if seo_og_image %}<meta name="twitter:image" content="{{ seo_og_image }}">{% endif %}
+{% endblock %}
+{% block extra_css %}
+<style>
+/* === НОВЫЕ СТИЛИ "ПО КРАСОТЕ" === */
+:root {
+   /* Более мягкий черный для текста */
+  --zen-bg-alt: #f8f9fa;  /* Фон для чередующихся блоков */
+}
+
+
+/* Общие стили для секции */
+.section {
+  background-color: var(--zen-bg-alt); /* Светлый фон для всей страницы */
+}
+
+/* 1. ТИПОГРАФИКА: Улучшенные заголовки и тексты */
+.page-main-title {
+  font-size: clamp(2.5rem, 5vw, 4rem);
+  font-weight: 800;
+  margin-bottom: 1.5rem;
+  color: var(--zen-dark); /* Убрали градиент в пользу чистоты */
+  line-height: 1.2;
+}
+
+.page-intro {
+  font-size: 1.2rem;
+  color: var(--zen-gray);
+  max-width: 800px;
+  margin: 0 auto 4rem; /* Увеличили отступ снизу */
+  line-height: 1.7;
+}
+
+.content-title {
+  font-weight: 700;
+  font-size: clamp(1.5rem, 3vw, 2rem); /* Сделали крупнее */
+  margin-bottom: 1.5rem; /* Увеличили отступ */
+  color: var(--zen-dark);
+  position: relative;
+  padding-bottom: 0.75rem; /* Отступ для линии-акцента */
+}
+/* Декоративная линия под заголовком */
+.content-title::after {
+  content: '';
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  width: 50px;
+  height: 3px;
+  background-color: var(--zen-green);
+  border-radius: 2px;
+}
+
+.content-text {
+  font-size: 1.1rem;
+  line-height: 1.8;
+  color: var(--zen-gray);
+}
+.content-text p:last-child {
+    margin-bottom: 0;
+}
+
+/* 2. ПРОСТРАНСТВО И БЛОКИ: Больше воздуха и мягкости */
+.info-section {
+  border: 1px solid var(--zen-light-gray); /* Мягкая граница */
+  border-radius: 20px; /* Более плавное скругление */
+  padding: clamp(2rem, 5vw, 3.5rem); /* Значительно больше "воздуха" внутри */
+  background: #fff;
+  /* Новая, мягкая и современная тень */
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -2px rgba(0, 0, 0, 0.05);
+  margin-bottom: 2.5rem; /* Увеличили расстояние между блоками */
+}
+
+.bg-alt {
+  background: #fff; /* Все блоки теперь белые для чистоты */
+}
+
+.content-image {
+  width: 100%;
+  height: auto;
+  max-height: 500px;
+  object-fit: cover;
+  border-radius: 16px;
+  /* Более мягкая тень и для картинок */
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -2px rgba(0, 0, 0, 0.05);
+}
+
+/* 3. КАРУСЕЛЬ: Стильный и современный вид */
+.carousel-title {
+  font-weight: 700;
+  font-size: 1.2rem;
+  color: var(--zen-gray);
+  margin: 0 0 1rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.page-gallery {
+  border-radius: 16px;
+  overflow: hidden; /* Важно для скругления слайдов */
+  position: relative;
+}
+
+.page-gallery .swiper-slide {
+  aspect-ratio: 16 / 10; /* Чуть выше для лучшей композиции */
+  background-color: var(--zen-light-gray);
+}
+
+.page-gallery .swiper-slide img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+/* Новые кнопки */
+.page-gallery .swiper-button-prev,
+.page-gallery .swiper-button-next {
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.9);
+  color: var(--zen-dark);
+  box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+  transition: all 0.2s ease-in-out;
+}
+.page-gallery .swiper-button-prev:hover,
+.page-gallery .swiper-button-next:hover {
+    background-color: var(--zen-green);
+    color: #fff;
+    transform: scale(1.1);
+}
+.page-gallery .swiper-button-prev:after,
+.page-gallery .swiper-button-next:after {
+  font-size: 18px;
+  font-weight: bold;
+}
+
+/* Новая пагинация */
+.page-gallery .swiper-pagination {
+  bottom: 15px !important;
+}
+.page-gallery .swiper-pagination-bullet {
+  background: rgba(255,255,255,0.7);
+  width: 10px;
+  height: 10px;
+  opacity: 1;
+  transition: all 0.2s ease;
+}
+.page-gallery .swiper-pagination-bullet-active {
+  background: var(--zen-green);
+  width: 25px;
+  border-radius: 5px;
+}
+</style>
+{% endblock %}
+
+{% block content %}
+<section class="section">
+  <div class="container">
+    <div class="row justify-content-center">
+      <div class="col-lg-10">
+        <div class="text-center">
+          <h1 class="page-main-title">{{ page.title }}</h1>
+          {% if page.content %}<p class="page-intro">{{ page.content|linebreaks }}</p>{% endif %}
+        </div>
+
+        {# === РЕНДЕРИМ ВСЕ КОНТЕНТ-БЛОКИ В ПОРЯДКЕ === #}
+        {% for b in page.contents.all %}
+          {% if b.is_active %}
+            {% with alt_bg=forloop.counter|divisibleby:2 %}
+
+              {# ---- КАРУСЕЛЬ ---- #}
+              {% if b.block_type == 'carousel' %}
+                <div class="info-section {% if alt_bg %}bg-alt{% endif %}">
+                  {% if b.title %}<div class="carousel-title">{{ b.title }}</div>{% endif %}
+                  {% if b.images.exists %}
+                    <div class="page-gallery swiper page-gallery-swiper-{{ forloop.counter }}">
+                      <div class="swiper-wrapper">
+                        {% for img in b.images.all %}
+                          <div class="swiper-slide">
+                            <img src="{{ img.image.url }}" alt="{{ img.caption|default:b.title }}">
+                          </div>
+                        {% endfor %}
+                      </div>
+                      <div class="swiper-pagination"></div>
+                      <div class="swiper-button-prev"></div>
+                      <div class="swiper-button-next"></div>
+                    </div>
+                  {% else %}
+                    <p class="text-muted mb-0">Добавьте изображения в админке для этого блока-карусели.</p>
+                  {% endif %}
+                </div>
+
+              {# ---- БЛОК С КАРТИНКОЙ И ТЕКСТОМ ---- #}
+              {% elif b.block_type == 'img_text' or b.block_type == 'legacy_imgtext' %}
+                {% if b.align == 'full' %}
+                  <div class="info-section {% if alt_bg %}bg-alt{% endif %}">
+                    {% if b.image %}<img src="{{ b.image.url }}" class="content-image mb-4" alt="{{ b.title }}">{% endif %}
+                    {% if b.title %}<h2 class="content-title">{{ b.title }}</h2>{% endif %}
+                    {% if b.text %}<div class="content-text">{{ b.text|linebreaksbr }}</div>{% endif %}
+                  </div>
+                {% elif b.align == 'right' %}
+                  <div class="info-section {% if alt_bg %}bg-alt{% endif %}">
+                    <div class="row g-4 g-lg-5 align-items-center">
+                      <div class="col-lg-6 order-2 order-lg-1">
+                        {% if b.title %}<h2 class="content-title">{{ b.title }}</h2>{% endif %}
+                        {% if b.text %}<div class="content-text">{{ b.text|linebreaksbr }}</div>{% endif %}
+                      </div>
+                      <div class="col-lg-6 order-1 order-lg-2">
+                        {% if b.image %}<img src="{{ b.image.url }}" class="content-image" alt="{{ b.title }}">{% endif %}
+                      </div>
+                    </div>
+                  </div>
+                {% else %}
+                  <div class="info-section {% if alt_bg %}bg-alt{% endif %}">
+                    <div class="row g-4 g-lg-5 align-items-center">
+                      <div class="col-lg-6">
+                        {% if b.image %}<img src="{{ b.image.url }}" class="content-image" alt="{{ b.title }}">{% endif %}
+                      </div>
+                      <div class="col-lg-6">
+                        {% if b.title %}<h2 class="content-title">{{ b.title }}</h2>{% endif %}
+                        {% if b.text %}<div class="content-text">{{ b.text|linebreaksbr }}</div>{% endif %}
+                      </div>
+                    </div>
+                  </div>
+                {% endif %}
+
+              {# ---- ЧИСТЫЙ ТЕКСТ ---- #}
+              {% elif b.block_type == 'rich_text' %}
+                <div class="info-section {% if alt_bg %}bg-alt{% endif %}">
+                  {% if b.title %}<h2 class="content-title">{{ b.title }}</h2>{% endif %}
+                  {% if b.text %}<div class="content-text">{{ b.text|linebreaksbr }}</div>{% endif %}
+                </div>
+
+              {# ---- ФОЛБЕК: ЕСЛИ ТИП НЕ ОПОЗНАН ---- #}
+              {% else %}
+                <div class="info-section {% if alt_bg %}bg-alt{% endif %}">
+                  {% if b.title %}<h2 class="content-title">{{ b.title }}</h2>{% endif %}
+                  {% if b.text %}<div class="content-text">{{ b.text|linebreaksbr }}</div>{% endif %}
+                  {% if b.image %}<img src="{{ b.image.url }}" class="content-image mt-3" alt="{{ b.title }}">{% endif %}
+                </div>
+              {% endif %}
+
+            {% endwith %}
+          {% endif %}
+        {% empty %}
+        {% endfor %}
+      </div>
+    </div>
+  </div>
+</section>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+  document.addEventListener('DOMContentLoaded', function () {
+    // Инициализируем все карусели на странице
+    document.querySelectorAll('[class*="page-gallery-swiper-"]').forEach(function(el){
+      new Swiper(el, {
+        loop: true,
+        spaceBetween: 16,
+        effect: 'fade', // Добавляем мягкий эффект смены слайдов
+        fadeEffect: {
+          crossFade: true
+        },
+        autoplay: { delay: 4500, disableOnInteraction: false },
+        pagination: { el: el.querySelector('.swiper-pagination'), clickable: true },
+        navigation: {
+          nextEl: el.querySelector('.swiper-button-next'),
+          prevEl: el.querySelector('.swiper-button-prev')
+        }
+      });
+    });
+  });
+</script>
+{% endblock %}

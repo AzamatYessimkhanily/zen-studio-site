@@ -1,0 +1,726 @@
+<!DOCTYPE html>
+{% load static %}
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <!-- === Favicons & PWA (Safari-friendly) === -->
+  <link rel="icon" href="{% static 'img/favicon.ico' %}" type="image/x-icon">
+  <link rel="shortcut icon" href="{% static 'img/favicon.ico' %}" type="image/x-icon">
+  <link rel="icon" type="image/png" sizes="32x32" href="{% static 'img/favicon-32x32.png' %}">
+  <link rel="icon" type="image/png" sizes="16x16" href="{% static 'img/favicon-16x16.png' %}">
+  <link rel="apple-touch-icon" href="{% static 'img/apple-touch-icon.png' %}">
+  <link rel="mask-icon" href="{% static 'img/safari-pinned-tab.svg' %}" color="#9DD3AF">
+  <link rel="manifest" href="{% static 'img/site.webmanifest' %}">
+  <meta name="theme-color" content="#9DD3AF">
+  <meta name="msapplication-TileColor" content="#9DD3AF">
+  <meta name="msapplication-config" content="{% static 'img/browserconfig.xml' %}">
+
+  <!-- SEO meta -->
+  <title>
+    {% block title %}
+      {{ seo_title }}
+    {% endblock %}
+  </title>
+
+  <meta name="description" content="{% block description %}{{ seo_description }}{% endblock %}">
+  <meta name="robots" content="{% block robots %}{{ seo_robots }}{% endblock %}">
+
+  {% block canonical %}
+    {% if seo_canonical %}
+      <link rel="canonical" href="{{ seo_canonical }}">
+    {% else %}
+      <link rel="canonical" href="{{ request.scheme }}://{{ request.get_host }}{{ request.path }}">
+    {% endif %}
+  {% endblock %}
+
+  {% block opengraph %}
+    <meta property="og:type" content="website">
+    <meta property="og:site_name" content="{{ seo_site_name }}">
+    <meta property="og:title" content="{% block og_title %}{{ block.super|default_if_none:'' }}{% if not block.super %}{{ seo_title }}{% endif %}{% endblock %}">
+    <meta property="og:description" content="{{ seo_description }}">
+    <meta property="og:url" content="{{ seo_url|default:request.scheme|add:'://'|add:request.get_host|add:request.path }}">
+    {% if seo_og_image %}
+      <meta property="og:image" content="{{ seo_og_image }}">
+      <meta property="og:image:alt" content="{{ seo_site_name }}">
+    {% endif %}
+  {% endblock %}
+
+  {% block twitter %}
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:title" content="{% block tw_title %}{{ block.super|default_if_none:'' }}{% if not block.super %}{{ seo_title }}{% endif %}{% endblock %}">
+    <meta name="twitter:description" content="{{ seo_description }}">
+    {% if seo_og_image %}
+      <meta name="twitter:image" content="{{ seo_og_image }}">
+    {% endif %}
+  {% endblock %}
+  
+  {% block jsonld %}{% endblock %}
+
+  <!-- CSS libs -->
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet" />
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css" />
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/swiper@11/swiper-bundle.min.css" />
+  <style>
+    :root{
+      --zen-green:#9DD3AF;
+      --zen-green-rgb:157,211,175;
+      --zen-dark:#1a1a1a;
+      --zen-gray:#333333;
+      --zen-light-gray:#f8f9fa;
+    }
+    body{
+      font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif;
+      color:var(--zen-dark);
+      line-height:1.7;
+      background-color:#fdfdfd;
+    }
+
+    /* Header */
+    .header{background:#fff;padding:15px 0;box-shadow:0 2px 15px rgba(0,0,0,.07);position:sticky;top:0;z-index:1020;}
+    .navbar-brand img{max-height:50px;}
+    .header .nav-link{color:var(--zen-gray);font-weight:500;transition:color .3s;padding:.5rem 1rem;}
+    .header .nav-link:hover,.header .nav-link.active{color:var(--zen-green);}
+    .header-actions{display:flex;align-items:center;gap:1rem;}
+    .header-socials{display:flex;gap:1rem;}
+    .header-socials a{color:var(--zen-gray);font-size:1.2rem;transition:color .3s,transform .3s;}
+    .header-socials a:hover{color:var(--zen-green);transform:scale(1.1);}
+    .header-phone{background:var(--zen-green);color:#fff;padding:.5rem 1rem;border-radius:15px;text-decoration:none;font-weight:500;transition:all .3s;}
+    .header-phone:hover{background:#8BC49D;color:#fff;box-shadow:0 4px 15px rgba(var(--zen-green-rgb),.3);}
+    .navbar-toggler{border:none;}
+    .navbar-toggler:focus{box-shadow:none;}
+
+    /* Language switch in navbar */
+    .lang-switch-nav{display:flex;gap:.5rem;align-items:center;}
+    .btn-lang{
+      background:var(--zen-green);color:#fff;border:none;border-radius:15px;
+      padding:6px 10px;cursor:pointer;font-weight:600;line-height:1;
+      box-shadow:0 4px 16px rgba(0,0,0,.15);
+      transition:transform .2s ease, box-shadow .2s ease, background .2s ease;
+    }
+    .btn-lang:hover{background:#7cbf92;transform:translateY(-2px);box-shadow:0 8px 24px rgba(0,0,0,.2);}
+    .btn-lang.active{outline:2px solid rgba(var(--zen-green-rgb),.6);}
+    /* запрет авто-перевода для блока переключателя */
+    .lang-switch-nav.notranslate{unicode-bidi:plaintext;}
+
+    @media (max-width: 991.98px){
+      .header-actions{display:none;}
+      .navbar-collapse{
+        background:#fff;padding:20px;border-radius:8px;margin-top:15px;
+        box-shadow:0 10px 30px rgba(0,0,0,.1);
+      }
+      .header-socials-mobile{
+        border-top:1px solid #eee;padding-top:15px;margin-top:15px;
+        display:flex;justify-content:center;gap:1.5rem;
+      }
+      .lang-switch-nav{margin-top:10px;}
+    }
+/* Простой дропдаун для "Еще" */
+.navbar-nav .dropdown-menu {
+    border: none;
+    box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+    border-radius: 10px;
+    padding: 10px 0;
+    margin-top: 5px;
+}
+
+.dropdown-item {
+    padding: 8px 20px;
+    color: var(--zen-gray);
+    transition: all 0.3s ease;
+}
+
+.dropdown-item:hover {
+    background: rgba(var(--zen-green-rgb), 0.1);
+    color: var(--zen-green);
+}
+
+.navbar-nav .nav-link.dropdown-toggle {
+    color: var(--zen-gray);
+}
+
+.navbar-nav .nav-link.dropdown-toggle:hover,
+.navbar-nav .nav-link.dropdown-toggle:focus {
+    color: var(--zen-green);
+}
+
+/* В мобильной версии показываем все пункты списком */
+@media (max-width: 991.98px) {
+    .navbar-nav .dropdown-menu {
+        box-shadow: none;
+        background: transparent;
+        padding: 0;
+        margin: 0;
+    }
+    
+    .dropdown-item {
+        padding: 0.5rem 1rem;
+        border-bottom: 1px solid #f0f0f0;
+    }
+    
+    .dropdown-item:last-child {
+        border-bottom: none;
+    }
+}
+    /* Common */
+    .section{padding:80px 0;}
+    .section-title{font-size:clamp(2rem,5vw,2.5rem);font-weight:700;margin-bottom:60px;position:relative;}
+    .section-title::after{content:'';position:absolute;bottom:-15px;left:50%;transform:translateX(-50%);width:60px;height:4px;background:var(--zen-green);border-radius:2px;}
+
+    /* Footer */
+/* Футер - исправления */
+.footer {
+    background: var(--zen-dark);
+    color: #ccc;
+    padding: 60px 0 30px;
+}
+
+.container-fluid {
+    padding-left: 2rem;
+    padding-right: 2rem;
+}
+
+.footer h5 {
+    color: #fff;
+    margin-bottom: 20px;
+    font-weight: 600;
+    font-size: 1.2rem;
+}
+
+.footer a {
+    color: var(--zen-green);
+    text-decoration: none;
+    transition: color .3s;
+}
+
+.footer a:hover {
+    color: #fff;
+    text-decoration: underline;
+}
+
+/* Контакты - выравнивание */
+.footer-contacts li {
+    margin-bottom: 12px;
+    display: flex;
+    align-items: flex-start;
+}
+
+.footer-contacts li i {
+    width: 20px;
+    text-align: center;
+    margin-top: 7px;
+    flex-shrink: 0;
+}
+
+.footer-contacts li a {
+    color: #ccc;
+    transition: color .3s;
+}
+
+.footer-contacts li a:hover {
+    color: var(--zen-green);
+    text-decoration: none;
+}
+
+/* Социальные иконки */
+.footer-social {
+    display: flex;
+    gap: 15px;
+    margin-top: 20px;
+}
+
+.footer-social a {
+    width: 40px;
+    height: 40px;
+    background: rgba(var(--zen-green-rgb), .2);
+    color: var(--zen-green);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 18px;
+    transition: all .3s;
+}
+
+.footer-social a:hover {
+    background: var(--zen-green);
+    color: #fff;
+    transform: translateY(-3px);
+    text-decoration: none;
+}
+
+/* Адаптивность */
+@media (max-width: 991.98px) {
+    .container-fluid {
+        padding-left: 1.5rem;
+        padding-right: 1.5rem;
+    }
+    
+    .footer .row {
+        justify-content: center !important;
+        text-align: center;
+    }
+    
+    .footer-contacts li {
+        justify-content: center;
+    }
+}
+
+@media (max-width: 767.98px) {
+    .container-fluid {
+        padding-left: 1rem;
+        padding-right: 1rem;
+    }
+    
+    .footer {
+        padding: 40px 0 20px;
+    }
+    
+    .footer h5 {
+        font-size: 1.1rem;
+        margin-bottom: 15px;
+    }
+    
+    .footer-contacts li {
+        margin-bottom: 10px;
+        justify-content: flex-start;
+        text-align: left;
+    }
+}
+
+/* Дополнительные улучшения для выравнивания */
+.footer .row {
+    align-items: flex-start;
+}
+
+.footer .col-lg-5 {
+    padding: 0 20px;
+}
+    /* Chat */
+    .chat-toggle{
+      position:fixed;bottom:25px;right:25px;width:60px;height:60px;background:var(--zen-green);
+      color:#fff;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:24px;cursor:pointer;
+      box-shadow:0 5px 20px rgba(var(--zen-green-rgb),.4);transition:all .3s;z-index:9998;
+    }
+    .chat-toggle:hover{transform:scale(1.1) rotate(10deg);}
+    
+    .chat-modal{
+      position:fixed;bottom:20px;right:20px;width:400px;max-width:90%;height:600px;max-height:80vh;background:#fff;
+      border-radius:15px;box-shadow:0 10px 40px rgba(0,0,0,.2);display:none;flex-direction:column;z-index:9999;
+    }
+    .chat-modal.show{display:flex;}
+    .chat-header{background:var(--zen-green);color:#fff;padding:20px;border-radius:15px 15px 0 0;display:flex;justify-content:space-between;align-items:center;}
+    .chat-body{flex:1;padding:20px;overflow-y:auto;background:#f8f9fa;}
+    .chat-footer{padding:15px;border-top:1px solid #e9ecef;}
+    .chat-input{width:100%;padding:10px;border:1px solid #e9ecef;border-radius:5px;resize:none;}
+    .send-btn{
+      background: var(--zen-green);
+      color:#fff;
+      border:none;
+      width:42px; height:42px;
+      border-radius:50%;
+      display:flex; align-items:center; justify-content:center;
+      font-size:18px; cursor:pointer;
+      box-shadow:0 4px 12px rgba(var(--zen-green-rgb), .35);
+      transition: transform .2s ease, box-shadow .2s ease, opacity .2s ease;
+    }
+    .send-btn:hover{ transform: translateY(-1px); box-shadow:0 8px 18px rgba(var(--zen-green-rgb), .45); }
+    .send-btn:disabled{ opacity:.6; cursor:not-allowed; box-shadow:none; }
+    /* Back to top */
+    .back-to-top-btn{
+      position:fixed;bottom:20px;left:20px;width:60px;height:60px;background:var(--zen-green);color:#fff;border-radius:50%;
+      display:flex;align-items:center;justify-content:center;font-size:20px;text-decoration:none;opacity:0;visibility:hidden;z-index:1000;
+      transition:opacity .3s,visibility .3s,transform .3s;transform:translateY(20px);
+    }
+    .back-to-top-btn.show{opacity:1;visibility:visible;transform:translateY(0);}
+    .back-to-top-btn:hover{transform:scale(1.1) rotate(10deg);}
+
+    /* ==== GOOGLE TRANSLATE: hide banner & fixes ==== */
+    #google_translate_element{display:none!important;}
+    .goog-te-banner-frame.skiptranslate{display:none!important;}
+    body{top:0!important;}
+    .goog-te-gadget-icon{display:none!important;}
+    .goog-text-highlight{background:none!important;box-shadow:none!important;}
+  </style>
+
+  {% block extra_css %}{% endblock %}
+</head>
+<body>
+<header class="header">
+  <nav class="container navbar navbar-expand-lg navbar-light p-0">
+    <a class="navbar-brand" href="/">
+      {% if settings.logo %}
+        <img src="{{ settings.logo.url }}" alt="Zen Studio Logo" />
+      {% else %}
+        <span style="font-weight:bold;font-size:24px;">ZEN<span style="color:var(--zen-green);">STUDIO</span></span>
+      {% endif %}
+    </a>
+
+    <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#mainMenu" aria-controls="mainMenu" aria-expanded="false" aria-label="Toggle navigation">
+      <span class="navbar-toggler-icon"></span>
+    </button>
+
+    <div class="collapse navbar-collapse" id="mainMenu">
+      <ul class="navbar-nav me-auto mb-2 mb-lg-0 ms-lg-4">
+        {% for page in pages_menu %}
+          {% if forloop.counter <= 3 %}
+            <li class="nav-item">
+              <a href="{% url 'main:page_detail' slug=page.slug %}" class="nav-link">{{ page.title }}</a>
+            </li>
+          {% endif %}
+
+        {% endfor %}
+        {% if pages_menu|length > 3 %}
+          <li class="nav-item dropdown">
+            <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+              Еще
+            </a>
+            <ul class="dropdown-menu">
+              {% for page in pages_menu %}
+                {% if forloop.counter > 3 %}
+                  <li><a class="dropdown-item" href="{% url 'main:page_detail' slug=page.slug %}">{{ page.title }}</a></li>
+                {% endif %}
+              {% endfor %}
+            </ul>
+          </li>
+        {% endif %}
+      </ul>
+
+      <!-- Остальной код хедера без изменений -->
+      <div class="header-actions">
+        <!-- Language switch -->
+        <div class="lang-switch-nav notranslate" translate="no" data-gt-ignore="true">
+          <button class="btn-lang" data-lang="ru" id="btn-lang-ru" type="button">RU</button>
+          <button class="btn-lang" data-lang="en" id="btn-lang-en" type="button">EN</button>
+        </div>
+
+        <div class="header-socials">
+          {% if settings.instagram_link %}<a href="{{ settings.instagram_link }}" target="_blank" aria-label="Instagram"><i class="fab fa-instagram"></i></a>{% endif %}
+          {% if settings.whatsapp_admin %}<a href="{{ settings.whatsapp_admin }}" target="_blank" aria-label="WhatsApp"><i class="fab fa-whatsapp"></i></a>{% endif %}
+        </div>
+        {% if settings.phone %}<a href="tel:{{ settings.phone }}" class="header-phone"><i class="fas fa-phone me-2"></i> {{ settings.phone }}</a>{% endif %}
+      </div>
+
+      <div class="d-lg-none mt-3">
+        {% if settings.phone %}<a class="d-block py-2" href="tel:{{ settings.phone }}"><i class="fas fa-phone me-2"></i> {{ settings.phone }}</a>{% endif %}
+        {% if settings.email %}<a class="d-block py-2" href="mailto:{{ settings.email }}"><i class="fas fa-envelope me-2"></i> {{ settings.email }}</a>{% endif %}
+        <div class="header-socials-mobile">
+          {% if settings.instagram_link %}<a href="{{ settings.instagram_link }}" target="_blank" aria-label="Instagram"><i class="fab fa-instagram"></i></a>{% endif %}
+          {% if settings.whatsapp_admin %}<a href="{{ settings.whatsapp_admin }}" target="_blank" aria-label="WhatsApp"><i class="fab fa-whatsapp"></i></a>{% endif %}
+        </div>
+        <div class="lang-switch-nav notranslate mt-3" translate="no" data-gt-ignore="true">
+          <button class="btn-lang" data-lang="ru" type="button">RU</button>
+          <button class="btn-lang" data-lang="en" type="button">EN</button>
+        </div>
+      </div>
+    </div>
+  </nav>
+</header>
+
+  <main>
+    {% block content %}{% endblock %}
+  </main>
+
+<footer class="footer" id="footer">
+  <div class="container-fluid">  <!-- Изменили на container-fluid -->
+    <div class="row justify-content-between">  <!-- Добавили выравнивание -->
+      <div class="col-lg-5 col-md-6 mb-4 mb-lg-0">
+        <h5>{{ settings.footer_welcome_text|default:"ДОБРО ПОЖАЛОВАТЬ В ZENSTUDIO!" }}</h5>
+        <p class="small text-white-50 mb-3">Место для вашей продуктивной работы и душевного равновесия.</p>
+        <div class="footer-social">
+          {% if settings.instagram_link %}<a href="{{ settings.instagram_link }}" target="_blank" aria-label="Instagram"><i class="fab fa-instagram"></i></a>{% endif %}
+          {% if settings.whatsapp_admin %}<a href="{{ settings.whatsapp_admin }}" target="_blank" aria-label="WhatsApp"><i class="fab fa-whatsapp"></i></a>{% endif %}
+        </div>
+      </div>
+      <div class="col-lg-5 col-md-6 mb-4 mb-lg-0">
+        <h5>Контакты</h5>
+        <ul class="list-unstyled footer-contacts">
+          {% if settings.address %}<li class="mb-2"><i class="fas fa-map-marker-alt me-2"></i> {{ settings.address }}</li>{% endif %}
+          {% if settings.phone %}<li class="mb-2"><i class="fas fa-phone me-2"></i> <a href="tel:{{ settings.phone }}">{{ settings.phone }}</a></li>{% endif %}
+          {% if settings.email %}<li class="mb-2"><i class="fas fa-envelope me-2"></i> <a href="mailto:{{ settings.email }}">{{ settings.email }}</a></li>{% endif %}
+          {% if settings.whatsapp_bot %}<li class="mb-2"><i class="fab fa-whatsapp me-2"></i><a href="{{ settings.whatsapp_bot }}" target="_blank">ИИ-ассистент</a></li>{% endif %}
+          {% if settings.reviews_link %}<li class="mb-2"><i class="fa-solid fa-quote-left me-2"></i><a href="{{ settings.reviews_link }}" target="_blank">Отзывы</a></li>{% endif %}
+        </ul>
+      </div>
+    </div>
+    <hr class="my-4" style="border-color:rgba(255,255,255,.1);" />
+    <div class="text-center text-white-50 small">
+      <p class="mb-0">{{ settings.copyright_text|default:"Copyright Zenstudio.kz 2024. All rights reserved" }}</p>
+    </div>
+  </div>
+</footer>
+
+  <a href="#" id="back-to-top" class="back-to-top-btn" title="Наверх"><i class="fas fa-arrow-up"></i></a>
+
+  <!-- Chat -->
+  <div class="chat-toggle" onclick="toggleChat()"><i class="fas fa-comments"></i></div>
+  <div class="chat-modal" id="chatModal">
+    <div class="chat-header">
+      <h5 class="mb-0">Бронирование</h5>
+      <button type="button" class="btn-close btn-close-white" onclick="toggleChat()"></button>
+    </div>
+    <div class="chat-body">
+      <div class="text-center py-5"><i class="fas fa-robot fa-3x text-muted mb-3"></i><p class="text-muted">ИИ-ассистент для бронирования</p></div>
+    </div>
+    <div class="chat-footer">
+      <div class="chat-input-wrapper">
+        <textarea class="chat-input" placeholder="Напишите сообщение..." rows="1"></textarea>
+        <button id="attach-file-btn" class="attach-btn" title="Прикрепить чек (PDF, JPG, PNG)"><i class="fas fa-paperclip"></i></button>
+        <input type="file" id="chat-file-input" accept=".pdf,.jpg,.jpeg,.png" style="display:none;" />
+            <button id="send-btn" class="send-btn" title="Отправить">
+      <i class="fas fa-paper-plane"></i>
+    </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Hidden container for Google Translate -->
+  <div id="google_translate_element" style="display:none;"></div>
+
+  <!-- JS libs -->
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/swiper@11/swiper-bundle.min.js"></script>
+
+  <!-- === Language switch logic (define BEFORE loading Google script) === -->
+<script>
+  // ===== Google Translate init =====
+  function googleTranslateElementInit(){
+    new google.translate.TranslateElement({
+      pageLanguage:'ru',
+      includedLanguages:'ru,en',
+      autoDisplay:false
+    }, 'google_translate_element');
+
+    try{ document.body.style.top='0px'; }catch(e){}
+    const to = getGoogTransTo() || 'ru';
+    forceApplyLanguage(to, {highlight:true});
+  }
+
+  function forceApplyLanguage(lang, opts={}){
+    waitForTranslateCombo().then(combo=>{
+      freezeLangButtonsLabel();
+      combo.value = lang;
+      combo.dispatchEvent(new Event('change'));
+      if(opts.highlight) highlightActiveLang(lang);
+      rememberLang(lang);
+    }).catch(()=>{
+      setTranslateCookie(lang, true);
+    });
+  }
+  function waitForTranslateCombo(retries=40, delay=150){
+    return new Promise((resolve,reject)=>{
+      (function tick(){
+        const combo = document.querySelector('.goog-te-combo');
+        if(combo) return resolve(combo);
+        if(retries--<=0) return reject();
+        setTimeout(tick, delay);
+      })();
+    });
+  }
+  function setTranslateCookie(lang, doReload=false){
+    var from='ru', value='/' + from + '/' + lang;
+    document.cookie='googtrans='+value+'; path=/';
+    var host=location.hostname;
+    document.cookie='googtrans='+value+'; domain='+host+'; path=/';
+    if(!/^\d{1,3}(\.\d{1,3}){3}$/.test(host)){
+      document.cookie='googtrans='+value+'; domain=.'+host+'; path=/';
+    }
+    if(doReload) location.reload();
+  }
+  function getGoogTransTo(){
+    var m=(document.cookie.match(/(?:^|;)\s*googtrans=([^;]+)/)||[])[1]||'';
+    if(!m) return null;
+    var parts=m.split('/');
+    return parts[parts.length-1]||null;
+  }
+  function rememberLang(lang){
+    try{ localStorage.setItem('zen_lang', lang); }catch(e){}
+    setTranslateCookie(lang,false);
+  }
+  function highlightActiveLang(lang){
+    ['ru','en'].forEach(code=>{
+      const btn=document.querySelector('.btn-lang[data-lang="'+code+'"]');
+      if(btn) btn.classList.toggle('active', code===lang);
+    });
+  }
+  function freezeLangButtonsLabel(){
+    const ru=document.getElementById('btn-lang-ru');
+    const en=document.getElementById('btn-lang-en');
+    if(ru) ru.textContent='RU';
+    if(en) en.textContent='EN';
+  }
+  document.addEventListener('click', e=>{
+    const btn=e.target.closest('.btn-lang');
+    if(!btn) return;
+    e.preventDefault();
+    const lang=btn.getAttribute('data-lang')||'ru';
+    freezeLangButtonsLabel();
+    rememberLang(lang);
+    forceApplyLanguage(lang, {highlight:true});
+  });
+
+  // ===== Page init =====
+  document.addEventListener('DOMContentLoaded', function(){
+    // Swiper (герой)
+    if(document.querySelector('.hero-swiper')){
+      new Swiper('.hero-swiper', {
+        loop:true,
+        autoplay:{delay:5000, disableOnInteraction:false},
+        pagination:{el:'.swiper-pagination', clickable:true},
+        navigation:{nextEl:'.swiper-button-next', prevEl:'.swiper-button-prev'},
+      });
+    }
+
+    // ---- Chat setup ----
+    const chatModal=document.getElementById('chatModal');
+    const chatBody=document.querySelector('.chat-body');
+    const chatInput=document.querySelector('.chat-input');
+    const attachBtn=document.getElementById('attach-file-btn');
+    const fileInput=document.getElementById('chat-file-input');
+
+    // 1) если кнопки отправки нет в html — создаём
+    let sendBtn=document.getElementById('send-btn');
+    if(!sendBtn){
+      const wrap=document.querySelector('.chat-input-wrapper');
+      if(wrap){
+        sendBtn=document.createElement('button');
+        sendBtn.id='send-btn';
+        sendBtn.className='send-btn';
+        sendBtn.title='Отправить';
+        sendBtn.innerHTML='<i class="fas fa-paper-plane"></i>';
+        wrap.appendChild(sendBtn);
+      }
+    }
+
+    // 2) мини-стили для send-btn (если их нет в css)
+    const _style = document.createElement('style');
+    _style.innerHTML = `
+      .chat-body{display:flex;flex-direction:column;gap:15px;}
+      .chat-message{padding:10px 15px;border-radius:10px;max-width:80%;line-height:1.4;word-wrap:break-word;}
+      .chat-message-user{background:#e1f7d5;align-self:flex-end;border-bottom-right-radius:0;}
+      .chat-message-bot{background:#f1f1f1;align-self:flex-start;border-bottom-left-radius:0;}
+      .chat-input-wrapper{display:flex;align-items:center;gap:10px;}
+      .chat-input{flex:1;border-radius:20px;padding:10px 15px;resize:none;border:1px solid #ddd;}
+      .attach-btn{background:none;border:none;font-size:20px;color:#888;cursor:pointer;padding:5px;}
+      .attach-btn:hover{color:#333;}
+      .send-btn{background:var(--zen-green);color:#fff;border:none;width:42px;height:42px;border-radius:50%;
+        display:flex;align-items:center;justify-content:center;font-size:18px;cursor:pointer;
+        box-shadow:0 4px 12px rgba(157,211,175,.35);transition:transform .2s ease, box-shadow .2s ease, opacity .2s ease;}
+      .send-btn:hover{transform:translateY(-1px);box-shadow:0 8px 18px rgba(157,211,175,.45);}
+      .send-btn:disabled{opacity:.6;cursor:not-allowed;box-shadow:none;}
+    `;
+    document.head.appendChild(_style);
+
+    // 3) API-конфиг
+    const BOT_API_URL = '/api/webchat'; // замени на свой бэкенд при необходимости
+
+    // 4) session id
+    let sessionId=localStorage.getItem('zen_studio_chat_session_id');
+    if(!sessionId){
+      sessionId=Date.now().toString(36)+Math.random().toString(36).substring(2);
+      localStorage.setItem('zen_studio_chat_session_id', sessionId);
+    }
+
+    // 5) helpers
+    window.toggleChat=function(){ chatModal.classList.toggle('show'); };
+
+    function addMessageToChat(message, sender, isHtml=false){
+      const typing=document.getElementById('typing-indicator');
+      if(typing) typing.remove();
+      const el=document.createElement('div');
+      el.classList.add('chat-message', `chat-message-${sender}`);
+      el.innerHTML=isHtml?message:`<p>${message.replace(/\n/g,'<br>')}</p>`;
+      chatBody.appendChild(el);
+      chatBody.scrollTop=chatBody.scrollHeight;
+    }
+    function showTyping(){
+      const el=document.createElement('div'); el.id='typing-indicator';
+      el.classList.add('chat-message','chat-message-bot'); el.innerHTML='<p><i>Печатает...</i></p>';
+      chatBody.appendChild(el); chatBody.scrollTop=chatBody.scrollHeight;
+    }
+    async function sendApi(payload){
+      showTyping();
+      const res = await fetch(BOT_API_URL,{
+        method:'POST',
+        headers:{'Content-Type':'application/json'},
+        body:JSON.stringify(payload)
+      });
+      if(!res.ok) throw new Error('HTTP '+res.status);
+      return res.json();
+    }
+
+    async function sendText(){
+      const t=chatInput.value.trim();
+      if(!t) return;
+      if(sendBtn) sendBtn.disabled = true;
+
+      addMessageToChat(t,'user');
+      chatInput.value='';
+
+      try{
+        const data = await sendApi({user_id:sessionId, message:t});
+        addMessageToChat((data && data.reply) ? data.reply : '(пусто)', 'bot');
+      }catch(err){
+        addMessageToChat('Извините, не удалось подключиться к ассистенту. Попробуйте позже.', 'bot');
+      }finally{
+        if(sendBtn) sendBtn.disabled = false;
+        chatInput.focus();
+      }
+    }
+
+    // enter -> отправка (без Shift)
+    chatInput.addEventListener('keydown',e=>{
+      if(e.key==='Enter' && !e.shiftKey){ e.preventDefault(); sendText(); }
+    });
+
+    // клик по «Отправить»
+    if(sendBtn){
+      sendBtn.addEventListener('click', (e)=>{ e.preventDefault(); sendText(); });
+    }
+
+    // прикрепление файла
+    attachBtn.addEventListener('click',()=>fileInput.click());
+    fileInput.addEventListener('change',e=>{
+      const file=e.target.files[0]; if(!file) return;
+      const r=new FileReader();
+      r.onload=async ev=>{
+        addMessageToChat(`<i>Отправлен файл: ${file.name}</i>`, 'user', true);
+        try{
+          const data = await sendApi({user_id:sessionId, message:'file_upload', file:{name:file.name, data:ev.target.result}});
+          addMessageToChat((data && data.reply) ? data.reply : '(пусто)', 'bot');
+        }catch(err){
+          addMessageToChat('Не удалось загрузить файл. Попробуйте позже.', 'bot');
+        }
+      };
+      r.readAsDataURL(file); fileInput.value='';
+    });
+
+    // приветствие
+    chatBody.innerHTML='';
+    addMessageToChat('Здравствуйте! Чем могу помочь?', 'bot');
+
+    // back-to-top
+    const backToTopBtn=document.getElementById('back-to-top');
+    if(backToTopBtn){
+      window.addEventListener('scroll',()=>{
+        if(window.scrollY>300) backToTopBtn.classList.add('show');
+        else backToTopBtn.classList.remove('show');
+      });
+      backToTopBtn.addEventListener('click',e=>{
+        e.preventDefault(); window.scrollTo({top:0,behavior:'smooth'});
+      });
+    }
+
+    // активный язык
+    const saved = (localStorage.getItem('zen_lang') || getGoogTransTo() || 'ru');
+    highlightActiveLang(saved);
+    freezeLangButtonsLabel();
+    try{ document.body.style.top='0px'; }catch(e){}
+  });
+</script>
+  <!-- Google Translate script (должен идти ПОСЛЕ объявления функций выше) -->
+  <script src="//translate.google.com/translate_a/element.js?cb=googleTranslateElementInit"></script>
+
+  {% block extra_js %}{% endblock %}
+</body>
+</html>

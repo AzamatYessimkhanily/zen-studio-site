@@ -1,0 +1,989 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block content %}
+<style>
+:root {
+  --zen-green: #9DD3AF;
+  --section-bg: #f8f9fa;
+}
+
+/* Hero Slider */
+.hero-slider {
+  position: relative;
+  width: 100%;
+  height: 100vh;
+  min-height: 600px;
+  overflow: hidden;
+}
+
+.hero-content {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  z-index: 10;
+  text-align: center;
+  width: 90%;
+  max-width: 900px;
+  padding: 0 20px;
+}
+
+.hero-content h1 {
+  font-size: clamp(2rem, 5vw, 4rem);
+  font-weight: 700;
+  color: #ffffff;
+  text-shadow: 0 4px 20px rgba(0, 0, 0, 0.5);
+  line-height: 1.2;
+  margin: 0;
+  animation: fadeInUp 1s ease-out;
+}
+
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(30px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.hero-swiper {
+  width: 100%;
+  height: 100%;
+}
+
+.swiper-slide {
+  position: relative;
+  overflow: hidden;
+}
+
+.swiper-slide::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: linear-gradient(to bottom, rgba(0, 0, 0, 0.3) 0%, rgba(0, 0, 0, 0.5) 100%);
+  z-index: 1;
+}
+
+.swiper-slide img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  transition: transform 8s ease-out;
+}
+
+.swiper-slide-active img {
+  transform: scale(1.1);
+}
+
+.swiper-pagination {
+  bottom: 30px !important;
+  z-index: 20;
+}
+
+.swiper-pagination-bullet {
+  width: 12px;
+  height: 12px;
+  background: #ffffff;
+  opacity: 0.6;
+  transition: all 0.3s ease;
+}
+
+.swiper-pagination-bullet-active {
+  opacity: 1;
+  width: 30px;
+  border-radius: 6px;
+  background: #ffffff;
+}
+
+.swiper-button-prev,
+.swiper-button-next {
+  width: 50px;
+  height: 50px;
+  background: rgba(255, 255, 255, 0.15);
+  backdrop-filter: blur(10px);
+  border-radius: 50%;
+  transition: all 0.3s ease;
+  z-index: 20;
+}
+
+.swiper-button-prev:hover,
+.swiper-button-next:hover {
+  background: rgba(255, 255, 255, 0.25);
+  transform: scale(1.1);
+}
+
+.swiper-button-prev::after,
+.swiper-button-next::after {
+  font-size: 20px;
+  font-weight: bold;
+  color: #ffffff;
+}
+
+.swiper-button-prev {
+  left: 20px;
+}
+
+.swiper-button-next {
+  right: 20px;
+}
+
+/* Rooms Section */
+.rooms-section {
+  padding: 100px 0;
+  background: linear-gradient(180deg, #ffffff 0%, #f8f9fa 100%);
+}
+
+.section-header {
+  text-align: center;
+  margin-bottom: 70px;
+}
+
+.section-title {
+  font-size: clamp(2rem, 4vw, 3rem);
+  font-weight: 700;
+  color: #1a1a1a;
+  margin-bottom: 12px;
+  letter-spacing: -0.02em;
+}
+
+.section-subtitle {
+  font-size: 1.125rem;
+  color: #6b7280;
+  font-weight: 400;
+}
+
+.rooms-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+  gap: 32px;
+  margin-bottom: 70px;
+}
+
+.room-item {
+  background: #fff;
+  border-radius: 16px;
+  overflow: hidden;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+  transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.room-item:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.12);
+}
+
+.room-image-wrapper {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 4/3;
+  overflow: hidden;
+  background: #f3f4f6;
+}
+
+.room-image {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  transition: transform 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.room-item:hover .room-image { transform: scale(1.05); }
+
+.room-overlay {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(180deg, transparent 0%, rgba(0, 0, 0, 0.7) 100%);
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  padding: 24px;
+  opacity: 0;
+  transition: opacity 0.3s ease;
+}
+
+.room-item:hover .room-overlay { opacity: 1; }
+
+.room-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 24px;
+  background: var(--zen-green);
+  color: #fff;
+  text-decoration: none;
+  border-radius: 15px;
+  font-weight: 600;
+  font-size: 0.9375rem;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  transform: translateY(10px);
+}
+
+.room-item:hover .room-link { transform: translateY(0); }
+
+.room-link:hover {
+  background: var(--zen-green);
+  color: #fff;
+  gap: 12px;
+}
+
+.room-link svg { transition: transform 0.2s ease; }
+.room-link:hover svg { transform: translateX(4px); }
+
+.room-content { padding: 24px; }
+
+.room-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 12px;
+  gap: 16px;
+}
+
+.room-title {
+  font-size: 1.375rem;
+  font-weight: 700;
+  color: #1a1a1a;
+  margin: 0;
+  letter-spacing: -0.01em;
+  line-height: 1.3;
+}
+
+.room-price {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  white-space: nowrap;
+}
+
+.price-label {
+  font-size: 0.75rem;
+  color: #9ca3af;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  font-weight: 600;
+}
+
+.price-value {
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: #1a1a1a;
+  line-height: 1;
+}
+
+.price-currency {
+  font-size: 0.875rem;
+  color: #6b7280;
+  font-weight: 500;
+}
+
+.room-description {
+  color: #6b7280;
+  font-size: 0.9375rem;
+  line-height: 1.6;
+  margin: 0;
+}
+
+.cta-wrapper {
+  display: flex;
+  justify-content: center;
+  margin-top: 60px;
+}
+
+.btn-book {
+  display: inline-flex;
+  align-items: center;
+  gap: 12px;
+  padding: 18px 40px;
+  background: var(--zen-green);
+  color: #fff;
+  border: none;
+  border-radius: 15px;
+  font-size: 1.0625rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.15);
+}
+
+.btn-book:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.2);
+}
+
+/* Advantages Section */
+.advantages-section {
+  padding: 80px 0;
+  background: #fff;
+}
+
+.section-title-main {
+  font-size: clamp(2rem, 4vw, 3rem);
+  font-weight: 800;
+  text-align: center;
+  margin-bottom: 70px;
+  letter-spacing: 0.02em;
+  color: #1a1a1a;
+}
+
+.title-accent { color: var(--zen-green); }
+
+.advantages-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  gap: 40px;
+  margin-bottom: 60px;
+}
+
+.advantage-item {
+  text-align: center;
+  transition: transform 0.3s ease;
+}
+
+.advantage-item:hover { transform: translateY(-5px); }
+
+.advantage-icon-wrapper {
+  position: relative;
+  width: 100px;
+  height: 100px;
+  margin: 0 auto 20px;
+}
+
+.advantage-icon {
+  width: 100px;
+  height: 100px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #fff;
+  border: 3px solid #1a1a1a;
+  border-radius: 50%;
+  position: relative;
+  z-index: 2;
+  transition: all 0.3s ease;
+}
+
+.icon-circle {
+  position: absolute;
+  bottom: 0;
+  right: 0;
+  width: 40px;
+  height: 40px;
+  background: var(--zen-green);
+  border-radius: 50%;
+  z-index: 1;
+}
+
+.advantage-item:hover .advantage-icon {
+  border-color: var(--zen-green);
+  transform: scale(1.05);
+}
+
+.advantage-icon i {
+  font-size: 32px;
+  color: #1a1a1a;
+}
+
+.advantage-title {
+  font-size: 0.875rem;
+  font-weight: 700;
+  margin: 0;
+  color: #1a1a1a;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  line-height: 1.4;
+}
+
+.advantage-footer {
+  text-align: center;
+  max-width: 900px;
+  margin: 0 auto;
+}
+
+.advantage-footer p {
+  color: #4b5563;
+  font-size: 1rem;
+  line-height: 1.7;
+  margin: 0;
+}
+@media (min-width: 1200px) {
+  .advantages-grid{
+    display: grid !important;
+    grid-template-columns: repeat(6, 1fr) !important; /* ровно 6 колонок */
+    gap: 32px; /* можно 24–40 по вкусу */
+    align-items: start;
+  }
+  /* чуть компактнее, чтобы точно поместилось на 1200–1366 ширине */
+  .advantage-icon-wrapper,
+  .advantage-icon{ width: 100px; height: 100px; }
+  .icon-circle{ width: 40px; height: 40px; }
+}
+
+/* если на узких десктопах всё ещё впритык — слегка ужмём зазор и иконки */
+@media (min-width: 1200px) and (max-width: 1366px){
+  .advantages-grid{ gap: 28px; }
+  .advantage-icon-wrapper,
+  .advantage-icon{ width: 92px; height: 92px; }
+  .icon-circle{ width: 36px; height: 36px; }
+}
+/* Services Section */
+.services-section {
+  padding: 100px 0;
+  background: var(--section-bg);
+}
+
+.services-wrapper {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 50px;
+  align-items: center;
+}
+
+@media (min-width: 992px) {
+  .services-wrapper {
+    grid-template-columns: 1fr 1.5fr;
+    gap: 80px;
+  }
+}
+
+.services-image {
+  width: 100%;
+  max-height: 500px;
+  object-fit: cover;
+  border-radius: 8px;
+}
+
+.services-title {
+  font-size: clamp(1.5rem, 3vw, 2.25rem);
+  font-weight: 800;
+  margin-bottom: 30px;
+  line-height: 1.3;
+  color: #1a1a1a;
+}
+
+.services-subtitle {
+  font-size: 1.25rem;
+  font-weight: 600;
+  margin-bottom: 25px;
+  color: #1a1a1a;
+}
+
+.services-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.services-list li {
+  font-size: 1rem;
+  color: #4b5563;
+  padding: 12px 0 9px 30px;
+  position: relative;
+  line-height: 1.6;
+}
+
+.services-list li::before {
+  content: '•';
+  position: absolute;
+  left: 10px;
+  color: #1a1a1a;
+  font-size: 1.5rem;
+  top: 50%;
+  transform: translateY(-50%);
+}
+
+/* Pricing Section */
+.pricing-section {
+  padding: 100px 0;
+  background: #f5f5f5;
+}
+
+.pricing-main-title {
+  font-size: clamp(2.5rem, 5vw, 4rem);
+  font-weight: 800;
+  text-align: center;
+  margin-bottom: 80px;
+  letter-spacing: 0.02em;
+  color: #1a1a1a;
+}
+
+.pricing-title-accent { color: var(--zen-green); }
+
+.pricing-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 40px;
+  margin-bottom: 60px;
+  max-width: 1400px;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+.price-card {
+  background: transparent;
+  padding: 0;
+  text-align: center;
+  border-radius: 0;
+}
+
+.price-hours {
+  margin-bottom: 25px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.hours-number {
+  font-size: clamp(6rem, 12vw, 10rem);
+  font-weight: 800;
+  color: var(--zen-green);
+  line-height: 0.85;
+  opacity: 0.9;
+  letter-spacing: -0.02em;
+}
+
+.hours-unit {
+  font-size: clamp(1.5rem, 2.5vw, 2rem);
+  color: var(--zen-green);
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  writing-mode: vertical-rl;
+  text-orientation: mixed;
+  margin-left: 10px;
+  opacity: 0.9;
+  line-height: 1;
+}
+
+.price-amount {
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: #1a1a1a;
+  margin-bottom: 8px;
+}
+
+.price-persons {
+  font-size: 0.9rem;
+  color: #1a1a1a;
+  font-weight: 400;
+}
+
+.pricing-info {
+  max-width: 800px;
+  margin: 0 auto 50px;
+  text-align: left;
+}
+
+.pricing-info ul {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.pricing-info li {
+  color: #4b5563;
+  font-size: 0.9375rem;
+  line-height: 1.8;
+  margin: 8px 0;
+  padding-left: 25px;
+  position: relative;
+}
+
+.pricing-info li::before {
+  content: '✓';
+  position: absolute;
+  left: 0;
+  color: var(--zen-green);
+  font-weight: bold;
+}
+
+.pricing-cta { text-align: center; }
+
+.btn-booking {
+  display: inline-flex;
+  align-items: center;
+  gap: 12px;
+  padding: 18px 40px;
+  background: var(--zen-green);
+  color: #fff;
+  border: none;
+  border-radius: 15px;
+  font-size: 1.0625rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.15);
+}
+
+.btn-booking:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.2);
+}
+
+/* Statistics Section */
+.statistics-section {
+  background: var(--section-bg);
+  overflow: hidden;
+  padding: 80px 0;
+}
+
+.stats-title {
+  font-size: clamp(2.5rem, 5vw, 4rem);
+  font-weight: 800;
+  text-align: center;
+  color: #1a1a1a;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  margin-bottom: 50px;
+}
+
+.stats-carousel-container {
+  position: relative;
+  width: 100%;
+}
+
+.stats-carousel-container::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  width: 50px;
+  background: linear-gradient(to right, transparent, var(--section-bg));
+  pointer-events: none;
+  z-index: 2;
+}
+
+.stats-carousel-track {
+  display: flex;
+  gap: 16px;
+  overflow-x: auto;
+  scroll-behavior: smooth;
+  scroll-snap-type: x mandatory;
+  padding: 0 24px;
+  margin: 0;
+  width: 100%;
+  box-sizing: border-box;
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+.stats-carousel-track::-webkit-scrollbar { display: none; }
+
+.stat-item {
+  flex-shrink: 0;
+  scroll-snap-align: start;
+  width: 80%;
+  background: #fff;
+  border-radius: 16px;
+  padding: 25px 20px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.07);
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  text-align: center;
+  transition: transform 0.2s ease;
+}
+
+.stat-item:hover { transform: scale(1.03); }
+
+.stat-number {
+  font-weight: 800;
+  color: var(--zen-green);
+  line-height: 1;
+  margin-bottom: 12px;
+  font-size: clamp(2.2rem, 8vw, 3.5rem);
+}
+
+.stat-text {
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: #6b7280;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+}
+
+@media (min-width: 576px) { .stat-item { width: 45%; } }
+@media (min-width: 992px) { .stat-item { width: 30%; } }
+@media (min-width: 1200px) { .stat-item { width: 23%; } }
+
+/* Responsive */
+@media (max-width: 768px) {
+  .hero-slider { min-height: 500px; }
+  .hero-content h1 { font-size: clamp(1.5rem, 6vw, 2.5rem); }
+  .swiper-button-prev, .swiper-button-next { width: 40px; height: 40px; }
+  .swiper-button-prev::after, .swiper-button-next::after { font-size: 16px; }
+  .swiper-button-prev { left: 10px; }
+  .swiper-button-next { right: 10px; }
+  .swiper-pagination { bottom: 20px !important; }
+  .rooms-section, .advantages-section, .services-section, .pricing-section, .statistics-section { padding: 60px 0; }
+  .section-header, .section-title-main, .pricing-main-title, .stats-title { margin-bottom: 40px; }
+  .rooms-grid { grid-template-columns: 1fr; gap: 24px; margin-bottom: 50px; }
+  .room-header { flex-direction: column; align-items: flex-start; gap: 12px; }
+  .room-price { flex-direction: row; align-items: center; gap: 6px; }
+  .price-value { font-size: 1.25rem; }
+  .btn-book, .btn-booking { padding: 16px 32px; font-size: 1rem; }
+  .room-overlay { opacity: 1; background: linear-gradient(180deg, transparent 50%, rgba(0, 0, 0, 0.6) 100%); }
+  .room-link { transform: translateY(0); font-size: 0.875rem; padding: 10px 20px; }
+  .services-image { height: 350px; }
+  .advantages-grid { grid-template-columns: repeat(2, 1fr); }
+  .advantage-icon-wrapper, .advantage-icon { width: 80px; height: 80px; }
+  .advantage-icon i { font-size: 28px; }
+  .icon-circle { width: 35px; height: 35px; }
+  .pricing-grid { grid-template-columns: repeat(3, 1fr); gap: 30px 20px; }
+  .hours-number { font-size: 5.5rem; }
+  .hours-unit { font-size: 1.4rem; }
+  .stat-number { font-size: 4rem; }
+  .stat-text { font-size: 0.75rem; }
+}
+
+@media (max-width: 480px) {
+  .hero-slider { min-height: 400px; }
+  .swiper-button-prev, .swiper-button-next { display: none; }
+  .room-content { padding: 20px; }
+  .room-title { font-size: 1.25rem; }
+  .advantage-title { font-size: 0.8rem; }
+  .pricing-grid { grid-template-columns: repeat(2, 1fr); gap: 25px 15px; }
+  .hours-number { font-size: 4.5rem; }
+  .hours-unit { font-size: 1.2rem; }
+  .price-amount { font-size: 1.2rem; }
+  .price-persons { font-size: 0.8rem; }
+  .stat-number { font-size: 3.5rem; }
+  .stat-text { font-size: 0.75rem; }
+}
+</style>
+
+<section class="hero-slider">
+  <div class="hero-content">
+    <h1>Почасовая аренда кабинетов в центре Алматы</h1>
+  </div>
+  <div class="swiper hero-swiper">
+    <div class="swiper-wrapper">
+      {% for slide in settings.sliders.all %}
+        <div class="swiper-slide">
+          <img src="{{ slide.image.url }}" alt="Слайд">
+        </div>
+      {% endfor %}
+    </div>
+    <div class="swiper-pagination"></div>
+    <div class="swiper-button-prev"></div>
+    <div class="swiper-button-next"></div>
+  </div>
+</section>
+
+<section class="rooms-section">
+  <div class="container">
+    <div class="section-header">
+      <h2 class="section-title">Наши кабинеты</h2>
+      <p class="section-subtitle">Выберите идеальное пространство для работы</p>
+    </div>
+    <div class="rooms-grid">
+      {% for room in rooms %}
+        <article class="room-item">
+          <div class="room-image-wrapper">
+            {% if room.main_image %}
+              <img src="{{ room.main_image.url }}" class="room-image" alt="{{ room.name }}">
+            {% else %}
+              <img src="{% static 'img/placeholder-room.jpg' %}" class="room-image" alt="{{ room.name }}">
+            {% endif %}
+            <div class="room-overlay">
+              <a href="{% url 'main:room_detail' room.pk %}" class="room-link">
+                <span>Смотреть кабинет</span>
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <path d="M5 12h14M12 5l7 7-7 7"/>
+                </svg>
+              </a>
+            </div>
+          </div>
+          <div class="room-content">
+            <div class="room-header">
+              <h3 class="room-title">{{ room.name }}</h3>
+              {% if room.area_sq_m %}
+                <div class="room-price" title="Площадь кабинета">
+                  <span class="price-label">площадь</span>
+                  <span class="price-value">{{ room.area_sq_m }}</span>
+                  <span class="price-currency">м²</span>
+                </div>
+              {% endif %}
+            </div>
+            <p class="room-description">{{ room.short_description }}</p>
+          </div>
+        </article>
+      {% endfor %}
+    </div>
+    <div class="cta-wrapper">
+      <button class="btn-book" onclick="toggleChat()">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
+          <line x1="16" y1="2" x2="16" y2="6"></line>
+          <line x1="8" y1="2" x2="8" y2="6"></line>
+          <line x1="3" y1="10" x2="21" y2="10"></line>
+        </svg>
+        <span>Забронировать кабинет</span>
+      </button>
+    </div>
+  </div>
+</section>
+
+<section class="advantages-section">
+  <div class="container">
+    <h2 class="section-title-main">У НАС <span class="title-accent">ВСЕГДА</span></h2>
+    <div class="advantages-grid">
+      <div class="advantage-item">
+        <div class="advantage-icon-wrapper">
+          <div class="advantage-icon"><i class="fas fa-wifi"></i></div>
+          <div class="icon-circle"></div>
+        </div>
+        <h6 class="advantage-title">СКОРОСТНОЙ ИНТЕРНЕТ</h6>
+      </div>
+      <div class="advantage-item">
+        <div class="advantage-icon-wrapper">
+          <div class="advantage-icon"><i class="fas fa-mug-hot"></i></div>
+          <div class="icon-circle"></div>
+        </div>
+        <h6 class="advantage-title">ВОДА, ЧАЙ, САЛФЕТКИ</h6>
+      </div>
+      <div class="advantage-item">
+        <div class="advantage-icon-wrapper">
+          <div class="advantage-icon"><i class="fas fa-snowflake"></i></div>
+          <div class="icon-circle"></div>
+        </div>
+        <h6 class="advantage-title">КЛИМАТ-КОНТРОЛЬ</h6>
+      </div>
+      <div class="advantage-item">
+        <div class="advantage-icon-wrapper">
+          <div class="advantage-icon"><i class="fas fa-shield-heart"></i></div>
+          <div class="icon-circle"></div>
+        </div>
+        <h6 class="advantage-title">БЕСКОНТАКТНЫЙ ДОСТУП</h6>
+      </div>
+      <div class="advantage-item">
+        <div class="advantage-icon-wrapper">
+          <div class="advantage-icon"><i class="fas fa-clock"></i></div>
+          <div class="icon-circle"></div>
+        </div>
+        <h6 class="advantage-title">УДОБНЫЕ ЛОКАЦИИ</h6>
+      </div>
+      <div class="advantage-item">
+        <div class="advantage-icon-wrapper">
+          <div class="advantage-icon"><i class="fas fa-broom"></i></div>
+          <div class="icon-circle"></div>
+        </div>
+        <h6 class="advantage-title">СВЕЖИЙ РЕМОНТ И ЧИСТОТА</h6>
+      </div>
+    </div>
+    <div class="advantage-footer">
+      <p>А ещё все наши кабинеты доступны 7 дней в неделю, без выходных, с раннего утра и до позднего вечера, а некоторые кабинеты даже круглосуточно!</p>
+    </div>
+  </div>
+</section>
+
+<section class="services-section">
+  <div class="container">
+    <div class="services-wrapper">
+      <div class="services-left">
+        <img src="/static/img/2025-10-07 17.26.51.jpg" alt="ZEN STUDIO" class="services-image">
+      </div>
+      <div class="services-right">
+        <h2 class="services-title">В <span style="color:#9DD3AF;">ZEN STUDIO</span> <span>ВЫ МОЖЕТЕ</span></h2>
+        <div class="services-subtitle">В уютной атмосфере провести:</div>
+        <ul class="services-list">
+          <li>Деловую встречу или переговоры</li>
+          <li>Личную консультацию, терапию</li>
+          <li>Обучение, игру, сеанс, практику</li>
+          <li>Записать видео, рилс, вебинар</li>
+          <li>Поработать за ноутбуком в тишине</li>
+          <li>Или просто побыть наедине с собой</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="pricing-section">
+  <div class="container">
+    <h2 class="pricing-main-title">ТАРИФЫ <span class="pricing-title-accent">И ОПЛАТА</span></h2>
+    <div class="pricing-grid">
+      {% for t in tariffs %}
+        <div class="price-card">
+          <div class="price-hours">
+            <span class="hours-number">{{ t.hours }}</span>
+            <span class="hours-unit">{{ t.get_unit_display }}</span>
+          </div>
+          <div class="price-amount">{{ t.price }} тг</div>
+          {% if t.persons_text %}
+            <div class="price-persons">{{ t.persons_text }}</div>
+          {% endif %}
+        </div>
+      {% empty %}
+        <p class="text-muted">Тарифы скоро будут опубликованы.</p>
+      {% endfor %}
+    </div>
+    <div class="pricing-info">
+      <ul>
+        <li>Для групп необходим депозит 5000 тенге - возвращаем после посещения и проверки кабинета.</li>
+        <li>Для групп 9-15 чел обратитесь к менеджеру +77073910808.</li>
+        <li>🔥 Абонементы можно разбить на несколько посещений в течение 3 месяцев.</li>
+        <li>⚡️ Дополнительные скидки при бронировании от 20 часов в месяц и выше: расчитываются индивидуально в зависимости от времени посещения, от 1500тг/час.</li>
+      </ul>
+    </div>
+    <div class="pricing-cta">
+      <button class="btn-booking" onclick="toggleChat()">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
+          <line x1="16" y1="2" x2="16" y2="6"></line>
+          <line x1="8" y1="2" x2="8" y2="6"></line>
+          <line x1="3" y1="10" x2="21" y2="10"></line>
+        </svg>
+        Забронировать
+      </button>
+    </div>
+  </div>
+</section>
+
+<section class="statistics-section">
+  <div class="container">
+    <h2 class="stats-title">О <span style="color: #9DD3AF;">НАС</span> В ЦИФРАХ</h2>
+    <div class="stats-carousel-container">
+      <div class="stats-carousel-track">
+        <div class="stat-item">
+          <div class="stat-number">2</div>
+          <div class="stat-text">года работы</div>
+        </div>
+        <div class="stat-item">
+          <div class="stat-number">9</div>
+          <div class="stat-text">кабинетов</div>
+        </div>
+        <div class="stat-item">
+          <div class="stat-number">5</div>
+          <div class="stat-text">локаций</div>
+        </div>
+        <div class="stat-item">
+          <div class="stat-number">1200+</div>
+          <div class="stat-text">клиентов</div>
+        </div>
+        <div class="stat-item">
+          <div class="stat-number">2K+</div>
+          <div class="stat-text">подписчиков</div>
+        </div>
+        <div class="stat-item">
+          <div class="stat-number">3K+</div>
+          <div class="stat-text">посетителей</div>
+        </div>
+        <div class="stat-item">
+          <div class="stat-number">10K+</div>
+          <div class="stat-text">бронирований</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+{% endblock %}
