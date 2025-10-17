@@ -296,36 +296,7 @@
 .footer .col-lg-5 {
     padding: 0 20px;
 }
-    /* Chat */
-    .chat-toggle{
-      position:fixed;bottom:25px;right:25px;width:60px;height:60px;background:var(--zen-green);
-      color:#fff;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:24px;cursor:pointer;
-      box-shadow:0 5px 20px rgba(var(--zen-green-rgb),.4);transition:all .3s;z-index:9998;
-    }
-    .chat-toggle:hover{transform:scale(1.1) rotate(10deg);}
-    
-    .chat-modal{
-      position:fixed;bottom:20px;right:20px;width:400px;max-width:90%;height:600px;max-height:80vh;background:#fff;
-      border-radius:15px;box-shadow:0 10px 40px rgba(0,0,0,.2);display:none;flex-direction:column;z-index:9999;
-    }
-    .chat-modal.show{display:flex;}
-    .chat-header{background:var(--zen-green);color:#fff;padding:20px;border-radius:15px 15px 0 0;display:flex;justify-content:space-between;align-items:center;}
-    .chat-body{flex:1;padding:20px;overflow-y:auto;background:#f8f9fa;}
-    .chat-footer{padding:15px;border-top:1px solid #e9ecef;}
-    .chat-input{width:100%;padding:10px;border:1px solid #e9ecef;border-radius:5px;resize:none;}
-    .send-btn{
-      background: var(--zen-green);
-      color:#fff;
-      border:none;
-      width:42px; height:42px;
-      border-radius:50%;
-      display:flex; align-items:center; justify-content:center;
-      font-size:18px; cursor:pointer;
-      box-shadow:0 4px 12px rgba(var(--zen-green-rgb), .35);
-      transition: transform .2s ease, box-shadow .2s ease, opacity .2s ease;
-    }
-    .send-btn:hover{ transform: translateY(-1px); box-shadow:0 8px 18px rgba(var(--zen-green-rgb), .45); }
-    .send-btn:disabled{ opacity:.6; cursor:not-allowed; box-shadow:none; }
+   
     /* Back to top */
     .back-to-top-btn{
       position:fixed;bottom:20px;left:20px;width:60px;height:60px;background:var(--zen-green);color:#fff;border-radius:50%;
@@ -452,27 +423,7 @@
 
   <a href="#" id="back-to-top" class="back-to-top-btn" title="Наверх"><i class="fas fa-arrow-up"></i></a>
 
-  <!-- Chat -->
-  <div class="chat-toggle" onclick="toggleChat()"><i class="fas fa-comments"></i></div>
-  <div class="chat-modal" id="chatModal">
-    <div class="chat-header">
-      <h5 class="mb-0">Бронирование</h5>
-      <button type="button" class="btn-close btn-close-white" onclick="toggleChat()"></button>
-    </div>
-    <div class="chat-body">
-      <div class="text-center py-5"><i class="fas fa-robot fa-3x text-muted mb-3"></i><p class="text-muted">ИИ-ассистент для бронирования</p></div>
-    </div>
-    <div class="chat-footer">
-      <div class="chat-input-wrapper">
-        <textarea class="chat-input" placeholder="Напишите сообщение..." rows="1"></textarea>
-        <button id="attach-file-btn" class="attach-btn" title="Прикрепить чек (PDF, JPG, PNG)"><i class="fas fa-paperclip"></i></button>
-        <input type="file" id="chat-file-input" accept=".pdf,.jpg,.jpeg,.png" style="display:none;" />
-            <button id="send-btn" class="send-btn" title="Отправить">
-      <i class="fas fa-paper-plane"></i>
-    </button>
-      </div>
-    </div>
-  </div>
+
 
   <!-- Hidden container for Google Translate -->
   <div id="google_translate_element" style="display:none;"></div>
@@ -570,134 +521,6 @@
         navigation:{nextEl:'.swiper-button-next', prevEl:'.swiper-button-prev'},
       });
     }
-
-    // ---- Chat setup ----
-    const chatModal=document.getElementById('chatModal');
-    const chatBody=document.querySelector('.chat-body');
-    const chatInput=document.querySelector('.chat-input');
-    const attachBtn=document.getElementById('attach-file-btn');
-    const fileInput=document.getElementById('chat-file-input');
-
-    // 1) если кнопки отправки нет в html — создаём
-    let sendBtn=document.getElementById('send-btn');
-    if(!sendBtn){
-      const wrap=document.querySelector('.chat-input-wrapper');
-      if(wrap){
-        sendBtn=document.createElement('button');
-        sendBtn.id='send-btn';
-        sendBtn.className='send-btn';
-        sendBtn.title='Отправить';
-        sendBtn.innerHTML='<i class="fas fa-paper-plane"></i>';
-        wrap.appendChild(sendBtn);
-      }
-    }
-
-    // 2) мини-стили для send-btn (если их нет в css)
-    const _style = document.createElement('style');
-    _style.innerHTML = `
-      .chat-body{display:flex;flex-direction:column;gap:15px;}
-      .chat-message{padding:10px 15px;border-radius:10px;max-width:80%;line-height:1.4;word-wrap:break-word;}
-      .chat-message-user{background:#e1f7d5;align-self:flex-end;border-bottom-right-radius:0;}
-      .chat-message-bot{background:#f1f1f1;align-self:flex-start;border-bottom-left-radius:0;}
-      .chat-input-wrapper{display:flex;align-items:center;gap:10px;}
-      .chat-input{flex:1;border-radius:20px;padding:10px 15px;resize:none;border:1px solid #ddd;}
-      .attach-btn{background:none;border:none;font-size:20px;color:#888;cursor:pointer;padding:5px;}
-      .attach-btn:hover{color:#333;}
-      .send-btn{background:var(--zen-green);color:#fff;border:none;width:42px;height:42px;border-radius:50%;
-        display:flex;align-items:center;justify-content:center;font-size:18px;cursor:pointer;
-        box-shadow:0 4px 12px rgba(157,211,175,.35);transition:transform .2s ease, box-shadow .2s ease, opacity .2s ease;}
-      .send-btn:hover{transform:translateY(-1px);box-shadow:0 8px 18px rgba(157,211,175,.45);}
-      .send-btn:disabled{opacity:.6;cursor:not-allowed;box-shadow:none;}
-    `;
-    document.head.appendChild(_style);
-
-    // 3) API-конфиг
-    const BOT_API_URL = '/api/webchat'; // замени на свой бэкенд при необходимости
-
-    // 4) session id
-    let sessionId=localStorage.getItem('zen_studio_chat_session_id');
-    if(!sessionId){
-      sessionId=Date.now().toString(36)+Math.random().toString(36).substring(2);
-      localStorage.setItem('zen_studio_chat_session_id', sessionId);
-    }
-
-    // 5) helpers
-    window.toggleChat=function(){ chatModal.classList.toggle('show'); };
-
-    function addMessageToChat(message, sender, isHtml=false){
-      const typing=document.getElementById('typing-indicator');
-      if(typing) typing.remove();
-      const el=document.createElement('div');
-      el.classList.add('chat-message', `chat-message-${sender}`);
-      el.innerHTML=isHtml?message:`<p>${message.replace(/\n/g,'<br>')}</p>`;
-      chatBody.appendChild(el);
-      chatBody.scrollTop=chatBody.scrollHeight;
-    }
-    function showTyping(){
-      const el=document.createElement('div'); el.id='typing-indicator';
-      el.classList.add('chat-message','chat-message-bot'); el.innerHTML='<p><i>Печатает...</i></p>';
-      chatBody.appendChild(el); chatBody.scrollTop=chatBody.scrollHeight;
-    }
-    async function sendApi(payload){
-      showTyping();
-      const res = await fetch(BOT_API_URL,{
-        method:'POST',
-        headers:{'Content-Type':'application/json'},
-        body:JSON.stringify(payload)
-      });
-      if(!res.ok) throw new Error('HTTP '+res.status);
-      return res.json();
-    }
-
-    async function sendText(){
-      const t=chatInput.value.trim();
-      if(!t) return;
-      if(sendBtn) sendBtn.disabled = true;
-
-      addMessageToChat(t,'user');
-      chatInput.value='';
-
-      try{
-        const data = await sendApi({user_id:sessionId, message:t});
-        addMessageToChat((data && data.reply) ? data.reply : '(пусто)', 'bot');
-      }catch(err){
-        addMessageToChat('Извините, не удалось подключиться к ассистенту. Попробуйте позже.', 'bot');
-      }finally{
-        if(sendBtn) sendBtn.disabled = false;
-        chatInput.focus();
-      }
-    }
-
-    // enter -> отправка (без Shift)
-    chatInput.addEventListener('keydown',e=>{
-      if(e.key==='Enter' && !e.shiftKey){ e.preventDefault(); sendText(); }
-    });
-
-    // клик по «Отправить»
-    if(sendBtn){
-      sendBtn.addEventListener('click', (e)=>{ e.preventDefault(); sendText(); });
-    }
-
-    // прикрепление файла
-    attachBtn.addEventListener('click',()=>fileInput.click());
-    fileInput.addEventListener('change',e=>{
-      const file=e.target.files[0]; if(!file) return;
-      const r=new FileReader();
-      r.onload=async ev=>{
-        addMessageToChat(`<i>Отправлен файл: ${file.name}</i>`, 'user', true);
-        try{
-          const data = await sendApi({user_id:sessionId, message:'file_upload', file:{name:file.name, data:ev.target.result}});
-          addMessageToChat((data && data.reply) ? data.reply : '(пусто)', 'bot');
-        }catch(err){
-          addMessageToChat('Не удалось загрузить файл. Попробуйте позже.', 'bot');
-        }
-      };
-      r.readAsDataURL(file); fileInput.value='';
-    });
-
-    // приветствие
-    chatBody.innerHTML='';
-    addMessageToChat('Здравствуйте! Чем могу помочь?', 'bot');
 
     // back-to-top
     const backToTopBtn=document.getElementById('back-to-top');

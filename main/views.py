@@ -3,33 +3,11 @@
 from django.views.generic import TemplateView, DetailView
 from django.shortcuts import get_object_or_404
 from .models import *
-import json, requests
-from django.http import JsonResponse, HttpResponseBadRequest, HttpResponse
 from django.views.decorators.csrf import csrf_exempt
 
-BOT_API = "http://194.32.140.210:5001/api/webchat"
 
-@csrf_exempt
-def webchat_proxy(request):
-    if request.method != "POST":
-        return HttpResponseBadRequest("POST only")
-    try:
-        payload = json.loads(request.body.decode("utf-8") or "{}")
-    except json.JSONDecodeError:
-        return HttpResponseBadRequest("Invalid JSON")
 
-    try:
-        r = requests.post(BOT_API, json=payload, timeout=15)
-    except requests.RequestException as e:
-        return JsonResponse({"reply": "Сервис временно недоступен."}, status=502)
 
-    # Пробрасываем статус и JSON как есть
-    try:
-        data = r.json()
-    except ValueError:
-        return JsonResponse({"reply": "Пустой/невалидный ответ бэка."}, status=502)
-
-    return JsonResponse(data, status=r.status_code, safe=False)
 class IndexView(TemplateView):
     template_name = 'main/index.html'
     
