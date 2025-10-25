@@ -312,6 +312,43 @@
     body{top:0!important;}
     .goog-te-gadget-icon{display:none!important;}
     .goog-text-highlight{background:none!important;box-shadow:none!important;}
+
+
+    @media (max-width: 991.98px) {
+  .header .container {
+    padding-left: 12px !important;
+    padding-right: 12px !important;
+  }
+  .navbar-brand {
+    margin-left: 6px; /* лёгкий отступ от края */
+  }
+}
+
+/* 2️⃣ Увеличенные иконки Instagram и WhatsApp + расстояние между ними */
+.header-socials {
+  display: flex;
+  gap: 1.4rem; /* раньше было 1rem */
+  align-items: center;
+}
+
+.header-socials a {
+  color: var(--zen-gray);
+  font-size: 1.5rem; /* раньше было 1.2rem */
+  transition: color .3s, transform .3s;
+}
+
+.header-socials a:hover {
+  color: var(--zen-green);
+  transform: scale(1.15);
+}
+
+/* 3️⃣ На мобильной версии — чуть крупнее иконки и равные отступы */
+@media (max-width: 991.98px) {
+  .header-socials-mobile a {
+    font-size: 1.6rem;
+    margin: 0 0.7rem;
+  }
+}
   </style>
 
   {% block extra_css %}{% endblock %}
@@ -332,38 +369,50 @@
     </button>
 
     <div class="collapse navbar-collapse" id="mainMenu">
-      <ul class="navbar-nav me-auto mb-2 mb-lg-0 ms-lg-4">
-        {% for page in pages_menu %}
-          {% if forloop.counter <= 3 %}
-            <li class="nav-item">
-              <a href="{% url 'main:page_detail' slug=page.slug %}" class="nav-link">{{ page.title }}</a>
-            </li>
-          {% endif %}
-
-        {% endfor %}
-        {% if pages_menu|length > 3 %}
-          <li class="nav-item dropdown">
-            <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false">
-              Еще
-            </a>
-            <ul class="dropdown-menu">
-              {% for page in pages_menu %}
-                {% if forloop.counter > 3 %}
-                  <li><a class="dropdown-item" href="{% url 'main:page_detail' slug=page.slug %}">{{ page.title }}</a></li>
-                {% endif %}
-              {% endfor %}
-            </ul>
+    <!-- Меню: Desktop = 3 пункта + «Ещё» / Mobile = полный список -->
+<!-- DESKTOP: показываем первые 3 + "Еще" -->
+    <ul class="navbar-nav me-auto mb-2 mb-lg-0 ms-lg-4 d-none d-lg-flex">
+      {% for page in pages_menu %}
+        {% if forloop.counter <= 3 %}
+          <li class="nav-item">
+            <a href="{% url 'main:page_detail' slug=page.slug %}" class="nav-link">{{ page.title }}</a>
           </li>
         {% endif %}
-      </ul>
+
+      {% endfor %}
+      {% if pages_menu|length > 3 %}
+        <li class="nav-item dropdown">
+          <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+            Еще
+          </a>
+          <ul class="dropdown-menu">
+            {% for page in pages_menu %}
+              {% if forloop.counter > 3 %}
+                <li><a class="dropdown-item" href="{% url 'main:page_detail' slug=page.slug %}">{{ page.title }}</a></li>
+              {% endif %}
+            {% endfor %}
+          </ul>
+        </li>
+      {% endif %}
+    </ul>
+
+    <!-- MOBILE: показываем весь список -->
+    <ul class="navbar-nav me-auto mb-2 mb-lg-0 ms-lg-4 d-lg-none">
+      {% for page in pages_menu %}
+        <li class="nav-item">
+          <a href="{% url 'main:page_detail' slug=page.slug %}" class="nav-link">{{ page.title }}</a>
+        </li>
+      {% endfor %}
+    </ul>
 
       <!-- Остальной код хедера без изменений -->
       <div class="header-actions">
         <!-- Language switch -->
-        <div class="lang-switch-nav notranslate" translate="no" data-gt-ignore="true">
-          <button class="btn-lang" data-lang="ru" id="btn-lang-ru" type="button">RU</button>
-          <button class="btn-lang" data-lang="en" id="btn-lang-en" type="button">EN</button>
-        </div>
+      <div class="lang-switch-nav notranslate" translate="no" data-gt-ignore="true">
+        <button class="btn-lang" data-lang="ru" id="btn-lang-ru" type="button">RU</button>
+        <button class="btn-lang" data-lang="en" id="btn-lang-en" type="button">EN</button>
+        <button class="btn-lang" data-lang="kk" id="btn-lang-kk" type="button">KZ</button>
+      </div>
 
         <div class="header-socials">
           {% if settings.instagram_link %}<a href="{{ settings.instagram_link }}" target="_blank" aria-label="Instagram"><i class="fab fa-instagram"></i></a>{% endif %}
@@ -379,10 +428,11 @@
           {% if settings.instagram_link %}<a href="{{ settings.instagram_link }}" target="_blank" aria-label="Instagram"><i class="fab fa-instagram"></i></a>{% endif %}
           {% if settings.whatsapp_admin %}<a href="{{ settings.whatsapp_admin }}" target="_blank" aria-label="WhatsApp"><i class="fab fa-whatsapp"></i></a>{% endif %}
         </div>
-        <div class="lang-switch-nav notranslate mt-3" translate="no" data-gt-ignore="true">
-          <button class="btn-lang" data-lang="ru" type="button">RU</button>
-          <button class="btn-lang" data-lang="en" type="button">EN</button>
-        </div>
+    <div class="lang-switch-nav notranslate mt-3" translate="no" data-gt-ignore="true">
+        <button class="btn-lang" data-lang="ru" type="button">RU</button>
+        <button class="btn-lang" data-lang="en" type="button">EN</button>
+        <button class="btn-lang" data-lang="kk" type="button">KZ</button>
+      </div>
       </div>
     </div>
   </nav>
@@ -438,7 +488,7 @@
   function googleTranslateElementInit(){
     new google.translate.TranslateElement({
       pageLanguage:'ru',
-      includedLanguages:'ru,en',
+      includedLanguages:'ru,en,kk',
       autoDisplay:false
     }, 'google_translate_element');
 
@@ -489,17 +539,20 @@
     setTranslateCookie(lang,false);
   }
   function highlightActiveLang(lang){
-    ['ru','en'].forEach(code=>{
-      const btn=document.querySelector('.btn-lang[data-lang="'+code+'"]');
-      if(btn) btn.classList.toggle('active', code===lang);
+    ['ru','en','kk'].forEach(code=>{
+      document.querySelectorAll('.btn-lang[data-lang="'+code+'"]').forEach(btn=>{
+        btn.classList.toggle('active', code === lang);
+      });
     });
   }
-  function freezeLangButtonsLabel(){
-    const ru=document.getElementById('btn-lang-ru');
-    const en=document.getElementById('btn-lang-en');
-    if(ru) ru.textContent='RU';
-    if(en) en.textContent='EN';
-  }
+function freezeLangButtonsLabel(){
+  document.querySelectorAll('.btn-lang').forEach(btn=>{
+    const code = (btn.getAttribute('data-lang') || '').toLowerCase();
+    if (code === 'ru') btn.textContent = 'RU';
+    if (code === 'en') btn.textContent = 'EN';
+    if (code === 'kk') btn.textContent = 'KZ';
+  });
+}
   document.addEventListener('click', e=>{
     const btn=e.target.closest('.btn-lang');
     if(!btn) return;
