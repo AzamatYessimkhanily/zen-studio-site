@@ -118,7 +118,74 @@
     transform: translateY(-3px);
     box-shadow: 0 5px 15px rgba(var(--zen-green-rgb), 0.3);
   }
-  
+  /* --- Фиксированная кнопка на мобильных --- */
+/* --- Фиксированная кнопка на мобильных --- */
+.mobile-booking-bar {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    width: 100%;
+    background: rgba(255, 255, 255, 0.95);
+    backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px);
+    border-top: 1px solid rgba(0,0,0,0.05);
+    padding: 12px 0;
+    z-index: 1000;
+    box-shadow: 0 -4px 20px rgba(0,0,0,0.05);
+    padding-bottom: env(safe-area-inset-bottom, 12px);
+}
+
+/* Стиль кнопки в мобильном баре (единый с сайтом) */
+.btn-book-mobile {
+    background: var(--zen-green);
+    color: white;
+    padding: 12px 24px;
+    border-radius: 16px; /* Как у остальных кнопок */
+    font-weight: 600;
+    text-decoration: none;
+    display: inline-flex;
+    align-items: center;
+    box-shadow: 0 4px 15px rgba(157, 211, 175, 0.4);
+    transition: transform 0.2s;
+}
+.btn-book-mobile:active { transform: scale(0.96); }
+
+/* Отступ снизу для body */
+@media (max-width: 992px) {
+    body { padding-bottom: 80px; }
+    
+    /* === ВАЖНО: Поднимаем кнопку "Наверх" (scroll-to-top), чтобы не перекрывала цену === */
+    /* Замените .scroll-to-top на класс вашей кнопки, если он другой */
+    .back-to-top-btn{ 
+        bottom: 90px !important; /* Поднимаем над баром */
+    }
+}
+
+.btn-book-desktop {
+    display: inline-flex;
+    justify-content: center;
+    align-items: center;
+    padding: 12px 16px;
+    background: var(--zen-green);
+    color: white;
+    border: none;
+    border-radius: 12px;
+    font-size: 1rem;
+    font-weight: 600;
+    text-decoration: none;
+    transition: all 0.2s ease;
+    box-shadow: 0 4px 12px rgba(157, 211, 175, 0.4);
+}
+
+.btn-book-desktop:hover {
+    background: #8BC6A0;
+    transform: translateY(-2px);
+    box-shadow: 0 6px 16px rgba(157, 211, 175, 0.5);
+    color: white;
+}
+
+.btn-book-desktop:active {
+    transform: scale(0.98);
+}
 </style>
 {% endblock %}
 
@@ -227,6 +294,15 @@
           {% else %}
             <div class="text-muted">Площадь не указана</div>
           {% endif %}
+          <a href="{% url 'main:booking_page' %}" class="btn-book-desktop w-100">
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="me-2">
+                        <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
+                        <line x1="16" y1="2" x2="16" y2="6"></line>
+                        <line x1="8" y1="2" x2="8" y2="6"></line>
+                        <line x1="3" y1="10" x2="21" y2="10"></line>
+                    </svg>
+                    Забронировать
+                </a>
         </div>
 
           <div class="info-section animated-item">
@@ -277,6 +353,27 @@
     </div>
   </div>
 </section>
+
+<div class="mobile-booking-bar d-lg-none">
+    <div class="container d-flex align-items-center justify-content-between">
+        <div class="d-flex flex-column">
+            <span class="text-muted small text-uppercase" style="font-size: 0.7rem; letter-spacing: 0.5px;">Стоимость от</span>
+            <div>
+                <span class="fw-bold fs-5 text-dark" style="line-height: 1;">2500 ₸</span>
+                <span class="text-muted small">/ час</span>
+            </div>
+        </div>
+        <a href="{% url 'main:booking_page' %}" class="btn-book-mobile">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="me-2">
+                <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
+                <line x1="16" y1="2" x2="16" y2="6"></line>
+                <line x1="8" y1="2" x2="8" y2="6"></line>
+                <line x1="3" y1="10" x2="21" y2="10"></line>
+            </svg>
+            Забронировать
+        </a>
+    </div>
+</div>
 {% endblock %}
 
 {% block extra_js %}
@@ -356,4 +453,7 @@
 
   });
 </script>
+
+
+
 {% endblock %}

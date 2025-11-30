@@ -105,3 +105,12 @@ MEDIA_URL = '/media/'
 MEDIA_ROOT = BASE_DIR / 'media'
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
+
+
+# Добавь эти строки в конец settings.py
+BOT_WHATSAPP_API_URL = 'http://194.32.140.210:5001/send_whatsapp' # URL API бота (поменяем, когда создадим)
+GROUP_CHAT_ID = "120363402711453294@g.us" # ID твоей группы
+# URL главной Google Таблицы (для get_door_code) - если еще не определен глобально
+SPREADSHEET_URL = 'https://docs.google.com/spreadsheets/d/1sorzD7-esaHJmZHnVm276yrdYPbpyOSxvHRq77uFomA/edit'
+DATA_UPLOAD_MAX_MEMORY_SIZE = 10485760
+CLIENTS_HISTORY_SPREADSHEET_URL = os.environ.get('CLIENTS_HISTORY_SPREADSHEET_URL', 'https://docs.google.com/spreadsheets/d/1Q6If_TlZryuEdeupAqj5VIn4wKBXWeaAgVnpRajVxNQ/edit')

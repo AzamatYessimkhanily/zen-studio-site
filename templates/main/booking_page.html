@@ -1,0 +1,1870 @@
+{% extends "base.html" %}
+{% load l10n %}
+{% load static %}
+
+{% block title %}Бронирование кабинета — Zen Studio{% endblock %}
+
+{% block extra_css %}
+<style>
+  /* === 1. ГЛОБАЛЬНЫЕ НАСТРОЙКИ === */
+  :root {
+      --zen-green: #9DD3AF;
+      --zen-green-dark: #81c295;
+      --zen-gray: #95a5a6;
+      --card-radius: 20px;
+      --btn-radius: 14px;
+      --input-height: 48px;
+  }
+html, body {
+    max-width: 100%;
+    overflow-x: hidden; /* Скрывает всё, что торчит по бокам */
+    position: relative; /* Помогает фиксировать контейнер */
+}
+  .page-header {
+      font-size: 1.5rem;
+      font-weight: 800;
+      margin-bottom: 0.8rem;
+      text-align: center;
+      color: var(--zen-dark);
+  }
+
+  /* === 2. КАРТОЧКИ === */
+  .info-section {
+      border: none;
+      border-radius: var(--card-radius);
+      padding: 1rem;
+      background: #fff;
+      box-shadow: 0 5px 20px rgba(0,0,0,0.05);
+      margin-bottom: 1rem;
+  }
+
+  .info-title {
+      font-weight: 700;
+      font-size: 1rem;
+      margin-bottom: 0.8rem;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      color: var(--zen-dark);
+  }
+  
+  .info-title i {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 32px;
+      height: 32px;
+      background: rgba(157, 211, 175, 0.15);
+      border-radius: 8px;
+      font-size: 1rem;
+      color: var(--zen-green-dark);
+      flex-shrink: 0;
+  }
+
+  /* === 3. ВЫРАВНИВАНИЕ ПОЛЕЙ ВВОДА === */
+  .input-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      height: 28px; /* Фиксированная высота для выравнивания */
+      margin-bottom: 6px;
+  }
+
+  .form-label {
+      font-size: 0.85rem;
+      font-weight: 600;
+      color: #8e8e93;
+      margin: 0;
+      letter-spacing: 0.3px;
+      display: flex;
+      align-items: center; /* Центрируем по вертикали */
+      height: 100%; /* Занимает всю высоту контейнера */
+  }
+
+  .form-control, .form-select {
+      height: 50px;
+      border-radius: 14px;
+      border: 1px solid transparent;
+      background-color: #f2f2f7;
+      font-size: 16px;
+      font-weight: 500;
+      color: #000;
+      padding-left: 12px;
+      box-shadow: none;
+      transition: all 0.2s ease;
+      display: flex;
+      align-items: center; /* Центрируем текст внутри */
+  }
+/* === ЗЕЛЕНЫЙ ЧЕКБОКС (ZEN STYLE) === */
+.form-check-input:checked {
+    background-color: var(--zen-green);
+    border-color: var(--zen-green);
+}
+.form-check-input:focus {
+    border-color: var(--zen-green);
+    box-shadow: 0 0 0 0.25rem rgba(157, 211, 175, 0.25);
+}
+  .form-control:focus, .form-select:focus {
+      background-color: #fff;
+      border-color: var(--zen-green);
+      box-shadow: 0 4px 15px rgba(0,0,0,0.05);
+  }
+
+  /* === 4. СЕТКА СЛОТОВ - 2 В РЯДУ === */
+#available_slots_container {
+      background: transparent;
+      padding: 2px;
+      margin-top: 5px;
+      
+      /* === ИЗМЕНЕНИЯ === */
+      max-height: none !important; /* Убираем ограничение высоты */
+      overflow-y: visible !important; /* Убираем внутренний скролл */
+      height: auto; /* Растягиваем по содержимому */
+      /* ================= */
+  }
+
+.slot-section-header {
+      font-size: 0.75rem;
+      font-weight: 800;
+      text-transform: uppercase;
+      color: #b0b8c1;
+      margin: 20px 0 10px 0; /* Чуть больше отступ сверху */
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      
+      /* Липкий заголовок (Утро/День) будет прилипать к верху экрана при скролле */
+      position: -webkit-sticky; 
+      position: sticky;
+      top: 60px; /* Отступ от верха экрана, чтобы не прилипало вплотную к краю */
+      background: var(--zen-bg); /* Фон под заголовком, чтобы слоты не просвечивали */
+      z-index: 5;
+      padding: 8px 0;
+  }
+
+/* Цвета иконок для разных времени суток */
+.slot-section-header .fa-coffee { color: #9DD3AF; } /* Утро - светлый зеленый */
+.slot-section-header .fa-sun { color: #81c295; }    /* День - средний зеленый */  
+.slot-section-header .fa-moon { color: #5a8f69; }   /* Вечер - темный зеленый */
+
+  /* ИЗМЕНЕНИЕ: 2 колонки вместо 4 */
+.slots-grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr); /* 4 колонки */
+      gap: 8px;
+      padding-bottom: 8px;
+  }
+  .slot-button { 
+      padding: 12px 8px; /* Увеличим padding для лучшего касания */
+      border-radius: 16px; /* Чуть больше скругление */
+      border: 1.5px solid #e9ecef; 
+      background: white;
+      color: var(--zen-dark); 
+      font-weight: 700; 
+      font-size: 1rem; /* Увеличим шрифт */
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      min-height: 60px; /* Увеличим высоту для мобилок */
+      box-shadow: 0 2px 8px rgba(0,0,0,0.04);
+      transition: all 0.2s ease;
+  }
+
+  .slot-button small { 
+      font-size: 0.75rem; /* Чуть увеличим */
+      font-weight: 500; 
+      color: #adb5bd; 
+      margin-top: 2px; 
+      line-height: 1; 
+  }
+  
+  .slot-button.active {
+      background: var(--zen-green);
+      border-color: var(--zen-green);
+      color: white;
+      box-shadow: 0 6px 20px rgba(157, 211, 175, 0.4);
+      transform: translateY(-1px);
+  }
+
+  .slot-button.active small { color: rgba(255,255,255,0.9); }
+  .slot-button:disabled { opacity: 0.4; background: #f8f9fa; border-color: transparent; }
+
+  /* === 5. КНОПКИ ДЕЙСТВИЯ === */
+  .btn-zen-primary {
+      background: var(--zen-green);
+      color: white;
+      border: none;
+      border-radius: var(--btn-radius);
+      height: 54px; /* Стандартная высота для мобилок */
+      font-weight: 700;
+      font-size: 1rem;
+      width: 100%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      box-shadow: 0 6px 15px rgba(157, 211, 175, 0.3);
+  }
+
+  .btn-zen-primary:active { transform: scale(0.98); }
+
+  .btn-zen-outline, .btn-zen-danger-outline {
+      height: 50px;
+      border-radius: var(--btn-radius);
+      font-weight: 600;
+      width: 100%;
+      border: 2px solid #e9ecef;
+      background: transparent;
+      color: var(--zen-gray);
+  }
+  .btn-zen-danger-outline { border-color: #ffe3e3; color: #e03131; }
+
+  /* Сетка кабинетов */
+  .room-choice-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+  .room-choice-btn {
+      border: 1px solid #f0f0f0; border-radius: 16px; background: #fff;
+      color: var(--zen-dark); text-align: center; cursor: pointer;
+      display: flex; flex-direction: column; align-items: center; justify-content: center;
+      gap: 8px; min-height: 90px; padding: 0.8rem; /* Компактнее */
+      box-shadow: 0 2px 10px rgba(0,0,0,0.03);
+  }
+  .room-choice-btn i { font-size: 1.4rem; color: #e0e0e0; }
+  .room-choice-btn span { font-weight: 700; font-size: 0.85rem; line-height: 1.2; }
+  .room-choice-btn.active { border: 2px solid var(--zen-green); background-color: rgba(157, 211, 175, 0.08); }
+  .room-choice-btn.active i { color: var(--zen-green); }
+  .room-choice-btn.any-room-btn { background: linear-gradient(135deg, #e8f5e9 0%, #ffffff 100%); border: 1px solid #c3e6cb; }
+  .room-choice-btn.any-room-btn i { color: var(--zen-green); }
+
+  /* Кнопки оплаты */
+  #kaspi_link, #other_bank_link, #other_bank_toggle {
+      border-radius: 14px !important; padding: 12px !important; font-size: 0.95rem !important;
+      display: flex; align-items: center; justify-content: center; border: none;
+      box-shadow: 0 3px 10px rgba(0,0,0,0.05) !important;
+  }
+  #kaspi_link { background: #f14635; color: white !important; font-weight: 700; }
+  #other_bank_toggle { background: #2c3e50; color: white !important; }
+
+  /* === 6. МОБИЛЬНАЯ АДАПТАЦИЯ === */
+
+
+  .loading-spinner { display: inline-block; width: 20px; height: 20px; border: 2px solid rgba(255,255,255,0.3); border-radius: 50%; border-top-color: #fff; animation: spin 0.8s linear infinite; }
+.loading-spinner1 { 
+    display: inline-block; 
+    width: 24px; 
+    height: 24px; 
+    border: 3px solid rgba(157, 211, 175, 0.3); 
+    border-radius: 50%; 
+    border-top-color: var(--zen-green); 
+    animation: spin 0.8s linear infinite; 
+    margin-right: 8px;
+} 
+  @keyframes spin { to { transform: rotate(360deg); } }
+  #booking_timer { font-variant-numeric: tabular-nums; letter-spacing: 0.5px; }
+  .booking-step.hidden { display: none; }
+  .booking-step.visible { animation: fadeIn 0.3s ease forwards; }
+  @keyframes fadeIn { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } }
+
+
+  /* === 10. РЕЗУЛЬТАТЫ ПОИСКА (FIX) === */
+  .room-result-card {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 12px;
+      border: 1px solid #f0f0f0;
+      border-radius: 16px;
+      background: #ffffff;
+      margin-bottom: 10px;
+      cursor: pointer;
+      transition: all 0.2s;
+      box-shadow: 0 3px 12px rgba(0,0,0,0.04);
+  }
+
+  .room-result-card:active {
+      transform: scale(0.98);
+      background-color: #f9f9f9;
+  }
+
+  .room-result-img {
+      width: 70px;
+      height: 70px;
+      border-radius: 12px;
+      object-fit: cover;
+      background: #f8f9fa;
+      flex-shrink: 0;
+      border: 1px solid #e9ecef;
+  }
+
+  .room-result-info {
+      flex-grow: 1;
+      min-width: 0;
+  }
+
+  .room-result-info h5 {
+      font-size: 1rem;
+      font-weight: 700;
+      margin-bottom: 4px;
+      color: var(--zen-dark);
+      line-height: 1.2;
+  }
+
+  .room-result-info p {
+      font-size: 0.8rem;
+      color: #adb5bd;
+      margin: 0;
+      line-height: 1.3;
+  }
+
+  .room-result-price {
+      font-weight: 800;
+      color: var(--zen-green);
+      font-size: 1.1rem;
+      white-space: nowrap;
+      margin-left: auto;
+  }
+
+  /* === 7. МОБИЛЬНАЯ АДАПТАЦИЯ === */
+/* === 7. МОБИЛЬНАЯ АДАПТАЦИЯ (ФИНАЛЬНАЯ: 2 КОЛОНКИ + ОТСТУПЫ) === */
+  @media (max-width: 576px) {
+      /* 1. Настройка контейнера (Отступы по бокам) */
+      .section { 
+          padding-top: 10px !important; 
+          padding-bottom: 40px !important; 
+      }
+      
+      .container { 
+          /* ЭТО СУЖАЕТ БЛОКИ: 16px отступа слева и справа */
+          padding-left: 16px !important; 
+          padding-right: 16px !important; 
+      }
+      
+      /* 2. Карточки (Белые блоки) */
+      .info-section { 
+          padding: 1.25rem; 
+          border-radius: 20px; 
+          margin-bottom: 1rem; 
+          /* Убираем лишние margin, теперь ширину контролирует контейнер */
+          margin-left: 0; 
+          margin-right: 0;
+          box-shadow: 0 4px 15px rgba(0,0,0,0.04);
+      }
+      
+      /* 3. Заголовок страницы */
+      .page-header { 
+          font-size: 1.6rem; 
+          margin-bottom: 0.8rem; 
+          text-align: left; 
+          padding-left: 4px; /* Чуть выравниваем визуально с карточками */
+      }
+      
+      /* 4. Поля ввода (Высокие и удобные) */
+      .input-header { height: 26px; margin-bottom: 6px; }
+      .form-label { font-size: 0.85rem; }
+      .form-control, .form-select { height: 54px; font-size: 16px; }
+      
+      /* 5. СЕТКА СЛОТОВ: СТРОГО 2 КОЛОНКИ */
+      .slots-grid { 
+          grid-template-columns: repeat(2, 1fr); /* <--- 2 колонки! */
+          gap: 10px; /* Расстояние между кнопками побольше */
+      }
+      
+      .slot-button { 
+          min-height: 60px; /* Высокие кнопки */
+          padding: 12px 6px;
+          font-size: 1rem;
+          border-radius: 16px;
+      }
+      
+      /* Липкий заголовок (Утро/День) */
+      .slot-section-header {
+          top: 0; 
+          background: #f8f9fb; /* Цвет фона страницы (чтобы слоты не просвечивали) */
+          padding-top: 10px;
+          margin-top: 5px;
+          margin-bottom: 10px;
+          z-index: 10;
+      }
+      
+      /* 6. Результаты поиска */
+      .room-result-card { padding: 12px; gap: 12px; }
+      .room-result-img { width: 65px; height: 65px; }
+      
+      /* 7. Кнопки (Большие) */
+      .d-grid .btn, .btn-zen-primary, .btn-zen-outline, .btn-zen-danger-outline { 
+          height: 56px; 
+          font-size: 1.05rem; 
+      }
+  }
+
+  /* Для очень маленьких экранов */
+  @media (max-width: 360px) {
+      .slots-grid { 
+          grid-template-columns: repeat(2, 1fr);
+          gap: 8px;
+      }
+      
+      .slot-button { 
+          min-height: 60px;
+          padding: 12px 4px;
+          font-size: 1rem;
+      }
+      
+      .room-result-img { width: 55px; height: 55px; }
+      .room-result-info h5 { font-size: 0.9rem; }
+      .room-result-price { font-size: 1rem; }
+  }
+
+  .loading-spinner { display: inline-block; width: 20px; height: 20px; border: 2px solid rgba(255,255,255,0.3); border-radius: 50%; border-top-color: #fff; animation: spin 0.8s linear infinite; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  #booking_timer { font-variant-numeric: tabular-nums; letter-spacing: 0.5px; }
+  .booking-step.hidden { display: none; }
+  .booking-step.visible { animation: fadeIn 0.3s ease forwards; }
+  @keyframes fadeIn { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } }
+
+  /* Скрываем скроллбар для красоты */
+#available_slots_container::-webkit-scrollbar { display: none; }
+  #available_slots_container::-webkit-scrollbar-thumb { background-color: #e9ecef; border-radius: 3px; }
+
+  /* Улучшенные спиннеры */
+.spinner-border-sm {
+    width: 1.2rem;
+    height: 1.2rem;
+    border-width: 0.2em;
+}
+
+.spinner-border {
+    border-color: var(--zen-green);
+    border-right-color: transparent;
+}
+</style>
+{% endblock %}
+
+{% block content %}
+<section class="section pt-4 pb-5">
+  <div class="container">
+    <div class="row justify-content-center">
+      <div class="col-lg-6 col-md-8 col-12 p-0 p-sm-2"> 
+        {# === ГЛАВНЫЙ БЛОК ВЫБОРА === #}
+        <div id="booking_success_message" class="alert alert-success mt-3 small rounded-3 border-0 shadow-sm" style="display: none;"></div>
+<div id="booking_error_message" class="alert alert-danger mt-3 small rounded-3 border-0 shadow-sm" style="display: none;"></div>
+
+        <div id="room_selection_container" class="info-section mb-4">
+            <h4 class="info-title mb-4"><i class="fas fa-door-open"></i> Выберите кабинет (Шаг 1 из 5)</h4>
+            <div class="room-choice-grid">
+              {% for room in rooms %}
+                <button class="room-choice-btn" data-room-id="{{ room.pk }}" data-room-name="{{ room.name }}">
+                  <i class="fas fa-couch"></i>
+                  <span>{{ room.name }}</span>
+                </button>
+              {% endfor %}
+
+              <button class="room-choice-btn any-room-btn" id="btn_any_room">
+                 <i class="fas fa-search-location fa-2x mb-2"></i>
+                 <span>Любой <br>кабинет</span>
+              </button>
+            </div>
+        </div>
+
+        {# === СЦЕНАРИЙ 1: КАЛЕНДАРЬ === #}
+        <div id="module_book_by_room">
+             <div id="booking-module-wrapper-1"></div>
+        </div>
+        
+        {# === СЦЕНАРИЙ 2: ПОИСК === #}
+        <div id="module_find_by_time" style="display: none;">
+            <div id="search_interface_container">
+                <div class="info-section">
+                    <div class="d-flex align-items-center mb-3">
+                        <button id="search_back_btn" class="btn btn-link text-decoration-none p-0 me-3 text-secondary" style="font-size: 1.2rem; border: none; background: transparent;">
+                            <i class="fas fa-arrow-left"></i>
+                        </button>
+                        <h4 class="info-title mb-0"><i class="fas fa-search-location"></i> Поиск кабинета (Шаг 2 из 5)</h4>
+                    </div>
+                    
+                    <!-- ИСПРАВЛЕННЫЙ БЛОК С ВЫРАВНИВАНИЕМ -->
+<div class="row g-3">
+                        <div class="col-6">
+                            <div class="input-header">
+                                <label for="find_date" class="form-label">Дата</label>
+                            </div>
+                            <input type="date" class="form-control" id="find_date" name="find_date" style="font-size: 15px;">
+                        </div>
+
+                        <div class="col-6">
+                            <div class="input-header">
+                                <label for="find_time" class="form-label">Время (от)</label>
+                            </div>
+                            <select class="form-select text-center" id="find_time" name="find_time">
+                                </select>
+                        </div>
+
+                        <div class="col-6">
+                            <div class="input-header">
+                                <label for="find_duration" class="form-label">Длительность</label>
+                                <a tabindex="0" class="ms-2 text-secondary text-decoration-none info-icon-link" role="button" 
+                                   data-bs-toggle="popover" data-bs-trigger="focus" data-bs-html="true" 
+                                   title="Правила бронирования" 
+                                   data-bs-content="Для бронирования без абонемента минимальная продолжительность бронирования - 1 час<br><br>Для бронирования с абонементом - 30 минут<br><br>Минимальный шаг бронирования 30 минут">
+                                    <i class="fas fa-info-circle"></i>
+                                </a>
+                            </div>
+                            <select class="form-select" id="find_duration" name="find_duration">
+                                <option value="1" selected>1 час</option>
+                                <option value="1.5">1.5 часа</option>
+                                <option value="2">2 часа</option>
+                                <option value="2.5">2.5 часа</option>
+                                <option value="3">3 часа</option>
+                                <option value="3.5">3.5 часа</option>
+                                <option value="4">4 часа</option>
+                                <option value="4.5">4.5 часа</option>
+                                <option value="5">5 часов</option>
+                            <option value="5.5">5.5 часов</option>
+                                <option value="6">6 часов</option>
+                            <option value="6.5">6.5 часов</option>
+                                <option value="7">7 часов</option>
+                            <option value="7.5">7.5 часов</option>
+                                <option value="8">8 часов</option>
+                            <option value="8.5">8.5 часов</option>
+                                <option value="9">9 часов</option>
+                            <option value="9.5">9.5 часов</option>
+                                <option value="10">10 часов</option>
+                            </select>
+                        </div>
+
+                        <div class="col-6">
+                            <div class="input-header">
+                                <label for="find_people" class="form-label">Гостей</label>
+                            </div>
+                            <select class="form-select text-center" id="find_people" name="find_people">
+                                <option value="1" selected>1-3 чел.</option>
+                                <option value="4">4-8 чел.</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="mt-4">
+                        <button id="find_rooms_submit" class="btn-zen-primary">
+                            <i class="fas fa-search"></i> Найти свободные
+                        </button>
+                    </div>
+                    
+                    <div id="find_results_container" class="mt-4" style="display: none;">
+                        <div class="d-flex align-items-center mb-3">
+                            <span class="text-muted small fw-bold">Выберите кабинет:</span>
+                            <hr class="flex-grow-1 ms-3 my-0" style="opacity:0.1">
+                        </div>
+                        <div id="find_results_list"></div>
+                    </div>
+                </div>
+            </div>
+            
+            <div id="booking-module-wrapper-2"></div>
+        </div>
+
+        <!-- Остальной код без изменений -->
+        <div id="booking-module-template" style="display: none;">
+            <div id="booking-section" class="info-section animated-item">
+                
+                <div class="d-flex align-items-center mb-3">
+                    <button id="module_back_btn" class="btn btn-link text-decoration-none p-0 me-3 text-secondary" style="font-size: 1.2rem;">
+                        <i class="fas fa-arrow-left"></i>
+                    </button>
+                    <h4 class="info-title mb-0" id="booking-section-title">
+                        <i class="fas fa-calendar-check"></i> Бронирование
+                    </h4>
+                </div>
+
+                <div class="booking-step visible" id="step1">
+    
+                <div class="row g-3 mb-3">
+                      <div class="col-6">
+                          <div class="input-header">
+                              <label for="booking_date" class="form-label">Дата</label>
+                          </div>
+                          <input type="date" class="form-control text-center" id="booking_date" name="booking_date" required style="font-weight: 600; padding: 0;">
+                      </div>
+
+                      <div class="col-6">
+                          <div class="input-header">
+                              <label for="booking_people_count" class="form-label">Гостей</label>
+                          </div>
+                          <select class="form-select text-center" id="booking_people_count" name="booking_people_count" style="padding: 0 12px;">
+                              <option value="1" selected>1-3</option>
+                              <option value="4">4-8</option>
+                          </select>
+                      </div>
+                </div>
+
+    <div class="mb-4">
+        <div class="input-header">
+            <label for="booking_duration" class="form-label">Длительность</label>
+                            <a tabindex="0" 
+                            class="ms-2 text-secondary text-decoration-none" 
+                            role="button" 
+                            data-bs-toggle="popover" 
+                            data-bs-trigger="focus" 
+                            data-bs-html="true" 
+                            title="Правила бронирования" 
+                            data-bs-content="Для бронирования без абонемента минимальная продолжительность бронирования - 1 час<br><br>Для бронирования с абонементом - 30 минут<br><br>Минимальный шаг бронирования 30 минут, это значит вы можете забронировать, например, на 1,5 часа">
+                            <i class="fas fa-info-circle" style="cursor: pointer;"></i>
+                            </a>
+        </div>
+        <select class="form-select" id="booking_duration" name="booking_duration">
+            <option value="1" selected>1 час</option>
+            <option value="1.5">1.5 часа</option>
+            <option value="2">2 часа</option>
+            <option value="2.5">2.5 часа</option>
+            <option value="3">3 часа</option>
+            <option value="3.5">3.5 часа</option>
+            <option value="4">4 часа</option>
+            <option value="4.5">4.5 часа</option>
+            <option value="5">5 часов</option>
+            <option value="5.5">5.5 часов</option>
+            <option value="6">6 часов</option>
+            <option value="6.5">6.5 часов</option>
+            <option value="7">7 часов</option>
+            <option value="7.5">7.5 часов</option>
+            <option value="8">8 часов</option>
+                            <option value="8.5">8.5 часов</option>
+            <option value="9">9 часов</option>
+                            <option value="9.5">9.5 часов</option>
+            <option value="10">10 часов</option>
+        </select>
+    </div>
+    
+    <label class="form-label small text-muted mb-2">Выберите свободное время:</label>
+    <div id="available_slots_container">
+        </div>
+</div>
+
+            <div class="booking-step hidden" id="step2">
+                <div class="mb-2">
+                    <label for="client_name" class="form-label">Ваше имя</label>
+                    <input type="text" class="form-control" id="client_name" name="client_name" required placeholder="Иван">
+                </div>
+                <div class="mb-3">
+                    <label for="client_phone" class="form-label">Номер WhatsApp</label>
+                    <input type="tel" class="form-control" id="client_phone" name="client_phone" required placeholder="+7 777 ...">
+                </div>
+                
+                <div id="booking_summary_text" class="mb-3 p-3 bg-light rounded-3 border small"></div>
+
+                <div class="form-check mb-3">
+                    <input class="form-check-input" type="checkbox" value="" id="agreement_checkbox" style="cursor: pointer;">
+                    <label class="form-check-label small text-muted lh-sm" for="agreement_checkbox" style="cursor: pointer; font-size: 0.85rem;">
+                        Продолжая, я подтверждаю, что ознакомлен(а) и согласен(а) с условиями 
+                        <a href="https://zenstudio.kz/page/tnc4/" target="_blank" class="text-decoration-none fw-bold" style="color: var(--zen-green);">публичного договора о бронировании</a>
+                    </label>
+                </div>
+                <div class="d-grid gap-2">
+                    <button id="show_payment_button" class="btn-zen-primary">Далее <i class="fas fa-arrow-right ms-1"></i></button>
+                    <button id="cancel_hold_button" class="btn-zen-outline text-muted" style="border-color: #dee2e6;">Отменить</button>
+                </div>
+            </div>
+
+<div class="booking-step hidden" id="step3">
+    
+    <div class="text-center mb-3">
+        <div class="text-muted small text-uppercase fw-bold" style="letter-spacing: 1px;">Итого к оплате</div>
+        <h2 id="booking_price" class="fw-bold mb-0" style="font-size: 2.5rem; color: var(--zen-green);"></h2>
+    </div>
+    
+    <div class="bg-secondary bg-opacity-10 border border-secondary border-opacity-25 rounded-4 p-3 mb-4 position-relative overflow-hidden">
+        <i class="fas fa-hourglass-half position-absolute text-secondary opacity-25" style="font-size: 5rem; right: -15px; top: -10px; transform: rotate(15deg);"></i>
+        
+        <div class="d-flex align-items-center position-relative z-1">
+            <div class="me-3 text-center">
+                <div class="small text-muted fw-bold mb-1">ОСТАЛОСЬ</div>
+                <div id="booking_timer" class="fw-bold text-dark bg-white rounded-3 px-2 py-1 shadow-sm" style="font-family: monospace; font-size: 1.4rem;">15:00</div>
+            </div>
+            <div class="border-start border-secondary border-opacity-25 ps-3">
+                <p class="mb-0 small text-dark lh-sm fw-medium">
+                    Для фиксации брони необходимо произвести оплату в течение <strong>15 минут</strong> и отправить нам квитанцию 
+                </p>
+            </div>
+        </div>
+    </div>
+
+
+    <div class="form-check mb-4 d-flex align-items-start">
+        <input class="form-check-input mt-1" type="checkbox" value="" id="payment_agreement_checkbox" checked style="cursor: pointer; min-width: 18px; height: 18px;">
+        <label class="form-check-label small text-muted lh-sm ms-2" for="payment_agreement_checkbox" style="cursor: pointer; font-size: 0.85rem;">
+            Я подтверждаю, что ознакомился с 
+            <a href="https://zenstudio.kz/page/rools/" target="_blank" class="text-decoration-none fw-bold" style="color: var(--zen-green);">условиями переноса и отмены</a>, 
+            и понимаю, что оплата возврату не подлежит.
+        </label>
+    </div>
+    <div class="mb-4">
+        <div class="d-grid gap-2">
+            <a id="kaspi_link" href="{{ settings.kaspi_payment_link|default:'https://pay.kaspi.kz/pay/p0zhptck' }}" target="_blank" rel="noopener" class="shadow-sm">
+                Оплатить Kaspi
+            </a>
+
+            <button type="button" id="other_bank_toggle" class="btn shadow-sm" 
+                    style="background: #2c3e50; color: white; border-radius: 14px; padding: 12px; font-weight: 600; display: flex; align-items: center; justify-content: center; transition: all 0.2s;"
+                    data-bs-toggle="collapse" 
+                    data-bs-target="#bank_details_collapse" 
+                    aria-expanded="false">
+                <i class="fas fa-credit-card me-2"></i>
+                Оплатить картой (Любой банк) <i class="fas fa-chevron-down ms-2 small opacity-50"></i>
+            </button>
+        </div>
+
+        <div class="collapse mt-2" id="bank_details_collapse">
+             <div class="card card-body border-0 bg-light rounded-4 shadow-sm p-3 small">
+                <div class="d-flex justify-content-between align-items-center mb-2 pb-2 border-bottom">
+                    <span class="fw-bold text-dark">Реквизиты для оплаты:</span>
+                    <i class="fas fa-university text-muted"></i>
+             </div>
+                <div class="mb-2">
+                    <span class="text-muted d-block" style="font-size: 0.75rem;">Получатель:</span>
+                    <strong class="text-dark">ИП ПЛУЖНИКОВА</strong>
+        </div>
+                <div class="mb-2">
+                    <span class="text-muted d-block" style="font-size: 0.75rem;">ИИН/БИН:</span>
+                    <div class="d-flex align-items-center bg-white border rounded-3 px-2 py-1">
+                        <span class="text-dark fw-bold me-auto" id="copy_iin_text">880819499179</span>
+                        <button class="btn btn-sm btn-link text-decoration-none p-0 ms-2 text-primary" onclick="window.copyToClipboard('880819499179', this)"><i class="far fa-copy"></i></button>
+    </div>
+                </div>
+                <div class="mb-3">
+                    <span class="text-muted d-block" style="font-size: 0.75rem;">Номер счёта (IBAN):</span>
+                    <div class="d-flex align-items-center bg-white border rounded-3 px-2 py-1">
+                        <span class="text-dark fw-bold me-auto text-break" style="font-family: monospace; font-size: 0.9rem;" id="copy_iban_text">KZ83722S000023853267</span>
+                        <button class="btn btn-sm btn-link text-decoration-none p-0 ms-2 text-primary" onclick="window.copyToClipboard('KZ83722S000023853267', this)"><i class="far fa-copy"></i></button>
+                    </div>
+                </div>
+                <div class="bg-white rounded-3 p-2 border text-muted" style="font-size: 0.75rem;">
+                    <div class="d-flex justify-content-between"><span>Банк:</span> <strong>АО "Kaspi Bank"</strong></div>
+                    <div class="d-flex justify-content-between"><span>БИК:</span> <strong>CASPKZKA</strong></div>
+                    <div class="d-flex justify-content-between"><span>КБе:</span> <strong>19</strong></div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div id="booking_summary_text_step3" class="mb-4 text-center small text-muted"></div>
+    
+    <div class="row g-2 mt-4">
+        <div class="col-12">
+            <button id="to_receipt_step_button" class="btn-zen-primary py-3 shadow-sm">
+                Я оплатил(а), прикрепить чек <i class="fas fa-arrow-right ms-2"></i>
+            </button>
+        </div>
+        <div class="col-12">
+            <button id="cancel_pay_step_button" class="btn-zen-danger-outline">Отмена</button>
+        </div>
+    </div>
+</div>
+
+<div class="booking-step hidden" id="step_receipt">
+
+
+    <div class="mb-4">
+        <label for="receipt_file" class="form-label">Загрузить квитанцию</label>
+        
+        <div class="input-group mb-2">
+            <span class="input-group-text bg-white border-end-0"><i class="fas fa-receipt text-muted"></i></span>
+            <input type="file" class="form-control border-start-0 ps-0" id="receipt_file" name="receipt_file" accept="image/*,.pdf" style="height: 52px; line-height: 38px;">
+        </div>
+
+        <div class="mb-2"> <button type="button" id="toggle_manual_receipt" class="btn btn-link btn-sm text-decoration-none text-muted p-0" style="font-size: 0.85rem;">
+                Не получилось загрузить чек?
+            </button>
+        </div>
+
+        <div id="manual_receipt_container" style="display: none;">
+            <label for="receipt_number" class="form-label small text-muted">Введите номер чека</label>
+            <div class="input-group">
+                <span class="input-group-text bg-white border-end-0 fw-bold" style="color: var(--zen-green);">QR</span>
+                <input type="text" class="form-control border-start-0 ps-0 text-uppercase" id="receipt_number" name="receipt_number" maxlength="25">
+            </div>
+        </div>
+    </div>
+
+    <div class="d-flex align-items-start gap-2 p-3 rounded-4 bg-secondary bg-opacity-10 mb-4 border border-secondary border-opacity-25">
+        <i class="fas fa-exclamation-circle text-secondary mt-1 fs-5"></i>
+        <span class="small text-dark fw-bold lh-sm">
+            Бронирование в календаре происходит после оплаты и загрузки чека. 
+            <br>
+            <span class="text-muted fw-normal">По вопросам WhatsApp: +7 707 391 0808</span>
+        </span>
+    </div>
+
+        
+    <div class="row g-2 mt-2">
+        <div class="col-12">
+            <button id="confirm_booking_button" class="btn-zen-primary py-3 shadow-sm">
+                <i class="fas fa-key me-2"></i> Получить код для открытия двери
+            </button>
+        </div>
+        <div class="col-12">
+            <button id="back_to_payment_button" class="btn-zen-outline text-muted" style="border-color: #dee2e6;">Назад к оплате</button>
+        </div>
+    </div>
+</div>
+
+              {# Пустой контейнер для шага успеха - наполняется JS #}
+              <div class="booking-step hidden" id="step4_success"></div>
+
+              <div id="booking_success_message_module" class="alert alert-success mt-3 small rounded-3 border-0 shadow-sm" style="display: none;"></div>
+              <div id="booking_error_message_module" class="alert alert-danger mt-3 small rounded-3 border-0 shadow-sm" style="display: none;"></div>
+            </div>
+        </div>
+        
+      </div>
+    </div>
+  </div>
+</section>
+{% endblock %}
+{% block footer %}
+    {% endblock %}
+{% block extra_js %}
+<script>
+// === 1. ГЛОБАЛЬНАЯ ФУНКЦИЯ КОПИРОВАНИЯ (Должна быть вне DOMContentLoaded) ===
+window.copyToClipboard = function(text, btnElement) {
+    if (navigator.clipboard && window.isSecureContext) {
+        navigator.clipboard.writeText(text).then(() => {
+            showCopySuccess(btnElement);
+        }).catch(err => {
+            console.error('Ошибка API: ', err);
+            fallbackCopyText(text, btnElement);
+        });
+    } else {
+        fallbackCopyText(text, btnElement);
+    }
+};
+
+function fallbackCopyText(text, btnElement) {
+    try {
+        const textArea = document.createElement("textarea");
+        textArea.value = text;
+        textArea.style.top = "0"; textArea.style.left = "0"; textArea.style.position = "fixed"; textArea.style.opacity = "0";
+        document.body.appendChild(textArea);
+        textArea.focus(); textArea.select();
+        const successful = document.execCommand('copy');
+        document.body.removeChild(textArea);
+        
+        if (successful) {
+            showCopySuccess(btnElement);
+        } else {
+            alert('Не удалось скопировать. Скопируйте вручную: ' + text);
+        }
+    } catch (err) {
+        console.error('Ошибка Fallback: ', err);
+        alert('Не удалось скопировать вручную.');
+    }
+}
+
+function showCopySuccess(btnElement) {
+    const icon = btnElement.querySelector('i');
+    if (!icon) return;
+    const originalClass = icon.className;
+    icon.className = 'fas fa-check text-success';
+    setTimeout(() => {
+        icon.className = originalClass;
+    }, 2000);
+}
+
+// === 2. ОСНОВНОЙ СКРИПТ ===
+document.addEventListener("DOMContentLoaded", function () {
+    console.log("Booking Page DOM Loaded.");
+    
+    // --- ГЛОБАЛЬНЫЕ ПЕРЕМЕННЫЕ ---
+    const adminPhoneRaw = "{{ settings.phone|default:'77073910808' }}"; 
+    const adminPhoneClean = adminPhoneRaw.replace(/\D/g, ''); 
+    
+    let roomId = null;
+    let roomName = null;
+    let currentScenario = 'room'; 
+    let selectedSlot = null;
+    let holdId = null;
+    let timerInterval = null;
+    let timerEndTime = null;
+    let isFetching = false;
+    let isTimerRefreshed = false; 
+    let activeSearchCard = null;
+    let activeSearchCardHTML = null;
+    let activeSearchCardClass = null;
+    
+    const STORAGE_KEY = 'zenStudioBookingState';
+    
+    // --- Элементы DOM ---
+    const roomSelectionContainer = document.getElementById('room_selection_container');
+    const roomChoiceGrid = document.querySelector('.room-choice-grid');
+    const btnAnyRoom = document.getElementById('btn_any_room');
+
+    const moduleBookByRoom = document.getElementById('module_book_by_room');
+    const bookingModuleWrapper1 = document.getElementById('booking-module-wrapper-1');
+
+    const moduleFindByTime = document.getElementById('module_find_by_time');
+    const searchInterfaceContainer = document.getElementById('search_interface_container');
+    
+    const findDateInput = document.getElementById('find_date');
+    const findTimeInput = document.getElementById('find_time'); 
+    const findDurationSelect = document.getElementById('find_duration');
+    const findPeopleInput = document.getElementById('find_people'); 
+    const findRoomsSubmitBtn = document.getElementById('find_rooms_submit');
+    const findResultsContainer = document.getElementById('find_results_container');
+    const findResultsList = document.getElementById('find_results_list');
+    
+    const bookingModuleWrapper2 = document.getElementById('booking-module-wrapper-2');
+    const searchBackBtn = document.getElementById('search_back_btn');
+    const bookingModuleTemplate = document.getElementById('booking-module-template');
+    
+    // Переменные модуля (будут инициализированы в setupBookingModule)
+    let bookingDateInput, bookingDurationSelect, bookingPeopleInput, slotsContainer,
+        step1, step2, step3, stepReceipt, step4,
+        showPaymentButton, toReceiptStepButton, confirmBookingButton, backToPaymentButton,
+        clientNameInput, clientPhoneInput, receiptFileInput,
+        bookingSummaryText, bookingPriceSpan, kaspiLinkAnchor, 
+        successMessageModule, errorMessageModule,
+        timerDisplay, cancelHoldButton, bookingSectionTitle, 
+        successMessageDiv, errorMessageDiv;
+
+    successMessageDiv = document.getElementById('booking_success_message');
+    errorMessageDiv = document.getElementById('booking_error_message');
+    
+    // Инициализация Popover
+    if (typeof bootstrap !== 'undefined') {
+        const popoverTriggerList = document.querySelectorAll('[data-bs-toggle="popover"]');
+        [...popoverTriggerList].map(popoverTriggerEl => new bootstrap.Popover(popoverTriggerEl));
+    }
+
+    // --- ФУНКЦИЯ ЗАПОЛНЕНИЯ ВРЕМЕНИ ---
+    function populateTimeSelect() {
+        const timeSelect = document.getElementById('find_time');
+        if (!timeSelect) return;
+        
+        let html = '';
+        for (let hour = 0; hour < 24; hour++) {
+            for (let min = 0; min < 60; min += 30) {
+                const hStr = hour.toString().padStart(2, '0');
+                const mStr = min.toString().padStart(2, '0');
+                const timeVal = `${hStr}:${mStr}`;
+                html += `<option value="${timeVal}">${timeVal}</option>`;
+            }
+        }
+        timeSelect.innerHTML = html;
+        
+        const now = new Date();
+        const currentH = now.getHours();
+        let defaultTime = `${currentH.toString().padStart(2, '0')}:00`;
+        
+        if (now.getMinutes() > 30) {
+             const nextH = (currentH + 1) % 24;
+             defaultTime = `${nextH.toString().padStart(2, '0')}:00`;
+        } else if (now.getMinutes() > 0) {
+             defaultTime = `${currentH.toString().padStart(2, '0')}:30`;
+        }
+        timeSelect.value = defaultTime;
+    }
+    populateTimeSelect();
+
+    // --- SETUP MODULE ---
+    function setupBookingModule(wrapperElement, roomName = null) {
+        wrapperElement.innerHTML = '';
+        const moduleNode = bookingModuleTemplate.querySelector('#booking-section').cloneNode(true);
+        wrapperElement.appendChild(moduleNode);
+        
+        const moduleBackBtn = wrapperElement.querySelector('#module_back_btn');
+        bookingDateInput = wrapperElement.querySelector('#booking_date');
+        bookingDurationSelect = wrapperElement.querySelector('#booking_duration');
+        bookingPeopleInput = wrapperElement.querySelector('#booking_people_count');
+        slotsContainer = wrapperElement.querySelector('#available_slots_container');
+        
+        step1 = wrapperElement.querySelector('#step1');
+        step2 = wrapperElement.querySelector('#step2');
+        step3 = wrapperElement.querySelector('#step3');
+        stepReceipt = wrapperElement.querySelector('#step_receipt');
+        step4 = wrapperElement.querySelector('#step4_success');
+
+        showPaymentButton = wrapperElement.querySelector('#show_payment_button');
+        toReceiptStepButton = wrapperElement.querySelector('#to_receipt_step_button');
+        confirmBookingButton = wrapperElement.querySelector('#confirm_booking_button');
+        backToPaymentButton = wrapperElement.querySelector('#back_to_payment_button');
+        
+        clientNameInput = wrapperElement.querySelector('#client_name');
+        clientPhoneInput = wrapperElement.querySelector('#client_phone');
+        receiptFileInput = wrapperElement.querySelector('#receipt_file');
+        bookingSummaryText = wrapperElement.querySelector('#booking_summary_text');
+        bookingPriceSpan = wrapperElement.querySelector('#booking_price');
+        
+        successMessageModule = wrapperElement.querySelector('#booking_success_message_module');
+        errorMessageModule = wrapperElement.querySelector('#booking_error_message_module');
+        timerDisplay = wrapperElement.querySelector('#booking_timer');
+        cancelHoldButton = wrapperElement.querySelector('#cancel_hold_button');
+        const cancelPayStepButton = wrapperElement.querySelector('#cancel_pay_step_button');
+        bookingSectionTitle = wrapperElement.querySelector('#booking-section-title');
+// ... внутри setupBookingModule ...
+    
+    // Переменные для чека
+    const toggleReceiptBtn = wrapperElement.querySelector('#toggle_manual_receipt');
+    const manualReceiptContainer = wrapperElement.querySelector('#manual_receipt_container');
+    const receiptNumberInput = wrapperElement.querySelector('#receipt_number'); // Объявите это глобально или тут
+
+    if (toggleReceiptBtn) {
+        toggleReceiptBtn.addEventListener('click', () => {
+            if (manualReceiptContainer.style.display === 'none') {
+                manualReceiptContainer.style.display = 'block';
+                toggleReceiptBtn.textContent = 'Скрыть ввод номера';
+                // Очищаем файл, если открыли ввод номера (чтобы не было путаницы)
+                if (receiptFileInput) receiptFileInput.value = ''; 
+            } else {
+                manualReceiptContainer.style.display = 'none';
+                toggleReceiptBtn.textContent = 'Не получилось загрузить чек?';
+                if (receiptNumberInput) receiptNumberInput.value = '';
+            }
+        });
+    }
+        if (typeof bootstrap !== 'undefined') {
+            const popoverTriggerList = wrapperElement.querySelectorAll('[data-bs-toggle="popover"]');
+            [...popoverTriggerList].map(popoverTriggerEl => new bootstrap.Popover(popoverTriggerEl));
+        }
+
+        // Кнопка НАЗАД
+        if (moduleBackBtn) {
+            moduleBackBtn.addEventListener('click', () => {
+                const curStep = getCurrentStep();
+                if (curStep === 4) { showStep(3); return; } // Чек -> Оплата
+                if (curStep === 3) { handleBackToStep2(); return; } // Оплата -> Данные
+                if (curStep === 2) { 
+                    if (currentScenario === 'room') handleBackToSlots(); 
+                    else cancelHold(true);
+                    return; 
+                }
+                if (curStep === 1) { 
+                    if (holdId) cancelHold(true); else resetAll(true); 
+                }
+            });
+        }
+
+        if (cancelHoldButton) cancelHoldButton.addEventListener('click', () => cancelHold(true));
+        if (cancelPayStepButton) cancelPayStepButton.addEventListener('click', () => cancelHold(true));
+        
+        if (showPaymentButton) showPaymentButton.addEventListener('click', handleShowPayment);
+        if (toReceiptStepButton) toReceiptStepButton.addEventListener('click', handleToReceiptStep);
+        if (confirmBookingButton) confirmBookingButton.addEventListener('click', handleConfirmBooking);
+        if (backToPaymentButton) backToPaymentButton.addEventListener('click', () => showStep(3));
+        
+        [bookingDateInput, bookingDurationSelect, bookingPeopleInput].forEach(element => {
+            if (element) {
+                element.addEventListener('change', () => {
+                    fetchSlots(false);
+                    saveBookingState();
+                });
+            }
+        });
+
+        if (bookingSectionTitle && roomName) {
+            bookingSectionTitle.innerHTML = `<i class="fas fa-check-circle text-success"></i> ${roomName} кабинет (Шаг 2 из 5)`;
+        }
+        setDefaultDate(bookingDateInput);
+    }
+
+    // --- УПРАВЛЕНИЕ ИНТЕРФЕЙСОМ ---
+    function showScenario(scenario) {
+        currentScenario = scenario;
+        hideMessages();
+        if (scenario === 'room') {
+            moduleBookByRoom.style.display = 'block';
+            moduleFindByTime.style.display = 'none';
+            if(btnAnyRoom) btnAnyRoom.classList.remove('active');
+        } else if (scenario === 'time') {
+            moduleBookByRoom.style.display = 'none';
+            moduleFindByTime.style.display = 'block';
+            bookingModuleWrapper1.innerHTML = '';
+            roomChoiceGrid.querySelectorAll('.room-choice-btn').forEach(b => b.classList.remove('active'));
+            if(btnAnyRoom) btnAnyRoom.classList.add('active');
+        }
+    }
+    
+    if (btnAnyRoom) btnAnyRoom.addEventListener('click', () => {
+        resetAll(false); showScenario('time');
+        roomSelectionContainer.style.display = 'none';
+        saveBookingState();
+    });
+
+    if (searchBackBtn) searchBackBtn.addEventListener('click', (e) => { resetAll(true); });
+
+    if (roomChoiceGrid) {
+        roomChoiceGrid.querySelectorAll('.room-choice-btn:not(.any-room-btn)').forEach(button => {
+            button.addEventListener('click', () => {
+                hideMessages(); resetAll(false); isFetching = false;
+                roomChoiceGrid.querySelectorAll('.room-choice-btn').forEach(b => b.classList.remove('active'));
+                button.classList.add('active');
+                roomId = button.dataset.roomId; roomName = button.dataset.roomName; 
+                roomSelectionContainer.style.display = 'none';
+                showScenario('room');
+                setupBookingModule(bookingModuleWrapper1, roomName);
+                clearBookingState(); setDefaultDate(bookingDateInput); fetchSlots(false); saveBookingState();
+            });
+        });
+    }
+    
+    // --- ЛОГИКА ПОИСКА ---
+    setDefaultDate(findDateInput);
+    if (findRoomsSubmitBtn) {
+        findRoomsSubmitBtn.addEventListener('click', async () => {
+             const date = findDateInput.value; const time = findTimeInput.value;
+             const duration = findDurationSelect.value; const people = findPeopleInput.value;
+             if (!date || !time || !duration) { showMessage('error', 'Заполните поля', true); return; }
+             findRoomsSubmitBtn.disabled = true; findRoomsSubmitBtn.innerHTML = '<span class="loading-spinner"></span>';
+             findResultsContainer.style.display = 'none'; hideMessages();
+             try {
+                 const apiUrl = `/api/find_available_rooms/?date=${date}&start_time=${time}&duration=${duration}&people=${people}`;
+                 const response = await fetch(apiUrl, { headers: { "ngrok-skip-browser-warning": "true", "Content-Type": "application/json" } });
+                 const data = await response.json();
+                 findResultsContainer.style.display = 'block'; findResultsList.innerHTML = ''; 
+                 if (data.available_rooms && data.available_rooms.length > 0) {
+                     data.available_rooms.forEach(room => {
+                         const card = document.createElement('div');
+                         card.className = 'room-result-card';
+                         card.dataset.roomId = room.id; card.dataset.roomName = 'Кабинет ' + room.name;
+                         card.dataset.date = date; card.dataset.time = time;
+                         card.dataset.duration = duration; card.dataset.people = people; card.dataset.price = room.price;
+                         card.innerHTML = `
+                             <img src="${room.main_image_url || '{% static "img/favicon-32x32.png" %}'}" alt="${room.name}" class="room-result-img">
+                             <div class="room-result-info"><h5>Кабинет ${room.name}</h5><p>${room.short_description || ''}</p>${room.area ? `<p><strong>${room.area} м²</strong></p>` : ''}</div>
+                             <div class="room-result-price">${room.price} ₸</div>`;
+                         card.addEventListener('click', handleFoundRoomClick);
+                         findResultsList.appendChild(card);
+                     });
+                 } else { findResultsList.innerHTML = '<div class="alert alert-warning text-center small">Нет мест.</div>'; }
+             } catch (error) { findResultsList.innerHTML = '<div class="alert alert-danger text-center small">Ошибка.</div>'; } 
+             finally { findRoomsSubmitBtn.disabled = false; findRoomsSubmitBtn.innerHTML = '<i class="fas fa-search me-2"></i> Найти'; }
+        });
+    }
+    
+    async function handleFoundRoomClick(event) {
+        const card = event.target.closest('.room-result-card');
+        if (!card || isFetching) return;
+        isFetching = true; hideMessages();
+
+        activeSearchCard = card; activeSearchCardHTML = card.innerHTML; activeSearchCardClass = card.className;
+        const originalHeight = card.offsetHeight;
+        card.style.height = `${originalHeight}px`;
+        card.className = 'card border-success mb-3 d-flex justify-content-center align-items-center'; 
+        card.style.backgroundColor = '#f0fff4'; 
+        card.innerHTML = `<div class="text-center text-success small"><div class="spinner-border spinner-border-sm mb-2" role="status" style="border-color: var(--zen-green); border-right-color: transparent;"></div><div class="fw-bold">Бронируем...</div></div>`;
+
+        stopTimer();
+        if (holdId) { fetch('/api/cancel_hold/', { method: 'POST', headers: { 'Content-Type': 'application/json', 'X-CSRFToken': getCookie('csrftoken') }, body: JSON.stringify({ hold_id: holdId }) }).catch(e => console.log(e)); }
+        holdId = null; selectedSlot = null;
+        
+        bookingModuleWrapper1.innerHTML = '';
+        roomId = card.dataset.roomId; currentScenario = 'time'; roomName = card.dataset.roomName;
+        
+        const tempSelected = { start: card.dataset.time, date: card.dataset.date, duration: card.dataset.duration, people: card.dataset.people, price: card.dataset.price, end: '(...)', };
+        
+        setupBookingModule(bookingModuleWrapper2, roomName);
+        const step1Div = bookingModuleWrapper2.querySelector('#step1');
+        if (step1Div) { step1Div.style.display = 'none'; step1Div.classList.add('hidden'); }
+        
+        if(bookingDateInput) bookingDateInput.value = tempSelected.date;
+        if(bookingDurationSelect) bookingDurationSelect.value = tempSelected.duration;
+        if(bookingPeopleInput) bookingPeopleInput.value = tempSelected.people;
+        [bookingDateInput, bookingDurationSelect, bookingPeopleInput].forEach(el => { if(el) el.disabled = true; });
+
+        try {
+            const holdResponse = await fetch('/api/hold_slot/', { method: 'POST', headers: { 'Content-Type': 'application/json', 'X-CSRFToken': getCookie('csrftoken') }, body: JSON.stringify({ room_id: roomId, date: tempSelected.date, start_time: tempSelected.start, duration: tempSelected.duration }) });
+            const holdData = await holdResponse.json();
+            if (!holdData.success) throw new Error(holdData.error);
+            
+            holdId = holdData.hold_id; selectedSlot = { ...tempSelected };
+            try {
+                const [hours, minutes] = selectedSlot.start.split(':').map(Number);
+                const startDate = new Date(`${selectedSlot.date}T${selectedSlot.start}`);
+                const endDate = new Date(startDate.getTime() + parseFloat(selectedSlot.duration) * 3600 * 1000);
+                selectedSlot.end = `${String(endDate.getHours()).padStart(2,'0')}:${String(endDate.getMinutes()).padStart(2,'0')}`;
+            } catch(e) {}
+
+            if (searchInterfaceContainer) searchInterfaceContainer.style.setProperty('display', 'none', 'important');
+            if (findResultsContainer) findResultsContainer.style.setProperty('display', 'none', 'important');
+            if (moduleBookByRoom) moduleBookByRoom.style.display = 'none';
+            
+            updateSummaryText(); showStep(2);
+            timerEndTime = Date.now() + 15 * 60 * 1000; startTimer(timerEndTime);
+            setTimeout(() => { if (bookingSectionTitle) { const yOffset = -100; const y = bookingSectionTitle.getBoundingClientRect().top + window.pageYOffset + yOffset; window.scrollTo({top: y, behavior: 'smooth'}); } }, 100);
+            saveBookingState();
+        } catch (error) {
+            if (activeSearchCard) { activeSearchCard.innerHTML = activeSearchCardHTML; activeSearchCard.className = activeSearchCardClass; activeSearchCard.style = ''; }
+            if (searchInterfaceContainer) searchInterfaceContainer.style.display = 'block';
+            if (findResultsContainer) findResultsContainer.style.display = 'block';
+            showMessage('error', `Ошибка: ${error.message}`, true);
+        } finally { isFetching = false; }
+    }
+
+    function setDefaultDate(dateInput) { if (!dateInput) return; const today = new Date(); const yyyy = today.getFullYear(); const mm = String(today.getMonth() + 1).padStart(2, '0'); const dd = String(today.getDate()).padStart(2, '0'); const todayStr = `${yyyy}-${mm}-${dd}`; dateInput.value = todayStr; dateInput.min = todayStr; }
+    
+    // --- ПЕРЕКЛЮЧЕНИЕ ШАГОВ ---
+    function showStep(stepNumber) { 
+        if(!step1 || !step2 || !step3 || !stepReceipt) return;
+        const steps = [step1, step2, step3, stepReceipt, step4];
+        steps.forEach((step, index) => {
+            if(!step) return;
+            if (index + 1 === stepNumber) { step.classList.remove('hidden'); step.classList.add('visible'); } 
+            else { step.classList.remove('visible'); step.classList.add('hidden'); } 
+        }); 
+
+        if (bookingSectionTitle) {
+            switch(stepNumber) {
+                case 1: bookingSectionTitle.innerHTML = `<i class="fas fa-check-circle text-success"></i> ${roomName} кабинет (Шаг 2 из 5)`; break;
+                case 2: bookingSectionTitle.innerHTML = `<i class="fas fa-user-edit"></i> Проверьте данные (Шаг 3 из 5)`; break;
+                case 3: bookingSectionTitle.innerHTML = `<i class="fas fa-credit-card"></i> Оплата (Шаг 4 из 5)`; break;
+                case 4: bookingSectionTitle.innerHTML = `<i class="fas fa-file-upload"></i> Подтверждение (Шаг 5 из 5)`; break;
+                case 5: bookingSectionTitle.innerHTML = `<i class="fas fa-check-double text-success"></i> Бронь готова!`; break;
+            }
+        }
+        setTimeout(() => { if (bookingSectionTitle) { const yOffset = -100; const y = bookingSectionTitle.getBoundingClientRect().top + window.pageYOffset + yOffset; window.scrollTo({top: y, behavior: 'smooth'}); } }, 100);
+        saveBookingState(); 
+    }
+    
+    function getCurrentStep() { 
+        if (step4 && step4.classList.contains('visible')) return 5;
+        if (stepReceipt && stepReceipt.classList.contains('visible')) return 4;
+        if (step3 && step3.classList.contains('visible')) return 3;
+        if (step2 && step2.classList.contains('visible')) return 2;
+        return 1;
+    }
+    
+    function showMessage(type, text, isGlobal = false) { 
+        const div = (type === 'success') ? (isGlobal ? successMessageDiv : successMessageModule) : (isGlobal ? errorMessageDiv : errorMessageModule); 
+        const otherDiv = (type ==='success') ? (isGlobal ? errorMessageDiv : errorMessageModule) : (isGlobal ? successMessageDiv : successMessageModule); 
+        if (div) { div.innerHTML = text; div.style.display = 'block'; } 
+        if (otherDiv) otherDiv.style.display = 'none'; 
+    }
+    
+    function hideMessages() { 
+        if (successMessageDiv) successMessageDiv.style.display = 'none'; 
+        if (errorMessageDiv) errorMessageDiv.style.display = 'none'; 
+        if (successMessageModule) successMessageModule.style.display = 'none'; 
+        if (errorMessageModule) errorMessageModule.style.display = 'none'; 
+    }
+    
+    // --- STATE ---
+function saveBookingState() { 
+        try { 
+            // Ищем чекбокс (он может быть в step3)
+            const payCheck = document.getElementById('payment_agreement_checkbox');
+            
+            const state = { 
+                scenario: currentScenario, 
+                roomId: roomId, 
+                roomName: roomName, 
+                selectedSlot: selectedSlot, 
+                holdId: holdId, 
+                timerEndTime: timerEndTime, 
+                currentStep: getCurrentStep(),
+                isTimerRefreshed: isTimerRefreshed, 
+                
+                // === НОВОЕ: Сохраняем состояние галочки ===
+                paymentAgreement: payCheck ? payCheck.checked : false, 
+                // ==========================================
+                
+                date: bookingDateInput ? bookingDateInput.value : null, 
+                duration: bookingDurationSelect ? bookingDurationSelect.value : null, 
+                people: bookingPeopleInput ? bookingPeopleInput.value : null, 
+                client_name: clientNameInput ? clientNameInput.value : null, 
+                client_phone: clientPhoneInput ? clientPhoneInput.value : null, 
+                findDate: findDateInput ? findDateInput.value : null, 
+                findTime: findTimeInput ? findTimeInput.value : null, 
+            }; 
+            sessionStorage.setItem(STORAGE_KEY, JSON.stringify(state)); 
+        } catch (e) { console.error(e); } 
+    }
+    function loadBookingState() { try { const saved = sessionStorage.getItem(STORAGE_KEY); if (saved) { const state = JSON.parse(saved); if (state.timerEndTime && state.timerEndTime <= Date.now()) { if (state.holdId) cancelHold(false, state.holdId); clearBookingState(); return null; } return state; } } catch (e) { console.error(e); } return null; }
+    function clearBookingState() { sessionStorage.removeItem(STORAGE_KEY); }
+function restoreBookingState(state) { 
+        if (!state) return; 
+        roomId = state.roomId; 
+        roomName = state.roomName; 
+        selectedSlot = state.selectedSlot; 
+        holdId = state.holdId; 
+        timerEndTime = state.timerEndTime;
+        isTimerRefreshed = state.isTimerRefreshed || false; 
+        
+        if (bookingDateInput && state.date) { 
+            const today = new Date(); 
+            const todayStr = today.toISOString().split('T')[0]; 
+            bookingDateInput.value = (state.date >= todayStr) ? state.date : todayStr; 
+        } 
+        if (bookingDurationSelect && state.duration) bookingDurationSelect.value = state.duration; 
+        if (bookingPeopleInput && state.people) bookingPeopleInput.value = state.people; 
+        if (clientNameInput && state.client_name) clientNameInput.value = state.client_name; 
+        if (clientPhoneInput && state.client_phone) clientPhoneInput.value = state.client_phone; 
+        
+        // === НОВОЕ: Восстанавливаем галочку ===
+        if (state.paymentAgreement) {
+            // Ищем чекбокс. Так как HTML перерисовывается, ищем его глобально или через активный модуль
+            // Лучше искать глобально по ID, так как ID уникален
+            setTimeout(() => { // Небольшая задержка, чтобы DOM точно был готов
+                const payCheck = document.getElementById('payment_agreement_checkbox');
+                if (payCheck) {
+                    payCheck.checked = true;
+                }
+            }, 50);
+        }
+        // ======================================
+
+        const currentStep = state.currentStep || 1; 
+        showStep(currentStep); 
+        
+        if (timerEndTime && timerEndTime > Date.now()) { 
+            startTimer(timerEndTime); 
+        } else if (timerEndTime && timerEndTime <= Date.now()) {
+            stopTimer();
+            showMessage('error', 'Время бронирования истекло', true);
+            resetAll(true);
+            return;
+        }
+
+        if (selectedSlot && selectedSlot.price) updateSummaryText(); 
+        if (bookingPriceSpan && selectedSlot && selectedSlot.price) bookingPriceSpan.textContent = selectedSlot.price + ' ₸'; 
+
+        if (currentStep >= 3) {
+            updateStep3ClientInfo(); 
+        }
+        
+        // Если восстановились на 1 шаге, обновляем слоты
+        if (currentStep === 1 && roomId) {
+            fetchSlots(true);
+        }
+    }
+    function restoreSearchState(state) { if (!state || !findDateInput) return; if (findDateInput && state.findDate) findDateInput.value = state.findDate; if (findTimeInput && state.findTime) findTimeInput.value = state.findTime; if (findDurationSelect && state.duration) findDurationSelect.value = state.duration; if (findPeopleInput && state.people) findPeopleInput.value = state.people; }
+    
+    // --- SLOTS ---
+    async function fetchSlots(softLoad = false) { 
+        if (!roomId) { if (slotsContainer) slotsContainer.innerHTML = '<div class="text-center py-4 text-muted small"><i class="far fa-hand-point-up mb-2 fs-4 d-block"></i>Выберите кабинет</div>'; return; } 
+        if (isFetching) return;
+        if (!bookingDateInput || !bookingDurationSelect || !bookingPeopleInput) return; 
+        isFetching = true; 
+        if (!softLoad) { selectedSlot = null; if (holdId) { await cancelHold(false, holdId); } stopTimer(); showStep(1); } 
+        hideMessages(); 
+        const selectedDate = bookingDateInput.value; const selectedDuration = bookingDurationSelect.value; const peopleCount = bookingPeopleInput.value || '1'; 
+        slotsContainer.innerHTML = `<div class="text-center py-5"><div class="spinner-border text-success" role="status"></div><div class="mt-2 small text-muted">Ищем свободное время...</div></div>`; 
+        try { 
+            const apiUrl = `/api/get_availability/?room_id=${roomId}&date=${selectedDate}&duration=${selectedDuration}&people=${peopleCount}`; 
+            const response = await fetch(apiUrl, { headers: { "ngrok-skip-browser-warning": "true", "Content-Type": "application/json" } });
+            if (!response.ok) throw new Error('Ошибка сети'); 
+            const data = await response.json(); 
+            if (data.error) throw new Error(data.error);
+            renderSlots(data.slots || []); 
+        } catch (error) { slotsContainer.innerHTML = `<div class="alert alert-danger text-center small">Ошибка загрузки: ${error.message}</div>`; } finally { isFetching = false; } 
+    }
+    
+    function renderSlots(slots) { 
+        if (!slotsContainer) return;
+        if (slots.length === 0) { slotsContainer.innerHTML = `<div class="alert alert-warning text-center small">Нет свободных мест на эту дату</div>`; return; } 
+        const morningSlots = []; const daySlots = []; const eveningSlots = [];
+        slots.forEach(slot => { const hour = parseInt(slot.start.split(':')[0], 10); if (hour < 12) morningSlots.push(slot); else if (hour >= 12 && hour < 17) daySlots.push(slot); else eveningSlots.push(slot); });
+        const createSlotGroup = (groupSlots, title, iconClass) => {
+            if (groupSlots.length === 0) return '';
+            let groupHtml = `<div class="slot-section-header"><i class="${iconClass}"></i> ${title}</div><div class="slots-grid">`;
+            groupSlots.forEach(slot => {
+                const isSelected = selectedSlot && selectedSlot.start === slot.start && selectedSlot.date === bookingDateInput.value;
+                groupHtml += `<button type="button" class="slot-button ${isSelected ? 'active' : ''}" data-start="${slot.start}" data-end="${slot.end}" ${isSelected ? 'disabled' : ''}><span>${slot.start}</span><small>${slot.end}</small></button>`;
+            });
+            groupHtml += `</div>`; return groupHtml;
+        };
+        let finalHtml = '';
+        finalHtml += createSlotGroup(morningSlots, 'Утро', 'fas fa-coffee');
+        finalHtml += createSlotGroup(daySlots, 'День', 'fas fa-sun');
+        finalHtml += createSlotGroup(eveningSlots, 'Вечер', 'fas fa-moon');
+        slotsContainer.innerHTML = finalHtml; 
+        slotsContainer.querySelectorAll('.slot-button').forEach(button => { button.addEventListener('click', handleSlotSelection); });
+    }
+
+    async function handleSlotSelection(event) { 
+        if (isFetching) return; 
+        isFetching = true; hideMessages(); 
+        const clickedButton = event.target.closest('.slot-button'); 
+        if (!clickedButton) { isFetching = false; return; } 
+        if (holdId) { await cancelHold(false, holdId); } 
+        if(slotsContainer) slotsContainer.querySelectorAll('.slot-button').forEach(btn => { btn.classList.remove('active'); btn.disabled = false; }); 
+        clickedButton.classList.add('active'); clickedButton.disabled = true; clickedButton.innerHTML = `<span class="loading-spinner1"></span>`; 
+        const tempSelected = { start: clickedButton.dataset.start, end: clickedButton.dataset.end, date: bookingDateInput.value, duration: bookingDurationSelect.value, people: bookingPeopleInput.value || '1' }; 
+        try { 
+            const holdResponse = await fetch('/api/hold_slot/', { method: 'POST', headers: { 'Content-Type': 'application/json', 'X-CSRFToken': getCookie('csrftoken'), "ngrok-skip-browser-warning": "true" }, body: JSON.stringify({ room_id: roomId, date: tempSelected.date, start_time: tempSelected.start, duration: tempSelected.duration }) }); 
+            const holdData = await holdResponse.json(); 
+            if (!holdData.success) throw new Error(holdData.error || 'Слот занят'); 
+            holdId = holdData.hold_id; selectedSlot = { ...tempSelected }; isTimerRefreshed = false; 
+            const priceResponse = await fetch(`/api/get_price/?room_id=${roomId}&duration=${selectedSlot.duration}&people_count=${selectedSlot.people}`, { headers: { "ngrok-skip-browser-warning": "true" } }); 
+            const priceData = await priceResponse.json(); 
+            selectedSlot.price = priceData.price; 
+            updateSummaryText(); showStep(2); 
+            setTimeout(() => { if (bookingSectionTitle) { const yOffset = -100; const y = bookingSectionTitle.getBoundingClientRect().top + window.pageYOffset + yOffset; window.scrollTo({top: y, behavior: 'smooth'}); } }, 100);
+            timerEndTime = Date.now() + 15 * 60 * 1000; startTimer(timerEndTime); 
+            if (roomSelectionContainer) roomSelectionContainer.style.display = 'none';
+            saveBookingState(); 
+        } catch (error) { showMessage('error', error.message, true); holdId = null; selectedSlot = null; stopTimer(); fetchSlots(false); } finally { isFetching = false; } 
+    }
+function updateSummaryText() {
+        if (selectedSlot) {
+             let peopleLabel = String(selectedSlot.people);
+             if (peopleLabel === '1') peopleLabel = '1-3';
+             if (peopleLabel === '4') peopleLabel = '4-8';
+
+             // Часть 1: Общие строки (Дата, Время, Люди)
+             const commonRows = `
+                <div class="d-flex justify-content-between align-items-center py-2 border-bottom">
+                    <span class="text-secondary">Дата:</span> 
+                    <span class="fw-bold text-dark">${selectedSlot.date}</span>
+                </div>
+                <div class="d-flex justify-content-between align-items-center py-2 border-bottom">
+                    <span class="text-secondary">Время:</span> 
+                    <span class="fw-bold text-dark">${selectedSlot.start} - ${selectedSlot.end}</span>
+                </div>
+                <div class="d-flex justify-content-between align-items-center py-2 border-bottom">
+                    <span class="text-secondary">Люди:</span> 
+                    <span class="fw-bold text-dark">${peopleLabel}</span>
+                </div>`;
+
+             // Часть 2: Строка с ценой (Только для первого экрана)
+             const priceRow = `
+                <div class="d-flex justify-content-between align-items-center py-2">
+                    <span class="text-secondary">Сумма:</span> 
+                    <span class="fw-bold text-success">${selectedSlot.price} ₸</span>
+                </div>`;
+
+             // 1. Для ШАГА 2 (Показываем с ценой)
+             if (bookingSummaryText) {
+                 bookingSummaryText.className = 'mb-3 small'; // Сброс стилей
+                 bookingSummaryText.style.fontSize = '0.9rem';
+                 bookingSummaryText.innerHTML = commonRows + priceRow;
+             }
+             
+             // 2. Для ШАГА 3 (ОПЛАТА) - БЕЗ ЦЕНЫ
+             const summaryStep3 = document.getElementById('booking_summary_text_step3');
+             if (summaryStep3) {
+                 summaryStep3.className = 'mb-4 small'; // Сброс стилей
+                 summaryStep3.style.fontSize = '0.9rem';
+                 // Вставляем ТОЛЬКО общие строки, без priceRow
+                 summaryStep3.innerHTML = commonRows; 
+                 
+                 // Убираем последнюю линию border-bottom у последнего элемента, чтобы было красиво
+                 const lastDiv = summaryStep3.lastElementChild;
+                 if(lastDiv) lastDiv.classList.remove('border-bottom');
+             }
+        }
+        
+        if (bookingPriceSpan && selectedSlot && selectedSlot.price) bookingPriceSpan.textContent = selectedSlot.price + ' ₸';
+    }
+
+    function startTimer(endTime) { stopTimer(); timerEndTime = endTime; updateTimerDisplay(); timerInterval = setInterval(updateTimerDisplay, 1000); saveBookingState(); }
+    function stopTimer() { if (timerInterval) { clearInterval(timerInterval); timerInterval = null; timerEndTime = null; if (timerDisplay) timerDisplay.textContent = '15:00'; } }
+    function updateTimerDisplay() { if (!timerEndTime || !timerDisplay) { stopTimer(); return; } const remaining = timerEndTime - Date.now(); if (remaining <= 0) { stopTimer(); showMessage('error', 'Время истекло!', true); showStep(1); if (holdId) cancelHold(false); clearBookingState(); } else { const minutes = Math.floor(remaining / 1000 / 60); const seconds = Math.floor((remaining / 1000) % 60); if (timerDisplay) timerDisplay.textContent = `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`; } }
+    
+    async function handleBackToSlots() {
+        if (holdId) { try { await fetch('/api/cancel_hold/', { method: 'POST', headers: { 'Content-Type': 'application/json', 'X-CSRFToken': getCookie('csrftoken') }, body: JSON.stringify({ hold_id: holdId }) }); } catch (e) { console.error(e); } }
+        holdId = null; selectedSlot = null; isTimerRefreshed = false; stopTimer(); showStep(1); hideMessages();
+        if (bookingDateInput) bookingDateInput.disabled = false; if (bookingDurationSelect) bookingDurationSelect.disabled = false; if (bookingPeopleInput) bookingPeopleInput.disabled = false;
+        fetchSlots(false); saveBookingState();
+    }
+
+    async function cancelHold(showCancelMessage = true, forceHoldId = null) { 
+        const currentHoldId = holdId || forceHoldId; stopTimer(); selectedSlot = null; holdId = null; isTimerRefreshed = false; clearBookingState(); 
+        if (bookingModuleWrapper1) bookingModuleWrapper1.innerHTML = ''; if (bookingModuleWrapper2) bookingModuleWrapper2.innerHTML = '';
+        if (currentScenario === 'time') {
+            if (roomSelectionContainer) roomSelectionContainer.style.display = 'none'; if (searchInterfaceContainer) searchInterfaceContainer.style.display = 'block'; if (moduleFindByTime) moduleFindByTime.style.display = 'block';
+            if (activeSearchCard && activeSearchCardHTML) { activeSearchCard.innerHTML = activeSearchCardHTML; activeSearchCard.className = activeSearchCardClass; activeSearchCard.style = ''; activeSearchCard = null; }
+        } else { if (roomSelectionContainer) roomSelectionContainer.style.display = 'block'; if (moduleBookByRoom) moduleBookByRoom.style.display = 'block'; }
+        if (currentHoldId) { try { fetch('/api/cancel_hold/', { method: 'POST', headers: { 'Content-Type': 'application/json', 'X-CSRFToken': getCookie('csrftoken') }, body: JSON.stringify({ hold_id: currentHoldId }) }); if (showCancelMessage) showMessage('info', 'Резерв отменен', true); } catch (e) { console.error(e); } } else { if (showCancelMessage) showMessage('info', 'Резерв отменен.', true); } 
+    }
+    
+    function getCookie(name) { let cookieValue = null; if (document.cookie && document.cookie !== '') { const cookies = document.cookie.split(';'); for (let i = 0; i < cookies.length; i++) { const cookie = cookies[i].trim(); if (cookie.substring(0, name.length + 1) === (name + '=')) { cookieValue = decodeURIComponent(cookie.substring(name.length + 1)); break; } } } return cookieValue; }
+    function validateAndNormalizePhone(phone) { let normalizedPhone = phone.replace(/\D/g, ''); if (normalizedPhone.length === 11 && normalizedPhone.startsWith('8')) normalizedPhone = '7' + normalizedPhone.substring(1); if (normalizedPhone.length === 10 && !normalizedPhone.startsWith('7')) normalizedPhone = '7' + normalizedPhone; return (normalizedPhone.length === 11 && normalizedPhone.startsWith('7')) ? normalizedPhone : null; }
+    
+// === ОБНОВЛЕНИЕ ДАННЫХ КЛИЕНТА (ШАГ 3 - ОПЛАТА) ===
+    function updateStep3ClientInfo() {
+        let activeWrapper = (currentScenario === 'room') ? bookingModuleWrapper1 : bookingModuleWrapper2;
+        if (!activeWrapper) return;
+        
+        const summaryStep3 = activeWrapper.querySelector('#booking_summary_text_step3');
+        if (!summaryStep3) return;
+        
+        const name = clientNameInput.value.trim();
+        const phone = clientPhoneInput.value.trim();
+        if (!name && !phone) return;
+
+        // === ИСПРАВЛЕННЫЙ HTML (Раздельные линии) ===
+        const clientInfoHTML = `
+            <div class="client-info-item d-flex justify-content-between align-items-center py-2 border-bottom">
+                <span class="text-secondary">Имя:</span> 
+                <span class="fw-bold text-dark text-end">${name}</span>
+            </div>
+            
+            <div class="client-info-item d-flex justify-content-between align-items-center py-2 border-bottom">
+                <span class="text-secondary">Телефон:</span> 
+                <span class="fw-bold text-dark text-end">${phone}</span>
+            </div>`;
+        
+        // Удаляем старые, если они есть (чтобы не дублировалось)
+        const oldItems = summaryStep3.querySelectorAll('.client-info-item');
+        oldItems.forEach(el => el.remove());
+        
+        // Вставляем в самое начало списка
+        summaryStep3.insertAdjacentHTML('afterbegin', clientInfoHTML);
+    }
+
+    async function handleShowPayment() { 
+        if (!selectedSlot || !holdId) { showMessage('error', 'Выберите время заново.', true); handleBackToSlots(); return; }
+        if (timerEndTime && Date.now() >= timerEndTime) { showMessage('error', 'Время истекло.', true); cancelHold(false); return; }
+        const name = clientNameInput.value.trim(); const phoneRaw = clientPhoneInput.value.trim(); 
+        if (!name || !phoneRaw) { showMessage('error', 'Заполните имя и телефон', true); return; } if (/\d/.test(name)) { showMessage('error', 'Имя без цифр', true); return; } 
+        const normalizedPhone = validateAndNormalizePhone(phoneRaw); if (!normalizedPhone) { showMessage('error', 'Неверный формат номера', true); return; } 
+        const activeWrapper = (currentScenario === 'room') ? bookingModuleWrapper1 : bookingModuleWrapper2;
+        const agreementCheckbox = activeWrapper ? activeWrapper.querySelector('#agreement_checkbox') : document.getElementById('agreement_checkbox');
+        if (agreementCheckbox && !agreementCheckbox.checked) { showMessage('error', 'Необходимо принять условия договора', true); agreementCheckbox.classList.add('is-invalid'); agreementCheckbox.addEventListener('change', () => { agreementCheckbox.classList.remove('is-invalid'); hideMessages(); }, { once: true }); return; }
+        
+        clientPhoneInput.value = normalizedPhone; hideMessages(); 
+        if (!isTimerRefreshed) {
+            const btn = document.querySelector('#show_payment_button'); if(btn) { btn.disabled = true; btn.innerHTML = '<span class="loading-spinner"></span>'; }
+            try {
+                if (holdId) { await fetch('/api/cancel_hold/', { method: 'POST', headers: { 'Content-Type': 'application/json', 'X-CSRFToken': getCookie('csrftoken') }, body: JSON.stringify({ hold_id: holdId }) }); }
+                const holdResponse = await fetch('/api/hold_slot/', { method: 'POST', headers: { 'Content-Type': 'application/json', 'X-CSRFToken': getCookie('csrftoken') }, body: JSON.stringify({ room_id: roomId, date: selectedSlot.date, start_time: selectedSlot.start, duration: selectedSlot.duration }) });
+                const holdData = await holdResponse.json(); if (!holdData.success) { throw new Error('Слот был перехвачен.'); }
+                holdId = holdData.hold_id; timerEndTime = Date.now() + 15 * 60 * 1000; startTimer(timerEndTime); isTimerRefreshed = true; 
+            } catch (error) { showMessage('error', error.message, true); handleBackToSlots(); return; } finally { if(btn) { btn.disabled = false; btn.innerHTML = 'Далее <i class="fas fa-arrow-right ms-1"></i>'; } }
+        }
+        updateSummaryText(); updateStep3ClientInfo(); showStep(3); saveBookingState(); 
+    }
+    
+    function handleBackToStep2() { hideMessages(); step3.classList.remove('visible'); step3.classList.add('hidden'); step2.classList.remove('hidden'); step2.classList.add('visible'); saveBookingState(); }
+function handleToReceiptStep() {
+        if (timerEndTime && Date.now() >= timerEndTime) { 
+            showMessage('error', 'Время истекло.', true); 
+            cancelHold(false); 
+            return; 
+        }
+
+        // === ПРОВЕРКА ЧЕКБОКСА ЗДЕСЬ ===
+        // Ищем чекбокс в текущем активном блоке (step3) или глобально
+        const agreementCheckbox = document.getElementById('payment_agreement_checkbox');
+        
+        if (agreementCheckbox && !agreementCheckbox.checked) {
+            showMessage('error', 'Подтвердите согласие с условиями', true);
+            agreementCheckbox.classList.add('is-invalid');
+            agreementCheckbox.addEventListener('change', () => { 
+                agreementCheckbox.classList.remove('is-invalid'); 
+                hideMessages(); 
+            }, { once: true });
+            
+            // Скроллим к чекбоксу, чтобы клиент увидел
+            agreementCheckbox.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            return;
+        }
+        // ==============================
+
+        hideMessages();
+        showStep(4); // Переходим к чеку
+    }
+    // === ОПРЕДЕЛЯЕМ ФУНКЦИЮ RENDER УСПЕХА ВНУТРИ DOMContentLoaded ===
+    function renderSuccessScreen(data) {
+        let container = null;
+        if (bookingModuleWrapper1 && bookingModuleWrapper1.innerHTML.trim() !== "") { container = bookingModuleWrapper1; } 
+        else if (bookingModuleWrapper2 && bookingModuleWrapper2.innerHTML.trim() !== "") { container = bookingModuleWrapper2; } 
+        else { const section = document.querySelector('#booking-section'); if (section) container = section.parentNode; }
+        if (!container) return;
+
+        const details = data.studio_details || {};
+        const realAddress = details.address || "Адрес уточняется у администратора";
+        const enterInstr = details.enter_instruction || "";
+        const generalInfo = details.general_info || "";
+const formattedGeneralInfo = generalInfo.replace(/\n/g, '<br>');
+        
+        // 1. Меняем переносы на BR
+        let formattedEnterInstr = enterInstr.replace(/\n/g, '<br>');
+        // 2. УДАЛЯЕМ ЛЮБЫЕ ССЫЛКИ, ЧТОБЫ ОНИ НЕ ДУБЛИРОВАЛИСЬ
+        formattedEnterInstr = formattedEnterInstr.replace(/(https?:\/\/[^\s]+)/g, '');
+
+        const successHTML = `
+            <div id="booking-section" class="info-section animated-item">
+                <div class="d-flex align-items-center mb-4">
+                    <h4 class="info-title mb-0" style="display: flex; align-items: center; gap: 10px;">
+                        <i class="fas fa-check-double text-success"></i> Бронь подтверждена! (Шаг 5 из 5)
+                    </h4>
+                </div>
+
+                <div class="booking-step visible" style="display: block; height: auto; opacity: 1;">
+                    
+                    <div class="d-flex align-items-center gap-3 p-3 rounded-4 bg-secondary bg-opacity-10 mb-4 border border-secondary border-opacity-25">
+                        <i class="fas fa-key fs-1 text-warning"></i>
+                        <div>
+                            <div class="fw-bold text-dark">Код доступа</div>
+                            <div class="small text-dark lh-sm">
+                                В целях безопасности код от двери отправлен вам в 
+                                <span class="text-success fw-bold"><i class="fab fa-whatsapp"></i> WhatsApp</span> 
+                                на номер ${data.clientPhone}.
+                            </div>
+                        </div>
+                    </div>
+
+                    <h6 class="fw-bold text-muted small text-uppercase mb-2 ms-1">Информация о студии:</h6>
+                    <div class="accordion mb-4" id="successInfoAccordion">
+                        
+                        <div class="accordion-item border-0 mb-2 rounded-3 overflow-hidden shadow-sm">
+                            <h2 class="accordion-header">
+                                <button class="accordion-button collapsed bg-white" type="button" data-bs-toggle="collapse" data-bs-target="#collapseAddress">
+                                    <div class="d-flex align-items-center">
+                                        <div class="bg-secondary bg-opacity-10 text-dark rounded-circle p-2 me-3" style="width: 35px; height: 35px; display: flex; align-items: center; justify-content: center;">
+                                            <i class="fas fa-map-marker-alt"></i>
+                                        </div>
+                                        <span class="fw-bold text-dark">Адрес студии</span>
+                                    </div>
+                                </button>
+                            </h2>
+                            <div id="collapseAddress" class="accordion-collapse collapse" data-bs-parent="#successInfoAccordion">
+                                <div class="accordion-body bg-white small text-secondary pt-0">
+                                    <p class="mb-0 fw-bold text-dark fs-6">${realAddress}</p>
+                                </div>
+                            </div>
+                        </div>
+
+                        ${enterInstr ? `
+                        <div class="accordion-item border-0 mb-2 rounded-3 overflow-hidden shadow-sm">
+                            <h2 class="accordion-header">
+                                <button class="accordion-button collapsed bg-white" type="button" data-bs-toggle="collapse" data-bs-target="#collapseEnter">
+                                    <div class="d-flex align-items-center">
+                                        <div class="bg-secondary bg-opacity-10 text-dark rounded-circle p-2 me-3" style="width: 35px; height: 35px; display: flex; align-items: center; justify-content: center;">
+                                            <i class="fas fa-door-closed"></i>
+                                        </div>
+                                        <span class="fw-bold text-dark">Как открыть кабинет</span>
+                                    </div>
+                                </button>
+                            </h2>
+                            <div id="collapseEnter" class="accordion-collapse collapse" data-bs-parent="#successInfoAccordion">
+                                <div class="accordion-body bg-white small text-secondary pt-0">
+                                    <div class="mb-3">${formattedEnterInstr}</div>
+                                    <a href="https://youtube.com/shorts/44B-tXYBQNc?si=uEUDuIC0-wPpBPPp" target="_blank" class="btn btn-light border w-100 py-2 rounded-4 shadow-sm d-flex align-items-center text-start text-decoration-none overflow-hidden">
+                                        <i class="fab fa-youtube text-danger fa-2x me-3 flex-shrink-0"></i>
+                                        <div style="min-width: 0;">
+                                            <div class="text-dark fw-bold">Видео: Как открыть дверь</div>
+                                            <div class="text-muted small text-truncate">Нажмите для просмотра</div>
+                                        </div>
+                                    </a>
+                                </div>
+                            </div>
+                        </div>` : ''}
+
+                        ${generalInfo ? `
+                        <div class="accordion-item border-0 rounded-3 overflow-hidden shadow-sm">
+                            <h2 class="accordion-header">
+                                <button class="accordion-button collapsed bg-white" type="button" data-bs-toggle="collapse" data-bs-target="#collapseInfo">
+                                    <div class="d-flex align-items-center">
+                                        <div class="bg-secondary bg-opacity-10 text-dark rounded-circle p-2 me-3" style="width: 35px; height: 35px; display: flex; align-items: center; justify-content: center;">
+                                            <i class="fas fa-info"></i>
+                                        </div>
+                                        <span class="fw-bold text-dark">Правила посещения</span>
+                                    </div>
+                                </button>
+                            </h2>
+                            <div id="collapseInfo" class="accordion-collapse collapse" data-bs-parent="#successInfoAccordion">
+                                <div class="accordion-body bg-white small text-secondary pt-0" style="line-height: 1.6;">
+                                    ${formattedGeneralInfo}
+                                </div>
+                            </div>
+                        </div>` : ''}
+                    </div>
+
+                    <div class="mb-4 small" style="font-size: 0.9rem;">
+                        <div class="d-flex justify-content-between align-items-center py-2 border-bottom">
+                            <span class="text-secondary">Кабинет:</span> 
+                            <span class="fw-bold text-dark">${data.roomName}</span>
+                        </div>
+                        <div class="d-flex justify-content-between align-items-center py-2 border-bottom">
+                            <span class="text-secondary">Дата:</span> 
+                            <span class="fw-bold text-dark">${data.date}</span>
+                        </div>
+                        <div class="d-flex justify-content-between align-items-center py-2">
+                            <span class="text-secondary">Время:</span> 
+                            <span class="fw-bold text-dark">${data.time}</span>
+                        </div>
+                    </div>
+
+                    <button onclick="window.location.reload()" class="btn-zen-primary py-3 shadow"><i class="fas fa-check me-2"></i> Всё понятно, спасибо</button>
+
+                    
+                    <div class="text-center mt-4">
+                        <a href="https://wa.me/${adminPhoneClean}" target="_blank" class="btn btn-link text-decoration-none text-muted small p-0">
+                            <i class="fab fa-whatsapp text-success me-1"></i> Связаться с администратором
+                        </a>
+                    </div>
+                </div>
+            </div>`;
+
+
+            
+        container.innerHTML = successHTML;
+        if (roomSelectionContainer) roomSelectionContainer.style.display = 'none';
+        if (searchInterfaceContainer) searchInterfaceContainer.style.display = 'none';
+        container.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        setTimeout(() => { const yOffset = -100; const y = container.getBoundingClientRect().top + window.pageYOffset + yOffset; window.scrollTo({top: y, behavior: 'smooth'}); }, 100);
+        hideMessages();
+    }
+
+async function handleConfirmBooking() { 
+        const name = clientNameInput.value.trim(); 
+        const phoneRaw = clientPhoneInput.value.trim(); 
+        
+        // 1. Получаем элементы чека
+        const activeWrapper = (currentScenario === 'room') ? bookingModuleWrapper1 : bookingModuleWrapper2;
+        const file = receiptFileInput ? receiptFileInput.files[0] : null; 
+        const receiptNumInput = activeWrapper ? activeWrapper.querySelector('#receipt_number') : document.getElementById('receipt_number');
+        let receiptNumber = receiptNumInput ? receiptNumInput.value.trim().toUpperCase() : '';
+
+        // === ГЛАВНАЯ ЛОГИКА: ФАЙЛ ИЛИ НОМЕР ===
+        let isReceiptValid = false;
+
+        // Вариант А: Есть файл
+        if (file) {
+            isReceiptValid = true;
+        } 
+        // Вариант Б: Нет файла, но есть номер
+        else if (receiptNumber.length > 5) { // Минимальная длина номера
+            // Если ввел только цифры, добавляем QR сами
+            if (!receiptNumber.startsWith('QR')) {
+                receiptNumber = 'QR' + receiptNumber;
+            }
+            isReceiptValid = true;
+        }
+
+        // Если ни того, ни другого нет — ошибка
+        if (!isReceiptValid) { 
+            showMessage('error', 'Прикрепите квитанцию или введите номер чека', true); 
+            // Если открыто поле ввода номера, подсветим его
+            if(receiptNumInput && receiptNumInput.offsetParent !== null) {
+                receiptNumInput.focus();
+                receiptNumInput.classList.add('is-invalid');
+                receiptNumInput.addEventListener('input', () => { 
+                    receiptNumInput.classList.remove('is-invalid'); 
+                    hideMessages();
+                }, { once: true });
+            }
+            return; 
+        }
+        // =======================================
+
+        if (!selectedSlot || !holdId || Date.now() >= timerEndTime) { showMessage('error', 'Время истекло', true); if (holdId) cancelHold(false); else fetchSlots(false); return; } 
+        
+        // Проверка чекбокса условий (находится на прошлом шаге, но проверяем на всякий случай)
+        const paymentCheckbox = activeWrapper ? activeWrapper.querySelector('#payment_agreement_checkbox') : document.getElementById('payment_agreement_checkbox');
+        // (Опционально: можно убрать эту проверку отсюда, если она есть в handleToReceiptStep)
+        
+        const normalizedPhone = validateAndNormalizePhone(phoneRaw); 
+        if (!normalizedPhone || /\d/.test(name)) { showMessage('error', 'Ошибка данных', true); return; } 
+        
+        clientPhoneInput.value = normalizedPhone; 
+        confirmBookingButton.disabled = true; 
+        confirmBookingButton.innerHTML = '<span class="loading-spinner"></span>'; 
+        hideMessages(); 
+        
+        // Обработка файла (читаем только если он есть)
+        let fileDataB64 = null; 
+        let fileNameStr = null;
+
+        if (file) {
+            try { 
+                fileDataB64 = await new Promise((resolve, reject) => { 
+                    const reader = new FileReader(); 
+                    reader.onload = () => resolve(reader.result); 
+                    reader.onerror = error => reject(error); 
+                    reader.readAsDataURL(file); 
+                }); 
+                fileNameStr = file.name;
+            } catch (e) { 
+                showMessage('error', 'Ошибка чтения файла', true); 
+                confirmBookingButton.disabled = false; 
+                return; 
+            } 
+        }
+        
+        try { 
+            const response = await fetch('/api/create_booking/', { 
+                method: 'POST', 
+                headers: { 'Content-Type': 'application/json', 'X-CSRFToken': getCookie('csrftoken'), "ngrok-skip-browser-warning": "true" }, 
+                body: JSON.stringify({ 
+                    hold_id: holdId, 
+                    room_id: roomId, 
+                    date: selectedSlot.date, 
+                    start_time: selectedSlot.start, 
+                    duration: selectedSlot.duration, 
+                    people_count: selectedSlot.people, 
+                    client_name: name, 
+                    client_phone: normalizedPhone, 
+                    price: selectedSlot.price, 
+                    
+                    // Передаем данные: если файла нет, уйдет null
+                    receipt_file_data: fileDataB64, 
+                    receipt_file_name: fileNameStr,
+                    receipt_number: receiptNumber // Передаем номер чека
+                }) 
+            }); 
+            const result = await response.json(); 
+            if (!response.ok) throw new Error(result.error || `Ошибка`); 
+            
+            if (result.success) { 
+                stopTimer(); 
+                const successData = {
+                    roomName: roomName,
+                    date: selectedSlot.date,
+                    time: `${selectedSlot.start} (${selectedSlot.duration} ч)`,
+                    price: selectedSlot.price + ' ₸',
+                    clientName: name,
+                    clientPhone: normalizedPhone,
+                    studio_details: result.studio_details 
+                };
+                renderSuccessScreen(successData);
+                clearBookingState(); 
+                hideMessages(); 
+                selectedSlot = null; holdId = null; 
+            } else { 
+                throw new Error(result.error); 
+            } 
+        } catch (error) { 
+            showMessage('error', error.message, true); 
+            if (error.message.includes("истекло")) { clearBookingState(); cancelHold(false); } 
+            
+            // Разблокировка кнопки (ищем в текущем шаге)
+            if (stepReceipt && stepReceipt.classList.contains('visible')) { 
+                confirmBookingButton.disabled = false; 
+                confirmBookingButton.innerHTML = '<i class="fas fa-key me-2"></i> Получить код для открытия двери'; 
+            }
+        } 
+    }
+    function resetAll(goToList = true) {
+        if (holdId) cancelHold(false, holdId); roomId = null; currentScenario = null; roomName = null; stopTimer();
+        if (bookingModuleWrapper1) bookingModuleWrapper1.innerHTML = ''; if (bookingModuleWrapper2) bookingModuleWrapper2.innerHTML = '';
+        if (findResultsContainer) findResultsContainer.style.display = 'none'; if (findResultsList) findResultsList.innerHTML = '';
+        document.querySelectorAll('.room-choice-btn.active').forEach(b => b.classList.remove('active'));
+        clearBookingState(); hideMessages();
+        if (goToList) { showScenario('room'); if (roomSelectionContainer) roomSelectionContainer.style.display = 'block'; if (searchInterfaceContainer) searchInterfaceContainer.style.display = 'block'; }
+    }
+    
+    function initializePage() {
+        setDefaultDate(findDateInput); const savedState = loadBookingState();
+        if (savedState) {
+            currentScenario = savedState.scenario; roomId = savedState.roomId; roomName = savedState.roomName;
+            if (roomId || currentScenario === 'time') { if (roomSelectionContainer) roomSelectionContainer.style.display = 'none'; }
+            showScenario(currentScenario);
+            if (currentScenario === 'room') {
+                const roomButton = document.querySelector(`.room-choice-btn[data-room-id="${roomId}"]`);
+                if (roomButton || roomId) { if (roomButton) roomButton.classList.add('active'); setupBookingModule(bookingModuleWrapper1, roomName); restoreBookingState(savedState); } else { resetAll(true); }
+            } else if (currentScenario === 'time') {
+                restoreSearchState(savedState);
+                if (roomId && roomName) {
+                    if (searchInterfaceContainer) searchInterfaceContainer.style.display = 'none';
+                    setupBookingModule(bookingModuleWrapper2, roomName);
+                    const step1Div = bookingModuleWrapper2.querySelector('#step1');
+                    if (step1Div) { step1Div.classList.remove('visible'); step1Div.classList.add('hidden'); step1Div.style.display = 'none'; }
+                    restoreBookingState(savedState);
+                } else { if (searchInterfaceContainer) searchInterfaceContainer.style.display = 'block'; }
+            }
+        } else { showScenario('room'); if (roomSelectionContainer) roomSelectionContainer.style.display = 'block'; if (searchInterfaceContainer) searchInterfaceContainer.style.display = 'block'; }
+    }
+    
+    initializePage();
+});
+</script>
+{% endblock %}

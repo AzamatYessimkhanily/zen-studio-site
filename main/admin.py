@@ -159,8 +159,11 @@ class HeroSliderInline(admin.TabularInline):
 class TariffInline(admin.TabularInline):
     model = Tariff
     extra = 6  # сразу много строк для удобства
-    fields = ["hours", "unit", "price", "persons_text", "order", "is_active"]
-# --- Настройки сайта (слайдер внутри) ---
+    fields = ["hours", "unit", "price", "persons_text", "order", "is_active"] # <--- Добавил сюда# --- Настройки сайта (слайдер внутри) ---
+
+
+
+
 @admin.register(SiteSettings)
 class SiteSettingsAdmin(admin.ModelAdmin):
     list_display = ["__str__", "phone", "email"]
@@ -259,15 +262,20 @@ class RoomVideoInline(admin.TabularInline):
 
 @admin.register(Room)
 class RoomAdmin(admin.ModelAdmin):
-    list_display = ['name', 'area_sq_m', 'order', 'is_active', 'image_preview']  # <-- площадь вместо цены
+    list_display = ['name', 'area_sq_m','google_calendar_id', 'order', 'is_active', 'image_preview']  # <-- площадь вместо цены
     list_editable = ['order', 'is_active']
     list_filter = ['is_active']
-    search_fields = ['name', 'description']
+    search_fields = ['name', 'google_calendar_id','description']
 
     fieldsets = (
-        (None, {
-            'fields': ('name', 'short_description', 'main_image', 'is_active', 'order')
-        }),
+            (None, {
+                'fields': (
+                    'name', 'google_calendar_id',
+                    ('work_time_start', 'work_time_end'), # <-- ДОБАВЛЕНО СЮДА (в одну строку)
+                    'short_description', 'main_image',
+                    'is_active', 'order'
+                )
+            }),
         ("Характеристики", {  # <-- вместо блока "Цены"
             'fields': ('area_sq_m',)
         }),
@@ -329,3 +337,29 @@ class PageAdmin(nested_admin.NestedModelAdmin):
         }),
     )
 
+@admin.register(PendingBooking)
+class PendingBookingAdmin(admin.ModelAdmin):
+    list_display = ('room', 'start_time_local', 'expires_at_local', 'hold_id', 'is_expired_display')
+    list_filter = ('room', 'created_at')
+    readonly_fields = ('created_at', 'expires_at', 'hold_id', 'start_time', 'end_time')
+    search_fields = ('room__name', 'hold_id')
+    actions = ['delete_expired']
+
+    @admin.display(description='Начало (локал.)', ordering='start_time')
+    def start_time_local(self, obj):
+        return timezone.localtime(obj.start_time).strftime('%d.%m %H:%M:%S') if obj.start_time else '-'
+
+    @admin.display(description='Истекает (локал.)', ordering='expires_at')
+    def expires_at_local(self, obj):
+        return timezone.localtime(obj.expires_at).strftime('%H:%M:%S') if obj.expires_at else '-'
+
+    @admin.display(description='Истек?', boolean=True)
+    def is_expired_display(self, obj):
+        return obj.is_expired()
+
+    @admin.action(description='Удалить истекшие резервы')
+    def delete_expired(self, request, queryset):
+        expired = PendingBooking.objects.filter(expires_at__lte=timezone.now())
+        count = expired.count()
+        expired.delete()
+        self.message_user(request, f"Удалено {count} истекших резервов.")

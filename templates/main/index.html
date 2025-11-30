@@ -9,17 +9,19 @@
 }
 
 /* Hero Slider */
+/* Hero Slider */
 .hero-slider {
   position: relative;
   width: 100%;
-  height: 100vh;
-  min-height: 600px;
+  height: 60vh;       /* Высота 60% от экрана */
+  min-height: 400px;  /* Минимальная высота */
   overflow: hidden;
 }
 
 .hero-content {
   position: absolute;
-  top: 50%;
+  /* СДВИГАЕМ НИЖЕ ЦЕНТРА */
+  top: 60%;           
   left: 50%;
   transform: translate(-50%, -50%);
   z-index: 10;
@@ -30,13 +32,74 @@
 }
 
 .hero-content h1 {
-  font-size: clamp(2rem, 5vw, 4rem);
+  font-size: clamp(1.8rem, 5vw, 3.5rem); /* Чуть уменьшил макс размер */
   font-weight: 700;
   color: #ffffff;
   text-shadow: 0 4px 20px rgba(0, 0, 0, 0.5);
   line-height: 1.2;
   margin: 0;
+  margin-bottom: 20px; /* Отступ до кнопки */
   animation: fadeInUp 1s ease-out;
+}
+
+/* СТИЛЬ ДЛЯ КНОПКИ В СЛАЙДЕРЕ (Компактная) */
+.hero-btn-compact {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    padding: 12px 30px;   /* Меньше отступы */
+    background: var(--zen-green);
+    color: #fff;
+    border-radius: 16px;  /* Круглые края */
+    font-size: 1rem;      /* Аккуратный шрифт */
+    font-weight: 600;
+    text-decoration: none;
+    box-shadow: 0 5px 15px rgba(0,0,0,0.3);
+    transition: transform 0.2s;
+}
+.hero-btn-compact:hover {
+    transform: translateY(-2px);
+    background: #8BC6A0;
+    color: white;
+}
+
+/* ВОЗВРАЩАЕМ СТРЕЛКИ И ТОЧКИ */
+.swiper-pagination {
+  bottom: 20px !important; /* Чуть ниже */
+  z-index: 20 !important;
+}
+.swiper-button-prev,
+.swiper-button-next {
+  width: 40px;
+  height: 40px;
+  background: rgba(255, 255, 255, 0.2);
+  backdrop-filter: blur(5px);
+  border-radius: 50%;
+  z-index: 20 !important; /* Чтобы точно были поверх */
+  color: white;
+}
+.swiper-button-prev::after,
+.swiper-button-next::after {
+  font-size: 18px; /* Размер стрелочек */
+  font-weight: bold;
+}
+
+/* Мобильная адаптация */
+@media (max-width: 768px) {
+  .hero-slider {
+    height: 380px;
+    min-height: auto;
+  }
+  .hero-content {
+    top: 55%; /* На мобилке чуть выше, чтобы влезло */
+    width: 100%;
+    padding: 0 10px;
+  }
+  /* Скрываем стрелки на мобилке, оставляем только точки */
+  .swiper-button-prev, .swiper-button-next {
+      display: none; 
+  }
 }
 
 @keyframes fadeInUp {
@@ -304,7 +367,7 @@
   background: var(--zen-green);
   color: #fff;
   border: none;
-  border-radius: 15px;
+  border-radius: 16px; /* Единый стиль */
   font-size: 1.0625rem;
   font-weight: 600;
   cursor: pointer;
@@ -605,31 +668,11 @@
 
 .pricing-cta { text-align: center; }
 
-.btn-booking {
-  display: inline-flex;
-  align-items: center;
-  gap: 12px;
-  padding: 18px 40px;
-  background: var(--zen-green);
-  color: #fff;
-  border: none;
-  border-radius: 15px;
-  font-size: 1.0625rem;
-  font-weight: 600;
-  cursor: pointer;
-  transition: all 0.3s ease;
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.15);
-}
 
-.btn-booking:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.2);
-}
 
 /* Statistics Section */
 .statistics-section {
   background: var(--section-bg);
-  overflow: hidden;
   padding: 80px 0;
 }
 
@@ -640,81 +683,164 @@
   color: #1a1a1a;
   text-transform: uppercase;
   letter-spacing: 0.05em;
-  margin-bottom: 50px;
+  margin-bottom: 60px;
 }
 
-.stats-carousel-container {
-  position: relative;
-  width: 100%;
+.stats-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 20px;
+  max-width: 1000px;
+  margin: 0 auto;
 }
-
-.stats-carousel-container::after {
-  content: '';
-  position: absolute;
-  top: 0;
-  right: 0;
-  bottom: 0;
-  width: 50px;
-  background: linear-gradient(to right, transparent, var(--section-bg));
-  pointer-events: none;
-  z-index: 2;
-}
-
-.stats-carousel-track {
-  display: flex;
-  gap: 16px;
-  overflow-x: auto;
-  scroll-behavior: smooth;
-  scroll-snap-type: x mandatory;
-  padding: 0 24px;
-  margin: 0;
-  width: 100%;
-  box-sizing: border-box;
-  -ms-overflow-style: none;
-  scrollbar-width: none;
-}
-
-.stats-carousel-track::-webkit-scrollbar { display: none; }
 
 .stat-item {
-  flex-shrink: 0;
-  scroll-snap-align: start;
-  width: 80%;
   background: #fff;
   border-radius: 16px;
-  padding: 25px 20px;
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.07);
+  padding: 30px 20px;
+  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.08);
   display: flex;
   flex-direction: column;
   justify-content: center;
   align-items: center;
   text-align: center;
-  transition: transform 0.2s ease;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  border: 1px solid rgba(157, 211, 175, 0.2);
+  position: relative;
+  overflow: hidden;
 }
 
-.stat-item:hover { transform: scale(1.03); }
+.stat-item::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 4px;
+  background: linear-gradient(90deg, var(--zen-green), #8BC49D);
+  transform: scaleX(0);
+  transition: transform 0.3s ease;
+}
+
+.stat-item:hover::before {
+  transform: scaleX(1);
+}
+
+.stat-item:hover {
+  transform: translateY(-8px);
+  box-shadow: 0 15px 40px rgba(0, 0, 0, 0.15);
+}
 
 .stat-number {
   font-weight: 800;
   color: var(--zen-green);
   line-height: 1;
   margin-bottom: 12px;
-  font-size: clamp(2.2rem, 8vw, 3.5rem);
+  font-size: clamp(2.2rem, 4vw, 3rem);
+  background: linear-gradient(135deg, var(--zen-green), #7cbf92);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
 }
 
 .stat-text {
-  font-size: 0.8rem;
-  font-weight: 600;
-  color: #6b7280;
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: #4b5563;
   text-transform: uppercase;
-  letter-spacing: 0.1em;
+  letter-spacing: 0.08em;
+  line-height: 1.3;
 }
 
-@media (min-width: 576px) { .stat-item { width: 45%; } }
-@media (min-width: 992px) { .stat-item { width: 30%; } }
-@media (min-width: 1200px) { .stat-item { width: 23%; } }
+/* Адаптивность для статистики - ОБНОВЛЕНО ДЛЯ 2 КОЛОНОК НА МОБИЛЬНЫХ */
+@media (max-width: 992px) {
+  .stats-grid {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 20px;
+    max-width: 600px;
+  }
+  
+  .stat-item {
+    padding: 25px 20px;
+  }
+  
+  .stat-number {
+    font-size: 2.5rem;
+  }
+}
 
-/* Responsive */
+@media (max-width: 768px) {
+  .statistics-section {
+    padding: 60px 0;
+  }
+  
+  .stats-title {
+    margin-bottom: 40px;
+    font-size: clamp(2rem, 8vw, 3rem);
+  }
+  
+  .stats-grid {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 16px;
+    max-width: 500px;
+  }
+  
+  .stat-item {
+    padding: 20px 15px;
+    border-radius: 12px;
+  }
+  
+  .stat-number {
+    font-size: 2.2rem;
+    margin-bottom: 8px;
+  }
+  
+  .stat-text {
+    font-size: 0.75rem;
+    letter-spacing: 0.06em;
+  }
+}
+
+@media (max-width: 480px) {
+  .stats-grid {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 12px;
+    max-width: 400px;
+  }
+  
+  .stat-item {
+    padding: 18px 12px;
+    border-radius: 10px;
+  }
+  
+  .stat-number {
+    font-size: 1.8rem;
+  }
+  
+  .stat-text {
+    font-size: 0.7rem;
+  }
+}
+
+/* Для очень маленьких экранов - оставляем 2 колонки но уменьшаем еще */
+@media (max-width: 360px) {
+  .stats-grid {
+    gap: 10px;
+    max-width: 320px;
+  }
+  
+  .stat-item {
+    padding: 15px 10px;
+  }
+  
+  .stat-number {
+    font-size: 1.6rem;
+  }
+  
+  .stat-text {
+    font-size: 0.65rem;
+  }
+}
 @media (max-width: 768px) {
   .hero-slider { min-height: 500px; }
   .hero-content h1 { font-size: clamp(1.5rem, 6vw, 2.5rem); }
@@ -740,8 +866,6 @@
   .pricing-grid { grid-template-columns: repeat(3, 1fr); gap: 30px 20px; }
   .hours-number { font-size: 5.5rem; }
   .hours-unit { font-size: 1.4rem; }
-  .stat-number { font-size: 4rem; }
-  .stat-text { font-size: 0.75rem; }
 }
 
 @media (max-width: 480px) {
@@ -755,15 +879,26 @@
   .hours-unit { font-size: 1.2rem; }
   .price-amount { font-size: 1.2rem; }
   .price-persons { font-size: 0.8rem; }
-  .stat-number { font-size: 3.5rem; }
-  .stat-text { font-size: 0.75rem; }
 }
 </style>
 
+<!-- Hero Slider -->
 <section class="hero-slider">
+  
   <div class="hero-content">
     <h1>Почасовая аренда кабинетов в центре Алматы</h1>
+    
+    <a href="{% url 'main:booking_page' %}" class="hero-btn-compact">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
+          <line x1="16" y1="2" x2="16" y2="6"></line>
+          <line x1="8" y1="2" x2="8" y2="6"></line>
+          <line x1="3" y1="10" x2="21" y2="10"></line>
+        </svg>
+        <span>Забронировать кабинет</span>
+    </a>
   </div>
+  
   <div class="swiper hero-swiper">
     <div class="swiper-wrapper">
       {% for slide in settings.sliders.all %}
@@ -772,12 +907,14 @@
         </div>
       {% endfor %}
     </div>
+    
     <div class="swiper-pagination"></div>
     <div class="swiper-button-prev"></div>
     <div class="swiper-button-next"></div>
   </div>
 </section>
 
+<!-- Rooms Section -->
 <section class="rooms-section">
   <div class="container">
     <div class="section-header">
@@ -818,9 +955,21 @@
         </article>
       {% endfor %}
     </div>
+    <div class="cta-wrapper">
+      <a href="{% url 'main:booking_page' %}" class="btn-book" style="text-decoration: none; display: inline-flex; align-items: center; justify-content: center;">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
+          <line x1="16" y1="2" x2="16" y2="6"></line>
+          <line x1="8" y1="2" x2="8" y2="6"></line>
+          <line x1="3" y1="10" x2="21" y2="10"></line>
+        </svg>
+        <span>Забронировать кабинет</span>
+      </a>
+    </div>
   </div>
 </section>
 
+<!-- Advantages Section -->
 <section class="advantages-section">
   <div class="container">
     <h2 class="section-title-main">У НАС <span class="title-accent">ВСЕГДА</span></h2>
@@ -874,6 +1023,7 @@
   </div>
 </section>
 
+<!-- Services Section -->
 <section class="services-section">
   <div class="container">
     <div class="services-wrapper">
@@ -896,6 +1046,7 @@
   </div>
 </section>
 
+<!-- Pricing Section -->
 <section class="pricing-section">
   <div class="container">
     <h2 class="pricing-main-title">ТАРИФЫ <span class="pricing-title-accent">И ОПЛАТА</span></h2>
@@ -923,43 +1074,41 @@
         <li>⚡️ Дополнительные скидки при бронировании от 20 часов в месяц и выше: расчитываются индивидуально в зависимости от времени посещения, от 1500тг/час.</li>
       </ul>
     </div>
-
   </div>
 </section>
 
+<!-- Statistics Section - ОБНОВЛЕННАЯ С 2 КОЛОНКАМИ НА МОБИЛЬНЫХ -->
 <section class="statistics-section">
   <div class="container">
     <h2 class="stats-title">О <span style="color: #9DD3AF;">НАС</span> В ЦИФРАХ</h2>
-    <div class="stats-carousel-container">
-      <div class="stats-carousel-track">
-        <div class="stat-item">
-          <div class="stat-number">2</div>
-          <div class="stat-text">года работы</div>
-        </div>
-        <div class="stat-item">
-          <div class="stat-number">9</div>
-          <div class="stat-text">кабинетов</div>
-        </div>
-        <div class="stat-item">
-          <div class="stat-number">5</div>
-          <div class="stat-text">локаций</div>
-        </div>
-        <div class="stat-item">
-          <div class="stat-number">1200+</div>
-          <div class="stat-text">клиентов</div>
-        </div>
-        <div class="stat-item">
-          <div class="stat-number">2K+</div>
-          <div class="stat-text">подписчиков</div>
-        </div>
-        <div class="stat-item">
-          <div class="stat-number">3K+</div>
-          <div class="stat-text">посетителей</div>
-        </div>
-        <div class="stat-item">
-          <div class="stat-number">10K+</div>
-          <div class="stat-text">бронирований</div>
-        </div>
+    <div class="stats-grid">
+      <div class="stat-item">
+        <div class="stat-number">2</div>
+        <div class="stat-text">года работы</div>
+      </div>
+      <div class="stat-item">
+        <div class="stat-number">9</div>
+        <div class="stat-text">кабинетов</div>
+      </div>
+      <div class="stat-item">
+        <div class="stat-number">5</div>
+        <div class="stat-text">локаций</div>
+      </div>
+      <div class="stat-item">
+        <div class="stat-number">1200+</div>
+        <div class="stat-text">клиентов</div>
+      </div>
+      <div class="stat-item">
+        <div class="stat-number">2тыс+</div>
+        <div class="stat-text">подписчиков</div>
+      </div>
+      <div class="stat-item">
+        <div class="stat-number">3тыс+</div>
+        <div class="stat-text">посетителей</div>
+      </div>
+      <div class="stat-item">
+        <div class="stat-number">10тыс+</div>
+        <div class="stat-text">бронирований</div>
       </div>
     </div>
   </div>

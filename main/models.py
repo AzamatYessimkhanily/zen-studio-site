@@ -3,7 +3,10 @@
 from django.db import models
 from django.utils.text import slugify
 from django.utils.translation import gettext_lazy as _
-
+import datetime
+from django.utils import timezone
+import uuid
+import datetime
 class SiteSettings(models.Model):
     """Общие настройки сайта"""
 
@@ -131,7 +134,25 @@ class Room(models.Model):
     is_active = models.BooleanField(default=True, verbose_name="Активен")
 
     # НОВОЕ: простые текстовые блоки без подпунктов
-    equipment_text = models.TextField(blank=True, verbose_name="Оснащение (текст)")    
+    equipment_text = models.TextField(blank=True, verbose_name="Оснащение (текст)") 
+    google_calendar_id = models.CharField(
+            max_length=255,
+            blank=True,
+            verbose_name="ID Google Календаря",
+            help_text="Скопируйте сюда ID календаря из настроек Google Calendar (вида xxx@group.calendar.google.com)"
+        )   
+    work_time_start = models.TimeField(
+        "Начало рабочего дня",
+        null=True, blank=True, # Разрешаем не указывать (будут дефолтные)
+        default=datetime.time(7, 0), # Значение по умолчанию 07:00
+        help_text="Время начала работы кабинета (ЧЧ:ММ). Если пусто, используется 07:00."
+    )
+    work_time_end = models.TimeField(
+        "Конец рабочего дня",
+        null=True, blank=True,
+        default=datetime.time(23, 0), # Значение по умолчанию 23:00
+        help_text="Время окончания работы кабинета (ЧЧ:ММ). Если пусто, используется 23:00."
+    )
     class Meta:
         verbose_name = 'Кабинет'
         verbose_name_plural = 'Кабинеты'
@@ -269,7 +290,6 @@ class Tariff(models.Model):
     persons_text = models.CharField("Кол-во человек (текст)", max_length=50, blank=True)
     order = models.PositiveIntegerField("Порядок", default=0)
     is_active = models.BooleanField("Активен", default=True)
-
     class Meta:
         verbose_name = "Тариф"
         verbose_name_plural = "Тарифы"
@@ -429,3 +449,38 @@ class ContentImage(models.Model):
     def __str__(self):
         return self.caption or f"image #{self.pk}"
         
+
+
+class PendingBooking(models.Model):
+    """Модель для временного резервирования слота."""
+    room = models.ForeignKey(Room, on_delete=models.CASCADE, verbose_name="Кабинет")
+    start_time = models.DateTimeField("Время начала")
+    end_time = models.DateTimeField("Время окончания")
+    created_at = models.DateTimeField("Время создания", auto_now_add=True)
+    expires_at = models.DateTimeField("Истекает в")
+    # Уникальный ID для этой попытки, чтобы клиент мог ее отменить
+    hold_id = models.UUIDField(default=uuid.uuid4, editable=False, unique=True)
+    google_event_id = models.CharField(max_length=255, blank=True, null=True, verbose_name="ID события в Google")       
+    class Meta:
+        verbose_name = "Временный резерв (15 мин)"
+        verbose_name_plural = "Временные резервы (15 мин)"
+        indexes = [
+            models.Index(fields=['room', 'start_time', 'end_time']),
+            models.Index(fields=['expires_at']),
+        ]
+
+    def is_expired(self):
+        """Проверяет, истекло ли время резерва."""
+        return timezone.now() >= self.expires_at
+
+    def save(self, *args, **kwargs):
+        # Автоматически устанавливаем время истечения = +15 минут от сейчас
+        if not self.pk: # Только при создании
+            # Используем timezone.now() для aware datetime
+            self.expires_at = timezone.now() + datetime.timedelta(minutes=15)
+        super().save(*args, **kwargs)
+
+    def __str__(self):
+        local_start = timezone.localtime(self.start_time)
+        local_expires = timezone.localtime(self.expires_at)
+        return f"Резерв {self.room.name} с {local_start.strftime('%H:%M %d.%m')} до {local_expires.strftime('%H:%M:%S')}"
