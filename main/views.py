@@ -781,9 +781,8 @@ def find_available_rooms(request):
 @require_POST
 @csrf_exempt
 def hold_slot(request):
-    """Временный резерв: БД + Google Calendar."""
+    """Временный резерв: БД (всегда) + Google Calendar (только если есть имя/телефон)."""
     
-    # 1. Сначала чистим старое (чтобы освободить слоты, если кто-то ушел)
     cleanup_expired_holds()
 
     try:
@@ -792,13 +791,16 @@ def hold_slot(request):
         date_str = data.get('date')
         start_time_str = data.get('start_time')
         duration_str = data.get('duration')
+        
+        # Получаем имя и телефон (могут быть пустыми на шаге 1)
+        client_name = data.get('client_name')
+        client_phone = data.get('client_phone')
 
         if not all([room_id, date_str, start_time_str, duration_str]):
             return JsonResponse({'success': False, 'error': 'Не все поля заполнены.'}, status=400)
 
         room = get_object_or_404(Room, pk=int(room_id))
         
-        # Очистка ID календаря
         if not room.google_calendar_id:
              return JsonResponse({'success': False, 'error': 'Ошибка настройки кабинета (нет ID календаря).'}, status=500)
         calendar_id = str(room.google_calendar_id).strip().replace('"', '').replace("'", "").replace(' ', '')
@@ -811,59 +813,62 @@ def hold_slot(request):
         start_dt_aware = ALMATY_TZ.localize(start_dt_naive)
         end_dt_aware = start_dt_aware + datetime.timedelta(hours=duration_hours)
         
-        # Проверка на прошлое
         if start_dt_aware <= timezone.now():
              return JsonResponse({'success': False, 'error': 'Нельзя выбрать время в прошлом.'}, status=400)
 
-        # --- СОЗДАНИЕ В БД ---
-        # Проверяем пересечения в БД (PendingBooking)
+        # Проверяем пересечения в БД
         if PendingBooking.objects.filter(room=room, expires_at__gt=timezone.now(), start_time__lt=end_dt_aware, end_time__gt=start_dt_aware).exists():
-             return JsonResponse({'success': False, 'error': 'Слот уже на оформлении у другого человека.'}, status=409)
+             return JsonResponse({'success': False, 'error': 'Слот уже занят или на оформлении.'}, status=409)
 
-        # --- СОЗДАНИЕ В GOOGLE CALENDAR ---
-        try:
-            service = get_calendar_service()
-            
-            # Проверяем занятость в самом Google (на всякий случай)
-            events_result = service.events().list(
-                calendarId=calendar_id,
-                timeMin=start_dt_aware.isoformat(),
-                timeMax=end_dt_aware.isoformat(),
-                singleEvents=True
-            ).execute()
-            
-            if events_result.get('items', []):
-                return JsonResponse({'success': False, 'error': 'Слот занят в календаре.'}, status=409)
+        gcal_event_id = None
 
-            # Создаем событие-холдер
-            event_body = {
-                'summary': '⏳ Оформление (Сайт)...',
-                'description': 'Клиент выбирает способ оплаты. Бронь исчезнет через 15 минут, если не будет оплаты.',
-                'start': {'dateTime': start_dt_aware.isoformat(), 'timeZone': settings.TIME_ZONE},
-                'end': {'dateTime': end_dt_aware.isoformat(), 'timeZone': settings.TIME_ZONE},
-                'colorId': '8' # Серый цвет (или желтый), чтобы отличалось
-            }
-            
-            gcal_event = service.events().insert(calendarId=calendar_id, body=event_body).execute()
-            gcal_event_id = gcal_event.get('id')
+        # === ГЛАВНОЕ ИЗМЕНЕНИЕ ===
+        # Создаем событие в Google ТОЛЬКО если переданы Имя и Телефон (Шаг оплаты)
+        if client_name and client_phone:
+            try:
+                service = get_calendar_service()
+                
+                # Проверяем занятость в Google
+                events_result = service.events().list(
+                    calendarId=calendar_id,
+                    timeMin=start_dt_aware.isoformat(),
+                    timeMax=end_dt_aware.isoformat(),
+                    singleEvents=True
+                ).execute()
+                
+                if events_result.get('items', []):
+                    return JsonResponse({'success': False, 'error': 'Слот занят в календаре.'}, status=409)
 
-        except Exception as e:
-            print(f"Google Calendar Error: {e}")
-            return JsonResponse({'success': False, 'error': 'Ошибка связи с Google Календарем.'}, status=500)
+                # Создаем событие с Именем
+                event_body = {
+                    'summary': f'⏳ Оформление {room.name}: {client_name} ({client_phone})',
+                    'description': 'Клиент перешел к оплате. Резерв 15 минут.',
+                    'start': {'dateTime': start_dt_aware.isoformat(), 'timeZone': settings.TIME_ZONE},
+                    'end': {'dateTime': end_dt_aware.isoformat(), 'timeZone': settings.TIME_ZONE},
+                    'colorId': '8' # Серый цвет
+                }
+                
+                # Создаем событие с Именем И НАЗВАНИЕМ КАБИНЕТА
+                gcal_event = service.events().insert(calendarId=calendar_id, body=event_body).execute()
+                gcal_event_id = gcal_event.get('id')
 
-        # Сохраняем в БД вместе с ID события
+            except Exception as e:
+                print(f"Google Calendar Error: {e}")
+                return JsonResponse({'success': False, 'error': 'Ошибка связи с Google Календарем.'}, status=500)
+        # =========================
+
+        # Сохраняем в БД (если gcal_event_id пустой - значит просто держим слот локально)
         pending_booking = PendingBooking.objects.create(
             room=room,
             start_time=start_dt_aware,
             end_time=end_dt_aware,
-            google_event_id=gcal_event_id # <--- ВАЖНО
+            google_event_id=gcal_event_id 
         )
 
         return JsonResponse({'success': True, 'hold_id': str(pending_booking.hold_id)})
 
     except Exception as e:
         return JsonResponse({'success': False, 'error': str(e)}, status=500)
-    
     
 @require_POST
 @csrf_exempt
@@ -980,8 +985,8 @@ def create_booking(request):
         event_patch = {
             'summary': event_summary,
             'description': event_description,
-            'colorId': '1', 
-        }
+            'colorId': None,
+            }
         
         if pending_booking.google_event_id:
             try:

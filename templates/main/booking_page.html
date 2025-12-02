@@ -1519,14 +1519,50 @@ function updateSummaryText() {
         if (agreementCheckbox && !agreementCheckbox.checked) { showMessage('error', 'Необходимо принять условия договора', true); agreementCheckbox.classList.add('is-invalid'); agreementCheckbox.addEventListener('change', () => { agreementCheckbox.classList.remove('is-invalid'); hideMessages(); }, { once: true }); return; }
         
         clientPhoneInput.value = normalizedPhone; hideMessages(); 
-        if (!isTimerRefreshed) {
-            const btn = document.querySelector('#show_payment_button'); if(btn) { btn.disabled = true; btn.innerHTML = '<span class="loading-spinner"></span>'; }
+if (!isTimerRefreshed) {
+            const btn = document.querySelector('#show_payment_button'); 
+            if(btn) { btn.disabled = true; btn.innerHTML = '<span class="loading-spinner"></span>'; }
             try {
-                if (holdId) { await fetch('/api/cancel_hold/', { method: 'POST', headers: { 'Content-Type': 'application/json', 'X-CSRFToken': getCookie('csrftoken') }, body: JSON.stringify({ hold_id: holdId }) }); }
-                const holdResponse = await fetch('/api/hold_slot/', { method: 'POST', headers: { 'Content-Type': 'application/json', 'X-CSRFToken': getCookie('csrftoken') }, body: JSON.stringify({ room_id: roomId, date: selectedSlot.date, start_time: selectedSlot.start, duration: selectedSlot.duration }) });
-                const holdData = await holdResponse.json(); if (!holdData.success) { throw new Error('Слот был перехвачен.'); }
-                holdId = holdData.hold_id; timerEndTime = Date.now() + 15 * 60 * 1000; startTimer(timerEndTime); isTimerRefreshed = true; 
-            } catch (error) { showMessage('error', error.message, true); handleBackToSlots(); return; } finally { if(btn) { btn.disabled = false; btn.innerHTML = 'Далее <i class="fas fa-arrow-right ms-1"></i>'; } }
+                // 1. Отменяем "тихий" холд (который был без имени)
+                if (holdId) { 
+                    await fetch('/api/cancel_hold/', { 
+                        method: 'POST', 
+                        headers: { 'Content-Type': 'application/json', 'X-CSRFToken': getCookie('csrftoken') }, 
+                        body: JSON.stringify({ hold_id: holdId }) 
+                    }); 
+                }
+                
+                // 2. Создаем новый холд С ИМЕНЕМ И ТЕЛЕФОНОМ (чтобы появилось в Google)
+                const holdResponse = await fetch('/api/hold_slot/', { 
+                    method: 'POST', 
+                    headers: { 'Content-Type': 'application/json', 'X-CSRFToken': getCookie('csrftoken') }, 
+                    body: JSON.stringify({ 
+                        room_id: roomId, 
+                        date: selectedSlot.date, 
+                        start_time: selectedSlot.start, 
+                        duration: selectedSlot.duration,
+                        
+                        // === ДОБАВИЛИ ЭТИ ПОЛЯ ===
+                        client_name: name,
+                        client_phone: normalizedPhone
+                        // =========================
+                    }) 
+                });
+                const holdData = await holdResponse.json();
+                if (!holdData.success) { throw new Error('Слот был перехвачен.'); }
+                
+                holdId = holdData.hold_id; 
+                timerEndTime = Date.now() + 15 * 60 * 1000; 
+                startTimer(timerEndTime); 
+                isTimerRefreshed = true; 
+                
+            } catch (error) {
+                showMessage('error', error.message, true); 
+                handleBackToSlots(); 
+                return;
+            } finally {
+                if(btn) { btn.disabled = false; btn.innerHTML = 'Далее <i class="fas fa-arrow-right ms-1"></i>'; }
+            }
         }
         updateSummaryText(); updateStep3ClientInfo(); showStep(3); saveBookingState(); 
     }
