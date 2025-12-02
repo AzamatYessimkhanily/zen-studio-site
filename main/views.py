@@ -845,7 +845,7 @@ def hold_slot(request):
                     'description': 'Клиент перешел к оплате. Резерв 15 минут.',
                     'start': {'dateTime': start_dt_aware.isoformat(), 'timeZone': settings.TIME_ZONE},
                     'end': {'dateTime': end_dt_aware.isoformat(), 'timeZone': settings.TIME_ZONE},
-                    'colorId': '8' # Серый цвет
+                    'colorId': None,
                 }
                 
                 # Создаем событие с Именем И НАЗВАНИЕМ КАБИНЕТА
