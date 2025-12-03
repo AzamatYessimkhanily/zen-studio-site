@@ -460,7 +460,13 @@ class PendingBooking(models.Model):
     expires_at = models.DateTimeField("Истекает в")
     # Уникальный ID для этой попытки, чтобы клиент мог ее отменить
     hold_id = models.UUIDField(default=uuid.uuid4, editable=False, unique=True)
-    google_event_id = models.CharField(max_length=255, blank=True, null=True, verbose_name="ID события в Google")       
+    google_event_id = models.CharField(max_length=255, blank=True, null=True, verbose_name="ID события в Google")
+    
+    # === ДОБАВЛЯЕМ ЭТИ ПОЛЯ ===
+    client_name = models.CharField(max_length=255, blank=True, null=True, verbose_name="Имя клиента")
+    client_phone = models.CharField(max_length=50, blank=True, null=True, verbose_name="Телефон клиента")
+    # ==========================
+
     class Meta:
         verbose_name = "Временный резерв (15 мин)"
         verbose_name_plural = "Временные резервы (15 мин)"
@@ -477,7 +483,7 @@ class PendingBooking(models.Model):
         # Автоматически устанавливаем время истечения = +15 минут от сейчас
         if not self.pk: # Только при создании
             # Используем timezone.now() для aware datetime
-            self.expires_at = timezone.now() + datetime.timedelta(minutes=15)
+            self.expires_at = timezone.now() + datetime.timedelta(minutes=1)
         super().save(*args, **kwargs)
 
     def __str__(self):

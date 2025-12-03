@@ -1,6 +1,8 @@
 # Виртуальное окружение
 venv/
-
+.venv/
+.DS_Store
+*/.DS_Store
 # Локальная база данных
 db.sqlite3
 

@@ -437,6 +437,35 @@ html, body {
     border-color: var(--zen-green);
     border-right-color: transparent;
 }
+
+/* Если кнопка заблокирована (нет галочки) -> СЕРАЯ */
+.btn-zen-primary:disabled {
+    background-color: #e9ecef !important;
+    color: #adb5bd !important;
+    border-color: transparent;
+    box-shadow: none !important;
+    cursor: not-allowed;
+    transform: none !important;
+}
+.btn-zen-primary:disabled:not(.is-loading) {
+    background-color: #e9ecef !important;
+    color: #adb5bd !important;
+    border-color: transparent !important;
+    box-shadow: none !important;
+    cursor: not-allowed;
+    transform: none !important;
+}
+
+/* 2. Если идет ЗАГРУЗКА (класс is-loading), даже если disabled -> ЗЕЛЕНАЯ */
+.btn-zen-primary.is-loading,
+.btn-zen-primary:disabled.is-loading {
+    background-color: var(--zen-green) !important; 
+    color: white !important;
+    border-color: var(--zen-green) !important;
+    opacity: 1 !important; /* Полная яркость */
+    cursor: wait;
+    box-shadow: none !important;
+}
 </style>
 {% endblock %}
 
@@ -658,21 +687,15 @@ html, body {
                     </label>
                 </div>
                 <div class="d-grid gap-2">
-                    <button id="show_payment_button" class="btn-zen-primary">Далее <i class="fas fa-arrow-right ms-1"></i></button>
+                    <button id="show_payment_button" class="btn-zen-primary" disabled>Далее <i class="fas fa-arrow-right ms-1"></i></button>
                     <button id="cancel_hold_button" class="btn-zen-outline text-muted" style="border-color: #dee2e6;">Отменить</button>
                 </div>
             </div>
 
 <div class="booking-step hidden" id="step3">
     
-    <div class="text-center mb-3">
-        <div class="text-muted small text-uppercase fw-bold" style="letter-spacing: 1px;">Итого к оплате</div>
-        <h2 id="booking_price" class="fw-bold mb-0" style="font-size: 2.5rem; color: var(--zen-green);"></h2>
-    </div>
-    
     <div class="bg-secondary bg-opacity-10 border border-secondary border-opacity-25 rounded-4 p-3 mb-4 position-relative overflow-hidden">
         <i class="fas fa-hourglass-half position-absolute text-secondary opacity-25" style="font-size: 5rem; right: -15px; top: -10px; transform: rotate(15deg);"></i>
-        
         <div class="d-flex align-items-center position-relative z-1">
             <div class="me-3 text-center">
                 <div class="small text-muted fw-bold mb-1">ОСТАЛОСЬ</div>
@@ -686,16 +709,7 @@ html, body {
         </div>
     </div>
 
-
-    <div class="form-check mb-4 d-flex align-items-start">
-        <input class="form-check-input mt-1" type="checkbox" value="" id="payment_agreement_checkbox" checked style="cursor: pointer; min-width: 18px; height: 18px;">
-        <label class="form-check-label small text-muted lh-sm ms-2" for="payment_agreement_checkbox" style="cursor: pointer; font-size: 0.85rem;">
-            Я подтверждаю, что ознакомился с 
-            <a href="https://zenstudio.kz/page/rools/" target="_blank" class="text-decoration-none fw-bold" style="color: var(--zen-green);">условиями переноса и отмены</a>, 
-            и понимаю, что оплата возврату не подлежит.
-        </label>
-    </div>
-    <div class="mb-4">
+    <div class="mb-3">
         <div class="d-grid gap-2">
             <a id="kaspi_link" href="{{ settings.kaspi_payment_link|default:'https://pay.kaspi.kz/pay/p0zhptck' }}" target="_blank" rel="noopener" class="shadow-sm">
                 Оплатить Kaspi
@@ -712,21 +726,21 @@ html, body {
         </div>
 
         <div class="collapse mt-2" id="bank_details_collapse">
-             <div class="card card-body border-0 bg-light rounded-4 shadow-sm p-3 small">
+            <div class="card card-body border-0 bg-light rounded-4 shadow-sm p-3 small">
                 <div class="d-flex justify-content-between align-items-center mb-2 pb-2 border-bottom">
                     <span class="fw-bold text-dark">Реквизиты для оплаты:</span>
                     <i class="fas fa-university text-muted"></i>
-             </div>
+                </div>
                 <div class="mb-2">
                     <span class="text-muted d-block" style="font-size: 0.75rem;">Получатель:</span>
                     <strong class="text-dark">ИП ПЛУЖНИКОВА</strong>
-        </div>
+                </div>
                 <div class="mb-2">
                     <span class="text-muted d-block" style="font-size: 0.75rem;">ИИН/БИН:</span>
                     <div class="d-flex align-items-center bg-white border rounded-3 px-2 py-1">
                         <span class="text-dark fw-bold me-auto" id="copy_iin_text">880819499179</span>
                         <button class="btn btn-sm btn-link text-decoration-none p-0 ms-2 text-primary" onclick="window.copyToClipboard('880819499179', this)"><i class="far fa-copy"></i></button>
-    </div>
+                    </div>
                 </div>
                 <div class="mb-3">
                     <span class="text-muted d-block" style="font-size: 0.75rem;">Номер счёта (IBAN):</span>
@@ -740,18 +754,31 @@ html, body {
                     <div class="d-flex justify-content-between"><span>БИК:</span> <strong>CASPKZKA</strong></div>
                     <div class="d-flex justify-content-between"><span>КБе:</span> <strong>19</strong></div>
                 </div>
+                <div class="mt-2 text-center text-muted fst-italic" style="font-size: 0.7rem;">
+                    Пожалуйста, прикрепите квитанцию ниже.
+                </div>
             </div>
         </div>
     </div>
+
+    <div class="mb-4">
+        <button id="to_receipt_step_button" class="btn-zen-primary py-3 shadow-sm">
+            Я оплатил(а), прикрепить чек <i class="fas fa-arrow-right ms-2"></i>
+        </button>
+    </div>
+
+    <div id="booking_summary_text_step3" class="mb-3 text-center small text-muted"></div>
+
+    <div class="form-check mb-4 d-flex align-items-start">
+        <input class="form-check-input mt-1" type="checkbox" value="" id="payment_agreement_checkbox" checked style="cursor: pointer; min-width: 18px; height: 18px;">
+        <label class="form-check-label small text-muted lh-sm ms-2" for="payment_agreement_checkbox" style="cursor: pointer; font-size: 0.85rem;">
+            Я подтверждаю, что ознакомился с 
+            <a href="{% url 'main:page_detail' slug='rools' %}" target="_blank" class="text-decoration-none fw-bold" style="color: var(--zen-green);">условиями переноса и отмены</a>, 
+            и понимаю, что оплата возврату не подлежит.
+        </label>
+    </div>
     
-    <div id="booking_summary_text_step3" class="mb-4 text-center small text-muted"></div>
-    
-    <div class="row g-2 mt-4">
-        <div class="col-12">
-            <button id="to_receipt_step_button" class="btn-zen-primary py-3 shadow-sm">
-                Я оплатил(а), прикрепить чек <i class="fas fa-arrow-right ms-2"></i>
-            </button>
-        </div>
+    <div class="row g-2">
         <div class="col-12">
             <button id="cancel_pay_step_button" class="btn-zen-danger-outline">Отмена</button>
         </div>
@@ -998,7 +1025,16 @@ document.addEventListener("DOMContentLoaded", function () {
         const cancelPayStepButton = wrapperElement.querySelector('#cancel_pay_step_button');
         bookingSectionTitle = wrapperElement.querySelector('#booking-section-title');
 // ... внутри setupBookingModule ...
-    
+    const agreeCheckbox = wrapperElement.querySelector('#agreement_checkbox');
+        const nextButton = wrapperElement.querySelector('#show_payment_button');
+        
+        if (agreeCheckbox && nextButton) {
+            // При каждом нажатии проверяем:
+            agreeCheckbox.addEventListener('change', function() {
+                // Если галочка есть -> false (активна), если нет -> true (серая)
+                nextButton.disabled = !this.checked;
+            });
+        }
     // Переменные для чека
     const toggleReceiptBtn = wrapperElement.querySelector('#toggle_manual_receipt');
     const manualReceiptContainer = wrapperElement.querySelector('#manual_receipt_container');
@@ -1185,7 +1221,7 @@ document.addEventListener("DOMContentLoaded", function () {
             if (moduleBookByRoom) moduleBookByRoom.style.display = 'none';
             
             updateSummaryText(); showStep(2);
-            timerEndTime = Date.now() + 15 * 60 * 1000; startTimer(timerEndTime);
+            timerEndTime = Date.now() + 1 * 60 * 1000; startTimer(timerEndTime);
             setTimeout(() => { if (bookingSectionTitle) { const yOffset = -100; const y = bookingSectionTitle.getBoundingClientRect().top + window.pageYOffset + yOffset; window.scrollTo({top: y, behavior: 'smooth'}); } }, 100);
             saveBookingState();
         } catch (error) {
@@ -1258,7 +1294,7 @@ function saveBookingState() {
                 timerEndTime: timerEndTime, 
                 currentStep: getCurrentStep(),
                 isTimerRefreshed: isTimerRefreshed, 
-                
+                agreement1: document.getElementById('agreement_checkbox')?.checked || false,
                 // === НОВОЕ: Сохраняем состояние галочки ===
                 paymentAgreement: payCheck ? payCheck.checked : false, 
                 // ==========================================
@@ -1294,7 +1330,15 @@ function restoreBookingState(state) {
         if (bookingPeopleInput && state.people) bookingPeopleInput.value = state.people; 
         if (clientNameInput && state.client_name) clientNameInput.value = state.client_name; 
         if (clientPhoneInput && state.client_phone) clientPhoneInput.value = state.client_phone; 
-        
+        // Восстановление галочки и разблокировка кнопки
+        if (state.agreement1) {
+             setTimeout(() => {
+                 const chk = document.getElementById('agreement_checkbox');
+                 const btn = document.getElementById('show_payment_button');
+                 if (chk) chk.checked = true; // Ставим галочку
+                 if (btn) btn.disabled = false; // Делаем кнопку зеленой
+             }, 50);
+        }
         // === НОВОЕ: Восстанавливаем галочку ===
         if (state.paymentAgreement) {
             // Ищем чекбокс. Так как HTML перерисовывается, ищем его глобально или через активный модуль
@@ -1395,7 +1439,7 @@ function restoreBookingState(state) {
             selectedSlot.price = priceData.price; 
             updateSummaryText(); showStep(2); 
             setTimeout(() => { if (bookingSectionTitle) { const yOffset = -100; const y = bookingSectionTitle.getBoundingClientRect().top + window.pageYOffset + yOffset; window.scrollTo({top: y, behavior: 'smooth'}); } }, 100);
-            timerEndTime = Date.now() + 15 * 60 * 1000; startTimer(timerEndTime); 
+            timerEndTime = Date.now() + 1 * 60 * 1000; startTimer(timerEndTime); 
             if (roomSelectionContainer) roomSelectionContainer.style.display = 'none';
             saveBookingState(); 
         } catch (error) { showMessage('error', error.message, true); holdId = null; selectedSlot = null; stopTimer(); fetchSlots(false); } finally { isFetching = false; } 
@@ -1477,6 +1521,7 @@ function updateSummaryText() {
     function validateAndNormalizePhone(phone) { let normalizedPhone = phone.replace(/\D/g, ''); if (normalizedPhone.length === 11 && normalizedPhone.startsWith('8')) normalizedPhone = '7' + normalizedPhone.substring(1); if (normalizedPhone.length === 10 && !normalizedPhone.startsWith('7')) normalizedPhone = '7' + normalizedPhone; return (normalizedPhone.length === 11 && normalizedPhone.startsWith('7')) ? normalizedPhone : null; }
     
 // === ОБНОВЛЕНИЕ ДАННЫХ КЛИЕНТА (ШАГ 3 - ОПЛАТА) ===
+// === ОБНОВЛЕНИЕ ДАННЫХ КЛИЕНТА (ШАГ 3) ===
     function updateStep3ClientInfo() {
         let activeWrapper = (currentScenario === 'room') ? bookingModuleWrapper1 : bookingModuleWrapper2;
         if (!activeWrapper) return;
@@ -1488,26 +1533,38 @@ function updateSummaryText() {
         const phone = clientPhoneInput.value.trim();
         if (!name && !phone) return;
 
-        // === ИСПРАВЛЕННЫЙ HTML (Раздельные линии) ===
-        const clientInfoHTML = `
-            <div class="client-info-item d-flex justify-content-between align-items-center py-2 border-bottom">
-                <span class="text-secondary">Имя:</span> 
-                <span class="fw-bold text-dark text-end">${name}</span>
-            </div>
-            
-            <div class="client-info-item d-flex justify-content-between align-items-center py-2 border-bottom">
-                <span class="text-secondary">Телефон:</span> 
-                <span class="fw-bold text-dark text-end">${phone}</span>
-            </div>`;
-        
-        // Удаляем старые, если они есть (чтобы не дублировалось)
-        const oldItems = summaryStep3.querySelectorAll('.client-info-item');
-        oldItems.forEach(el => el.remove());
-        
-        // Вставляем в самое начало списка
-        summaryStep3.insertAdjacentHTML('afterbegin', clientInfoHTML);
-    }
+        // Берем данные слота, если они есть
+        if (!selectedSlot) return;
 
+        let peopleLabel = String(selectedSlot.people);
+        if (peopleLabel === '1') peopleLabel = '1-3';
+        if (peopleLabel === '4') peopleLabel = '4-8';
+
+        // Полная сводка (как на прошлых шагах) + Имя и Телефон
+        const fullSummaryHTML = `
+            <div class="mb-3 small text-start" style="font-size: 0.9rem;">
+                <div class="d-flex justify-content-between align-items-center py-2 border-bottom">
+                    <span class="text-secondary">Имя:</span> <span class="fw-bold text-dark">${name}</span>
+                </div>
+                <div class="d-flex justify-content-between align-items-center py-2 border-bottom">
+                    <span class="text-secondary">Телефон:</span> <span class="fw-bold text-dark">${phone}</span>
+                </div>
+                <div class="d-flex justify-content-between align-items-center py-2 border-bottom">
+                    <span class="text-secondary">Дата:</span> <span class="fw-bold text-dark">${selectedSlot.date}</span>
+                </div>
+                <div class="d-flex justify-content-between align-items-center py-2 border-bottom">
+                    <span class="text-secondary">Время:</span> <span class="fw-bold text-dark">${selectedSlot.start} - ${selectedSlot.end}</span>
+                </div>
+                <div class="d-flex justify-content-between align-items-center py-2 border-bottom">
+                    <span class="text-secondary">Люди:</span> <span class="fw-bold text-dark">${peopleLabel}</span>
+                </div>
+                <div class="d-flex justify-content-between align-items-center py-2">
+                    <span class="text-secondary">Сумма:</span> <span class="fw-bold text-success">${selectedSlot.price} ₸</span>
+                </div>
+            </div>`;
+
+        summaryStep3.innerHTML = fullSummaryHTML;
+    }
     async function handleShowPayment() { 
         if (!selectedSlot || !holdId) { showMessage('error', 'Выберите время заново.', true); handleBackToSlots(); return; }
         if (timerEndTime && Date.now() >= timerEndTime) { showMessage('error', 'Время истекло.', true); cancelHold(false); return; }
@@ -1521,7 +1578,15 @@ function updateSummaryText() {
         clientPhoneInput.value = normalizedPhone; hideMessages(); 
 if (!isTimerRefreshed) {
             const btn = document.querySelector('#show_payment_button'); 
-            if(btn) { btn.disabled = true; btn.innerHTML = '<span class="loading-spinner"></span>'; }
+            if(btn) { 
+                // 1. Сначала добавляем класс (чтобы сработал зеленый CSS)
+                btn.classList.add('is-loading'); 
+                
+                // 2. Потом блокируем (чтобы нельзя было кликнуть)
+                btn.disabled = true; 
+                
+                btn.innerHTML = '<span class="loading-spinner"></span>'; 
+            }
             try {
                 // 1. Отменяем "тихий" холд (который был без имени)
                 if (holdId) { 
@@ -1552,7 +1617,7 @@ if (!isTimerRefreshed) {
                 if (!holdData.success) { throw new Error('Слот был перехвачен.'); }
                 
                 holdId = holdData.hold_id; 
-                timerEndTime = Date.now() + 15 * 60 * 1000; 
+                timerEndTime = Date.now() + 1 * 60 * 1000; 
                 startTimer(timerEndTime); 
                 isTimerRefreshed = true; 
                 
@@ -1560,8 +1625,12 @@ if (!isTimerRefreshed) {
                 showMessage('error', error.message, true); 
                 handleBackToSlots(); 
                 return;
-            } finally {
-                if(btn) { btn.disabled = false; btn.innerHTML = 'Далее <i class="fas fa-arrow-right ms-1"></i>'; }
+                } finally {
+                if(btn) { 
+                    btn.classList.remove('is-loading'); // Убираем зеленый статус загрузки
+                    btn.disabled = false;               // Разблокируем
+                    btn.innerHTML = 'Далее <i class="fas fa-arrow-right ms-1"></i>'; 
+                }
             }
         }
         updateSummaryText(); updateStep3ClientInfo(); showStep(3); saveBookingState(); 

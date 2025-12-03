@@ -44,6 +44,93 @@ ALMATY_TZ = pytz.timezone(settings.TIME_ZONE) # Часовой пояс из н�
 # --- ФУНКЦИЯ ДЛЯ ПОЛУЧЕНИЯ СЛОТОВ (ИСПРАВЛЕННАЯ) ---
 # main/views.py
 
+def send_whatsapp_group(message):
+    """Отправляет сообщение только в группу админов."""
+    url = getattr(settings, 'BOT_WHATSAPP_API_URL', None)
+    group_chat_id = getattr(settings, 'GROUP_CHAT_ID', None)
+    
+    if url and group_chat_id:
+        try:
+            requests.post(url, json={'chat_id': group_chat_id, 'message': message}, timeout=5)
+        except Exception as e:
+            print(f"Group WhatsApp Error: {e}")
+
+def send_whatsapp_client(phone, message):
+    """Отправляет сообщение на личный номер клиента."""
+    url = getattr(settings, 'BOT_WHATSAPP_API_URL', None)
+    if not url or not phone: return
+
+    try:
+        # Форматируем номер (7707... -> 7707...@c.us)
+        client_chat_id = ''.join(filter(str.isdigit, str(phone))) + '@c.us'
+        if client_chat_id.startswith('8'): 
+            client_chat_id = '7' + client_chat_id[1:]
+        elif not client_chat_id.startswith('7') and len(client_chat_id.split('@')[0]) == 10:
+            client_chat_id = '7' + client_chat_id
+            
+        requests.post(url, json={'chat_id': client_chat_id, 'message': message}, timeout=5)
+    except Exception as e:
+        print(f"Client WhatsApp Error: {e}")
+
+def cleanup_expired_holds():
+    """Удаляет просроченные брони и уведомляет всех."""
+    expired_holds = PendingBooking.objects.filter(expires_at__lte=timezone.now())
+    if not expired_holds.exists():
+        return
+
+    service = get_calendar_service()
+    
+    for hold in expired_holds:
+        # Удаляем из Google
+        if hold.google_event_id and hold.room.google_calendar_id:
+            try:
+                calendar_id = str(hold.room.google_calendar_id).strip().replace('"', '').replace("'", "").replace(' ', '')
+                service.events().delete(calendarId=calendar_id, eventId=hold.google_event_id).execute()
+            except: pass
+        
+        # === УВЕДОМЛЕНИЯ (ЕСЛИ ЕСТЬ КОНТАКТЫ) ===
+        if hold.client_name and hold.client_phone:
+            # Форматируем локальные дату/время/длительность
+            start_local = timezone.localtime(hold.start_time)
+            end_local = timezone.localtime(hold.end_time)
+            date_str = start_local.strftime('%Y-%m-%d')
+            start_time_str = start_local.strftime('%H:%M')
+            duration_hours = (end_local - start_local).total_seconds() / 3600
+            try:
+                if float(duration_hours).is_integer():
+                    duration_display = str(int(duration_hours))
+                else:
+                    duration_display = f"{duration_hours:.1f}"
+            except Exception:
+                duration_display = str(duration_hours)
+
+            # 1. Сообщение в группу (стилизовано)
+            group_message_text = (
+                "〰〰〰〰〰〰〰〰〰〰\n"
+                "⏰ Резерв истек (Нет оплаты)\n\n"
+                f"🏠 Кабинет: {hold.room.name}\n"
+                f"🗓 Дата: {date_str} | {start_time_str}\n"
+                f"⏳ Длительность: {duration_display} ч\n"
+                f"👤 Клиент: {hold.client_name} ({hold.client_phone})\n"
+                "〰〰〰〰〰〰〰〰〰〰"
+            )
+            send_whatsapp_group(group_message_text)
+
+            # 2. Сообщение клиенту (короткая инструкция и вежливое уведомление)
+            client_message_text = (
+                "〰〰〰〰〰〰〰〰〰〰\n"
+                "⏰ Ваш резерв истёк\n\n"
+                f"🏠 Кабинет: {hold.room.name}\n"
+                f"🗓 Дата: {date_str} | {start_time_str}\n"
+                f"⏳ Длительность: {duration_display} ч\n\n"
+                "Слот освобождён — оплата не поступила.\n"
+                "Если хотите, выберите другой доступный слот на сайте.\n"
+                "〰〰〰〰〰〰〰〰〰〰"
+            )
+            send_whatsapp_client(hold.client_phone, client_message_text)
+        # ========================================
+
+        hold.delete()
 # --- ФУНКЦИЯ ДЛЯ ПОЛУЧЕНИЯ СЛОТОВ (ИСПРАВЛЕННАЯ) ---
 def get_google_calendar_free_slots(room, date_str, duration_minutes=60):
     """Получает список свободных слотов из Google Календаря, учитывая резервы."""
@@ -304,24 +391,6 @@ def get_calendar_service():
     creds = service_account.Credentials.from_service_account_file(
         SERVICE_ACCOUNT_FILE, scopes=['https://www.googleapis.com/auth/calendar'])
     return build('calendar', 'v3', credentials=creds)
-
-def cleanup_expired_holds():
-    """Удаляет просроченные брони из БД и Google Календаря"""
-    expired_holds = PendingBooking.objects.filter(expires_at__lte=timezone.now())
-    if not expired_holds.exists():
-        return
-
-    service = get_calendar_service()
-    
-    for hold in expired_holds:
-        if hold.google_event_id and hold.room.google_calendar_id:
-            try:
-                calendar_id = str(hold.room.google_calendar_id).strip().replace('"', '').replace("'", "").replace(' ', '')
-                service.events().delete(calendarId=calendar_id, eventId=hold.google_event_id).execute()
-                print(f"Expired GCal event {hold.google_event_id} deleted.")
-            except Exception as e:
-                print(f"Error deleting expired GCal event: {e}")
-        hold.delete()
 # main/views.py
 
 # Вспомогательная функция для парсинга диапазона людей
@@ -781,9 +850,9 @@ def find_available_rooms(request):
 @require_POST
 @csrf_exempt
 def hold_slot(request):
-    """Временный резерв: БД (всегда) + Google Calendar (только если есть имя/телефон)."""
+    """Временный резерв (БД + Google + WhatsApp Group)."""
     
-    cleanup_expired_holds()
+    cleanup_expired_holds() # Чистим старое
 
     try:
         data = json.loads(request.body.decode("utf-8") or "{}")
@@ -792,7 +861,7 @@ def hold_slot(request):
         start_time_str = data.get('start_time')
         duration_str = data.get('duration')
         
-        # Получаем имя и телефон (могут быть пустыми на шаге 1)
+        # Данные клиента (могут быть пустыми на 1 шаге)
         client_name = data.get('client_name')
         client_phone = data.get('client_phone')
 
@@ -816,14 +885,13 @@ def hold_slot(request):
         if start_dt_aware <= timezone.now():
              return JsonResponse({'success': False, 'error': 'Нельзя выбрать время в прошлом.'}, status=400)
 
-        # Проверяем пересечения в БД
+        # Проверка занятости в БД
         if PendingBooking.objects.filter(room=room, expires_at__gt=timezone.now(), start_time__lt=end_dt_aware, end_time__gt=start_dt_aware).exists():
-             return JsonResponse({'success': False, 'error': 'Слот уже занят или на оформлении.'}, status=409)
+             return JsonResponse({'success': False, 'error': 'Слот уже занят.'}, status=409)
 
         gcal_event_id = None
 
-        # === ГЛАВНОЕ ИЗМЕНЕНИЕ ===
-        # Создаем событие в Google ТОЛЬКО если переданы Имя и Телефон (Шаг оплаты)
+        # === ЕСЛИ ЕСТЬ ИМЯ (ПЕРЕХОД К ОПЛАТЕ) ===
         if client_name and client_phone:
             try:
                 service = get_calendar_service()
@@ -839,41 +907,48 @@ def hold_slot(request):
                 if events_result.get('items', []):
                     return JsonResponse({'success': False, 'error': 'Слот занят в календаре.'}, status=409)
 
-                # Создаем событие с Именем
+                # Создаем серое событие
                 event_body = {
-                    'summary': f'⏳ Оформление {room.name}: {client_name} ({client_phone})',
+                    'summary': f'⏳ Временный резерв  {room.name}: {client_name} ({client_phone})',
                     'description': 'Клиент перешел к оплате. Резерв 15 минут.',
                     'start': {'dateTime': start_dt_aware.isoformat(), 'timeZone': settings.TIME_ZONE},
                     'end': {'dateTime': end_dt_aware.isoformat(), 'timeZone': settings.TIME_ZONE},
-                    'colorId': None,
+                    'colorId': None # Серый цвет
                 }
-                
-                # Создаем событие с Именем И НАЗВАНИЕМ КАБИНЕТА
                 gcal_event = service.events().insert(calendarId=calendar_id, body=event_body).execute()
                 gcal_event_id = gcal_event.get('id')
 
-            except Exception as e:
-                print(f"Google Calendar Error: {e}")
-                return JsonResponse({'success': False, 'error': 'Ошибка связи с Google Календарем.'}, status=500)
-        # =========================
+                # === ОТПРАВКА В ГРУППУ (НАЧАЛО) ===
+                msg = (
+                    f"⏳ Временный резерв (Начало оформления)\n"
+                    f"🏠 Кабинет: {room.name}\n"
+                    f"🗓 Дата: {date_str} | {start_time_str}\n"
+                    f"👤 Клиент : {client_name} ({client_phone})"
+                )
+                send_whatsapp_group(msg)
+                # ==================================
 
-        # Сохраняем в БД (если gcal_event_id пустой - значит просто держим слот локально)
+            except Exception as e:
+                print(f"GCal Error: {e}")
+                return JsonResponse({'success': False, 'error': 'Ошибка связи с календарем.'}, status=500)
+
+        # Сохраняем в БД (ТЕПЕРЬ С ИМЕНЕМ И ТЕЛЕФОНОМ)
         pending_booking = PendingBooking.objects.create(
             room=room,
             start_time=start_dt_aware,
             end_time=end_dt_aware,
-            google_event_id=gcal_event_id 
+            google_event_id=gcal_event_id,
+            client_name=client_name,
+            client_phone=client_phone
         )
 
         return JsonResponse({'success': True, 'hold_id': str(pending_booking.hold_id)})
 
     except Exception as e:
         return JsonResponse({'success': False, 'error': str(e)}, status=500)
-    
 @require_POST
 @csrf_exempt
 def cancel_hold(request):
-    """Отмена: Удаляем из БД и из Google Calendar."""
     try:
         data = json.loads(request.body.decode("utf-8") or "{}")
         hold_id_str = data.get('hold_id')
@@ -884,7 +959,7 @@ def cancel_hold(request):
             hold_id = uuid.UUID(hold_id_str)
             pending_booking = PendingBooking.objects.get(hold_id=hold_id)
             
-            # --- УДАЛЕНИЕ ИЗ GOOGLE ---
+            # Удаляем из Google
             if pending_booking.google_event_id and pending_booking.room.google_calendar_id:
                 try:
                     service = get_calendar_service()
@@ -896,7 +971,86 @@ def cancel_hold(request):
                     print("GCal Hold Event deleted.")
                 except Exception as e:
                     print(f"Warning: Failed to delete GCal event: {e}")
-            # --------------------------
+
+            # === ОТПРАВКА В ГРУППУ (КЛИЕНТ ОТМЕНИЛ) ===
+            if pending_booking.client_name and pending_booking.client_phone:
+                
+                # Проверяем: это Таймер (время вышло) или Ручная отмена?
+                # (Сравниваем текущее время с временем истечения)
+                if timezone.now() >= pending_booking.expires_at - datetime.timedelta(seconds=5):
+                    # ЭТО ТАЙМЕР (время вышло)
+                    start_local = timezone.localtime(pending_booking.start_time)
+                    end_local = timezone.localtime(pending_booking.end_time)
+                    date_str = start_local.strftime('%Y-%m-%d')
+                    start_time_str = start_local.strftime('%H:%M')
+                    duration_hours = (end_local - start_local).total_seconds() / 3600
+                    try:
+                        if float(duration_hours).is_integer():
+                            duration_display = str(int(duration_hours))
+                        else:
+                            duration_display = f"{duration_hours:.1f}"
+                    except Exception:
+                        duration_display = str(duration_hours)
+
+                    group_message_text = (
+                        "〰〰〰〰〰〰〰〰〰〰\n"
+                        "⏰ Время истекло (Нет оплаты)\n\n"
+                        f"🏠 Кабинет: {pending_booking.room.name}\n"
+                        f"🗓 Дата: {date_str} | {start_time_str}\n"
+                        f"⏳ Длительность: {duration_display} ч\n"
+                        f"👤 Клиент: {pending_booking.client_name} ({pending_booking.client_phone})\n"
+                        "〰〰〰〰〰〰〰〰〰〰"
+                    )
+
+                    client_message_text = (
+                        "〰〰〰〰〰〰〰〰〰〰\n"
+                        "⏰ Ваш резерв истёк\n\n"
+                        f"🏠 Кабинет: {pending_booking.room.name}\n"
+                        f"🗓 Дата: {date_str} | {start_time_str}\n"
+                        f"⏳ Длительность: {duration_display} ч\n\n"
+                        "Слот освобождён — оплата не поступила.\n"
+                        "Если хотите, выберите другой доступный слот на сайте.\n"
+                        "〰〰〰〰〰〰〰〰〰〰"
+                    )
+                else:
+                    # ЭТО РУЧНАЯ ОТМЕНА
+                    start_local = timezone.localtime(pending_booking.start_time)
+                    end_local = timezone.localtime(pending_booking.end_time)
+                    date_str = start_local.strftime('%Y-%m-%d')
+                    start_time_str = start_local.strftime('%H:%M')
+                    duration_hours = (end_local - start_local).total_seconds() / 3600
+                    try:
+                        if float(duration_hours).is_integer():
+                            duration_display = str(int(duration_hours))
+                        else:
+                            duration_display = f"{duration_hours:.1f}"
+                    except Exception:
+                        duration_display = str(duration_hours)
+
+                    group_message_text = (
+                        "〰〰〰〰〰〰〰〰〰〰\n"
+                        "❌ Клиент отменил оформление\n\n"
+                        f"🏠 Кабинет: {pending_booking.room.name}\n"
+                        f"🗓 Дата: {date_str} | {start_time_str}\n"
+                        f"⏳ Длительность: {duration_display} ч\n"
+                        f"👤 Клиент: {pending_booking.client_name} ({pending_booking.client_phone})\n"
+                        "〰〰〰〰〰〰〰〰〰〰"
+                    )
+
+                    client_message_text = (
+                        "〰〰〰〰〰〰〰〰〰〰\n"
+                        "❌ Вы отменили бронь\n\n"
+                        f"🏠 Кабинет: {pending_booking.room.name}\n"
+                        f"🗓 Дата: {date_str} | {start_time_str}\n"
+                        f"⏳ Длительность: {duration_display} ч\n\n"
+                        "Если хотите снова забронировать — выберите слот на сайте.\n"
+                        "〰〰〰〰〰〰〰〰〰〰"
+                    )
+
+                # Отправляем
+                send_whatsapp_group(group_message_text)
+                send_whatsapp_client(pending_booking.client_phone, client_message_text)
+            # ====================
 
             pending_booking.delete()
             return JsonResponse({'success': True})
@@ -906,7 +1060,6 @@ def cancel_hold(request):
 
     except Exception as e:
          return JsonResponse({'success': False, 'error': str(e)}, status=500)
-# ... (остальные views: get_price, create_booking, IndexView и т.д.) ...
 @require_POST
 @csrf_exempt
 def create_booking(request):
