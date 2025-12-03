@@ -703,13 +703,22 @@ html, body {
             </div>
             <div class="border-start border-secondary border-opacity-25 ps-3">
                 <p class="mb-0 small text-dark lh-sm fw-medium">
-                    Для фиксации брони необходимо произвести оплату в течение <strong>15 минут</strong> и отправить нам квитанцию 
+                    Для фиксации брони необходимо произвести оплату в течение <strong>15 минут и отправить нам квитанцию</strong>  
                 </p>
             </div>
         </div>
     </div>
 
-    <div class="mb-3">
+
+    <div class="form-check mb-4 d-flex align-items-start">
+        <input class="form-check-input mt-1" type="checkbox" value="" id="payment_agreement_checkbox" checked style="cursor: pointer; min-width: 18px; height: 18px;">
+        <label class="form-check-label small text-muted lh-sm ms-2" for="payment_agreement_checkbox" style="cursor: pointer; font-size: 0.85rem;">
+            Я подтверждаю, что ознакомился с 
+            <a href="https://zenstudio.kz/page/rools/" target="_blank" class="text-decoration-none fw-bold" style="color: var(--zen-green);">условиями переноса и отмены</a>, 
+            и понимаю, что оплата возврату не подлежит.
+        </label>
+    </div>
+    <div class="mb-4">
         <div class="d-grid gap-2">
             <a id="kaspi_link" href="{{ settings.kaspi_payment_link|default:'https://pay.kaspi.kz/pay/p0zhptck' }}" target="_blank" rel="noopener" class="shadow-sm">
                 Оплатить Kaspi
@@ -769,14 +778,7 @@ html, body {
 
     <div id="booking_summary_text_step3" class="mb-3 text-center small text-muted"></div>
 
-    <div class="form-check mb-4 d-flex align-items-start">
-        <input class="form-check-input mt-1" type="checkbox" value="" id="payment_agreement_checkbox" checked style="cursor: pointer; min-width: 18px; height: 18px;">
-        <label class="form-check-label small text-muted lh-sm ms-2" for="payment_agreement_checkbox" style="cursor: pointer; font-size: 0.85rem;">
-            Я подтверждаю, что ознакомился с 
-            <a href="{% url 'main:page_detail' slug='rools' %}" target="_blank" class="text-decoration-none fw-bold" style="color: var(--zen-green);">условиями переноса и отмены</a>, 
-            и понимаю, что оплата возврату не подлежит.
-        </label>
-    </div>
+
     
     <div class="row g-2">
         <div class="col-12">
@@ -1544,6 +1546,9 @@ function updateSummaryText() {
         const fullSummaryHTML = `
             <div class="mb-3 small text-start" style="font-size: 0.9rem;">
                 <div class="d-flex justify-content-between align-items-center py-2 border-bottom">
+                    <span class="text-secondary">Сумма:</span> <span class="fw-bold text-success">${selectedSlot.price} ₸</span>
+                </div>
+                <div class="d-flex justify-content-between align-items-center py-2 border-bottom">
                     <span class="text-secondary">Имя:</span> <span class="fw-bold text-dark">${name}</span>
                 </div>
                 <div class="d-flex justify-content-between align-items-center py-2 border-bottom">
@@ -1557,9 +1562,6 @@ function updateSummaryText() {
                 </div>
                 <div class="d-flex justify-content-between align-items-center py-2 border-bottom">
                     <span class="text-secondary">Люди:</span> <span class="fw-bold text-dark">${peopleLabel}</span>
-                </div>
-                <div class="d-flex justify-content-between align-items-center py-2">
-                    <span class="text-secondary">Сумма:</span> <span class="fw-bold text-success">${selectedSlot.price} ₸</span>
                 </div>
             </div>`;
 
