@@ -483,7 +483,7 @@ class PendingBooking(models.Model):
         # Автоматически устанавливаем время истечения = +15 минут от сейчас
         if not self.pk: # Только при создании
             # Используем timezone.now() для aware datetime
-            self.expires_at = timezone.now() + datetime.timedelta(minutes=1)
+            self.expires_at = timezone.now() + datetime.timedelta(minutes=15)
         super().save(*args, **kwargs)
 
     def __str__(self):

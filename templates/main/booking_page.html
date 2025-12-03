@@ -1221,7 +1221,7 @@ document.addEventListener("DOMContentLoaded", function () {
             if (moduleBookByRoom) moduleBookByRoom.style.display = 'none';
             
             updateSummaryText(); showStep(2);
-            timerEndTime = Date.now() + 1 * 60 * 1000; startTimer(timerEndTime);
+            timerEndTime = Date.now() + 15 * 60 * 1000; startTimer(timerEndTime);
             setTimeout(() => { if (bookingSectionTitle) { const yOffset = -100; const y = bookingSectionTitle.getBoundingClientRect().top + window.pageYOffset + yOffset; window.scrollTo({top: y, behavior: 'smooth'}); } }, 100);
             saveBookingState();
         } catch (error) {
@@ -1439,7 +1439,7 @@ function restoreBookingState(state) {
             selectedSlot.price = priceData.price; 
             updateSummaryText(); showStep(2); 
             setTimeout(() => { if (bookingSectionTitle) { const yOffset = -100; const y = bookingSectionTitle.getBoundingClientRect().top + window.pageYOffset + yOffset; window.scrollTo({top: y, behavior: 'smooth'}); } }, 100);
-            timerEndTime = Date.now() + 1 * 60 * 1000; startTimer(timerEndTime); 
+            timerEndTime = Date.now() + 15 * 60 * 1000; startTimer(timerEndTime); 
             if (roomSelectionContainer) roomSelectionContainer.style.display = 'none';
             saveBookingState(); 
         } catch (error) { showMessage('error', error.message, true); holdId = null; selectedSlot = null; stopTimer(); fetchSlots(false); } finally { isFetching = false; } 
@@ -1617,7 +1617,7 @@ if (!isTimerRefreshed) {
                 if (!holdData.success) { throw new Error('Слот был перехвачен.'); }
                 
                 holdId = holdData.hold_id; 
-                timerEndTime = Date.now() + 1 * 60 * 1000; 
+                timerEndTime = Date.now() + 15 * 60 * 1000; 
                 startTimer(timerEndTime); 
                 isTimerRefreshed = true; 
                 
