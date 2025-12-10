@@ -21,7 +21,12 @@ urlpatterns = [
     path('api/cancel_hold/', views.cancel_hold, name='cancel_hold'),
     path('api/create_booking/', views.create_booking, name='create_booking'),
     path('api/find_available_rooms/', views.find_available_rooms, name='find_available_rooms'),
-    
+    path('api/check_balance/', views.check_balance_api, name='check_balance_api'),
+    path('api/buy_subscription/', views.buy_subscription_api, name='buy_subscription_api'),
     # Старый API для чата (если он еще нужен)
     # path("api/webchat", views.webchat_proxy, name="webchat_proxy"),
+
+    path('api/calculate_sub_benefit/', views.calculate_subscription_benefit, name='calculate_sub_benefit'),
+    path('api/check_wa_exists/', views.check_whatsapp_existence, name='check_wa_exists'),
+    
 ]

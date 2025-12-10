@@ -233,8 +233,6 @@ html, body {
   .room-choice-btn span { font-weight: 700; font-size: 0.85rem; line-height: 1.2; }
   .room-choice-btn.active { border: 2px solid var(--zen-green); background-color: rgba(157, 211, 175, 0.08); }
   .room-choice-btn.active i { color: var(--zen-green); }
-  .room-choice-btn.any-room-btn { background: linear-gradient(135deg, #e8f5e9 0%, #ffffff 100%); border: 1px solid #c3e6cb; }
-  .room-choice-btn.any-room-btn i { color: var(--zen-green); }
 
   /* Кнопки оплаты */
   #kaspi_link, #other_bank_link, #other_bank_toggle {
@@ -466,6 +464,354 @@ html, body {
     cursor: wait;
     box-shadow: none !important;
 }
+
+/* === СТИЛИ ДЛЯ ВКЛАДОК ОПЛАТЫ === */
+  .nav-pills .nav-link.active, .nav-pills .show>.nav-link {
+      background-color: var(--zen-green) !important;
+      color: white !important;
+      border-color: var(--zen-green);
+  }
+  .nav-pills .nav-link {
+      color: var(--zen-gray);
+      background-color: #fff;
+      border: 2px solid #e9ecef;
+      border-radius: 14px;
+      padding: 12px;
+      font-weight: 700;
+      transition: all 0.2s;
+  }
+  .sub-balance-card {
+      background: #f8f9fa;
+      border: 1px solid #e9ecef;
+      border-radius: 16px;
+      padding: 20px;
+      text-align: center;
+  }
+  .balance-value {
+      font-size: 2rem;
+      font-weight: 800;
+      color: var(--zen-green);
+      line-height: 1;
+      margin: 10px 0;
+  }
+
+  /* === СТИЛИ ДЛЯ АБОНЕМЕНТА (ZEN STYLE) === */
+
+/* 1. Кнопка-баннер на главной */
+.btn-sub-banner {
+    background: linear-gradient(135deg, #ffffff 0%, #f0fff4 100%);
+    border: 2px solid var(--zen-green);
+    border-radius: var(--card-radius);
+    padding: 20px;
+    width: 100%;
+    text-align: left;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    box-shadow: 0 4px 15px rgba(157, 211, 175, 0.2);
+    transition: all 0.3s ease;
+    color: var(--zen-dark);
+}
+.btn-sub-banner:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 25px rgba(157, 211, 175, 0.3);
+}
+.sub-banner-icon {
+    width: 50px;
+    height: 50px;
+    background: var(--zen-green);
+    color: white;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.5rem;
+    margin-right: 15px;
+}
+
+/* 2. Сетка выбора часов (как слоты) */
+.sub-options-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 12px;
+}
+
+/* Карточка выбора часа */
+.sub-option-card {
+    background: #fff;
+    border: 1px solid #e9ecef;
+    border-radius: 16px;
+    padding: 15px;
+    text-align: center;
+    cursor: pointer;
+    transition: all 0.2s;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    min-height: 80px;
+}
+
+/* Активное состояние (Зеленое) */
+.sub-option-card.active {
+    background: var(--zen-green);
+    border-color: var(--zen-green);
+    color: white;
+    box-shadow: 0 5px 15px rgba(157, 211, 175, 0.4);
+    transform: scale(1.02);
+}
+
+.sub-option-card .hours {
+    font-size: 1.2rem;
+    font-weight: 800;
+    line-height: 1;
+    margin-bottom: 4px;
+}
+.sub-option-card .label {
+    font-size: 0.8rem;
+    font-weight: 500;
+    opacity: 0.8;
+}
+
+/* Результат расчета */
+.sub-result-card {
+    background: #f8f9fa;
+    border-radius: 20px;
+    padding: 20px;
+    border: 1px dashed #ced4da;
+    position: relative;
+    overflow: hidden;
+}
+.savings-badge {
+    background: #d4edda;
+    color: #155724;
+    padding: 5px 12px;
+    border-radius: 20px;
+    font-size: 0.85rem;
+    font-weight: 700;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+}
+
+/* === СТИЛИ ДЛЯ ТУМБЛЕРА ОПЛАТЫ === */
+.payment-toggle-label {
+    font-size: 1rem;
+    font-weight: 700;
+    color: var(--zen-gray);
+    transition: color 0.3s ease;
+    cursor: pointer;
+}
+.payment-toggle-label.active {
+    color: var(--zen-green);
+}
+.form-check-input.payment-switch {
+    width: 3.5rem;
+    height: 1.8rem;
+    cursor: pointer;
+    background-color: #e9ecef;
+    border-color: #dee2e6;
+}
+.form-check-input.payment-switch:checked {
+    background-color: var(--zen-green);
+    border-color: var(--zen-green);
+}
+
+/* === СТИЛИ ДЛЯ ТУМБЛЕРА ОПЛАТЫ === */
+.payment-toggle-label {
+    font-size: 1rem;
+    font-weight: 700;
+    color: var(--zen-gray); /* Серый цвет для неактивного */
+    transition: color 0.3s ease;
+    cursor: pointer;
+}
+.payment-toggle-label.active {
+    color: var(--zen-green); /* Зеленый для активного */
+}
+.form-check-input.payment-switch {
+    width: 3.5rem;
+    height: 1.8rem;
+    cursor: pointer;
+    background-color: #e9ecef;
+    border-color: #dee2e6;
+    margin: 0; /* Убираем стандартные отступы */
+}
+.form-check-input.payment-switch:checked {
+    background-color: var(--zen-green);
+    border-color: var(--zen-green);
+}
+.form-check-input.payment-switch:focus {
+    box-shadow: 0 0 0 0.25rem rgba(157, 211, 175, 0.25);
+    border-color: var(--zen-green);
+}
+
+
+/* === НОВЫЙ ПЕРЕКЛЮЧАТЕЛЬ (СЕГМЕНТЫ) === */
+.payment-segmented-control {
+    display: flex;
+    background-color: #f1f3f5; /* Серый фон контейнера */
+    border-radius: 16px;
+    padding: 6px;
+    position: relative;
+    user-select: none;
+    margin-bottom: 20px;
+    border: 1px solid #e9ecef;
+}
+
+.payment-segment {
+    flex: 1; /* Оба блока равной ширины */
+    text-align: center;
+    padding: 12px;
+    font-size: 1rem;
+    font-weight: 700;
+    border-radius: 12px;
+    cursor: pointer;
+    color: #adb5bd; /* Цвет неактивного текста */
+    transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+}
+
+/* Активное состояние */
+.payment-segment.active {
+    background-color: var(--zen-green); /* Зеленый фон */
+    color: white; /* Белый текст */
+    box-shadow: 0 4px 12px rgba(157, 211, 175, 0.4);
+    transform: scale(1.02); /* Легкое увеличение */
+}
+
+/* Ховер эффект для неактивного */
+.payment-segment:not(.active):hover {
+    background-color: rgba(0,0,0,0.03);
+    color: #495057;
+}
+
+
+/* === МОБИЛЬНЫЕ ПРАВКИ (КОМПАКТНОСТЬ) === */
+@media (max-width: 576px) {
+    /* 1. Тумблер компактнее */
+    .payment-segment {
+        padding: 8px 4px; /* Меньше воздуха */
+        font-size: 0.9rem; /* Чуть меньше шрифт */
+        min-height: 45px;
+    }
+    .payment-segmented-control {
+        padding: 4px;
+        margin-bottom: 15px;
+    }
+
+    /* 2. Карточка баланса компактнее */
+    .sub-balance-card {
+        padding: 15px !important;
+        margin-bottom: 15px !important;
+    }
+    #sub_check_phone_display {
+        margin-bottom: 10px !important;
+        font-size: 1.1rem !important;
+    }
+    
+    /* Кнопка проверки поменьше */
+    #btn_check_balance {
+        width: 100%; /* На всю ширину удобнее */
+        padding: 8px 0;
+    }
+}
+
+/* 3. Фикс центровки текста в кнопке (чтобы не съезжал вниз) */
+.btn-zen-primary {
+    padding: 0; /* Убираем падинги, чтобы flex работал точно */
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    line-height: 1; /* Важно для центровки иконок и текста */
+}
+.btn-zen-primary span, .btn-zen-primary i {
+    display: inline-block;
+    vertical-align: middle;
+    margin-top: 0; /* Убираем возможные смещения */
+}
+/* === ВЕРСИЯ 3: КОМПАКТНАЯ, НО АККУРАТНАЯ === */
+@media (max-width: 576px) {
+    /* 1. Отступы контейнера поменьше */
+    #module_subscription_calc .info-section {
+        padding: 15px 12px !important;
+        margin-bottom: 8px !important;
+    }
+
+    /* 2. Заголовки прижимаем */
+    #module_subscription_calc .info-title {
+        font-size: 1.1rem;
+        margin-bottom: 10px !important;
+    }
+    #module_subscription_calc .mb-4 {
+        margin-bottom: 10px !important;
+    }
+    #module_subscription_calc .form-label {
+        font-size: 0.85rem;
+        margin-bottom: 4px !important;
+    }
+
+    /* 3. Поля ввода - стандартный компактный размер */
+    #module_subscription_calc .form-select {
+        height: 46px !important; 
+        font-size: 0.95rem;
+    }
+
+    /* 4. Сетка Пакетов */
+    .sub-options-grid {
+        gap: 8px !important;
+    }
+
+    /* Карточки: Уменьшили высоту, но оставили вертикальными */
+    .sub-option-card {
+        min-height: 64px !important; /* Было 75px, стало 64px */
+        padding: 6px !important;
+        display: flex;
+        flex-direction: column !important;
+        justify-content: center;
+    }
+    
+    .sub-option-card .hours {
+        font-size: 1.35rem !important; /* Цифра аккуратная */
+        margin-bottom: 0 !important;
+        line-height: 1;
+    }
+    .sub-option-card .label {
+        font-size: 0.75rem !important; /* Текст помельче */
+        margin-top: 2px;
+        opacity: 0.8;
+    }
+
+    /* 5. Разделитель "или другое" */
+    #module_subscription_calc .text-center.position-relative.my-3 {
+        margin-top: 8px !important;
+        margin-bottom: 8px !important;
+    }
+
+    /* 6. Блок цены */
+    #sub_calc_result {
+        padding: 10px !important;
+        margin-top: 10px !important;
+        border-radius: 14px !important;
+    }
+    #sub_display_price {
+        font-size: 1.8rem !important; /* Цена не кричит, но видна */
+        margin-bottom: 2px !important;
+    }
+    .savings-badge {
+        font-size: 0.8rem !important;
+        padding: 2px 8px !important;
+    }
+
+    /* 7. Кнопка "Оформить" */
+    #btn_sub_next_step {
+        height: 50px !important;
+        font-size: 1rem !important;
+        margin-top: 4px;
+    }
+}
 </style>
 {% endblock %}
 
@@ -478,22 +824,138 @@ html, body {
         <div id="booking_success_message" class="alert alert-success mt-3 small rounded-3 border-0 shadow-sm" style="display: none;"></div>
 <div id="booking_error_message" class="alert alert-danger mt-3 small rounded-3 border-0 shadow-sm" style="display: none;"></div>
 
-        <div id="room_selection_container" class="info-section mb-4">
-            <h4 class="info-title mb-4"><i class="fas fa-door-open"></i> Выберите кабинет (Шаг 1 из 5)</h4>
-            <div class="room-choice-grid">
-              {% for room in rooms %}
-                <button class="room-choice-btn" data-room-id="{{ room.pk }}" data-room-name="{{ room.name }}">
-                  <i class="fas fa-couch"></i>
-                  <span>{{ room.name }}</span>
-                </button>
-              {% endfor %}
 
-              <button class="room-choice-btn any-room-btn" id="btn_any_room">
-                 <i class="fas fa-search-location fa-2x mb-2"></i>
-                 <span>Любой <br>кабинет</span>
-              </button>
+
+{# === БЛОК: КОНСТРУКТОР АБОНЕМЕНТА === #}
+<div id="module_subscription_calc" style="display: none;">
+    <div class="info-section animated-item">
+        
+        <div class="d-flex align-items-center mb-4">
+            <button id="sub_calc_back_btn" class="btn btn-link text-decoration-none p-0 me-3 text-secondary" style="font-size: 1.2rem; border: none;">
+                <i class="fas fa-arrow-left"></i>
+            </button>
+            <h4 class="info-title mb-0"><i class="fas fa-calculator"></i> Конструктор абонемента</h4>
+        </div>
+
+        <div class="mb-4">
+            <div class="input-header">
+                <label class="form-label">Посетителей</label>
+            </div>
+            <select id="sub_people_select" class="form-select">
+                <option value="1" selected>от 1 до 3</option>
+                <option value="4">Группа от 4 до 8</option>
+            </select>
+            
+        </div>
+<div class="mb-4">
+                <div class="input-header">
+                <label class="form-label">Выберите часы</label>
+            </div>
+                    <select id="sub_custom_hours" class="form-select" style="height: 54px;">
+                <option value="3">3 часа</option>
+                <option value="4">4 часа</option>
+                <option value="6">6 часов</option>
+                <option value="7">7 часов</option>
+                <option value="8">8 часов</option>
+                <option value="9">9 часов</option>
+                <option value="11">11 часов</option>
+                <option value="12">12 часов</option>
+                <option value="13">13 часов</option>
+                <option value="14">14 часов</option>
+                <option value="16">16 часов</option>
+                <option value="17">17 часов</option>
+                <option value="18">18 часов</option>
+                <option value="19">19 часов</option>
+                </select>
+</div>
+        <div class="mb-4">
+            <label class="form-label mb-2">Или выберите популярный пакет:</label>
+            <div class="sub-options-grid mb-3">
+                <div class="sub-option-card" data-hours="5">
+                    <div class="hours">5</div>
+                    <div class="label">часов</div>
+                </div>
+                <div class="sub-option-card" data-hours="10">
+                    <div class="hours">10</div>
+                    <div class="label">часов</div>
+                </div>
+                <div class="sub-option-card" data-hours="15">
+                    <div class="hours">15</div>
+                    <div class="label">часов</div>
+                </div>
+                <div class="sub-option-card" data-hours="20">
+                    <div class="hours">20</div>
+                    <div class="label">часов</div>
+                </div>
+            </div>
+
+
+
+        </div>
+
+        <div id="sub_calc_loading" class="text-center py-4" style="display: none;">
+            <div class="spinner-border text-success" role="status"></div>
+        </div>
+
+        <div id="sub_calc_result" class="sub-result-card text-center mb-4" style="display: none;">
+            <div class="text-muted small mb-1 text-uppercase fw-bold">Итого к оплате</div>
+            <div class="display-5 fw-bold text-dark mb-3" id="sub_display_price" style="letter-spacing: -1px;">0 ₸</div>
+            
+            <div class="savings-badge">
+                <i class="fas fa-check-circle"></i> Экономия: <span id="sub_display_savings">0</span> ₸
             </div>
         </div>
+
+        <button id="btn_sub_next_step" class="btn-zen-primary shadow-sm" disabled>
+            Оформить абонемент <i class="fas fa-arrow-right ms-2"></i>
+        </button>
+    </div>
+</div>
+
+<div id="room_selection_container" class="info-section mb-4">
+    <h4 class="info-title mb-4"><i class="fas fa-door-open"></i> Выберите кабинет (Шаг 1 из 5)</h4>
+    
+    <div class="room-choice-grid mb-3"> {% for room in rooms %}
+        <button class="room-choice-btn" data-room-id="{{ room.pk }}" data-room-name="{{ room.name }}">
+          <i class="fas fa-couch"></i>
+          <span>{{ room.name }}</span>
+        </button>
+      {% endfor %}
+
+      <button class="room-choice-btn any-room-btn" id="btn_any_room">
+         <i class="fas fa-search-location fa-2x mb-2"></i>
+         <span>Любой <br>кабинет</span>
+      </button>
+    </div>
+
+<div class="d-flex align-items-center my-4">
+    <hr class="flex-grow-1 my-0" style="border-top: 1px solid #e9ecef;">
+    <span class="mx-3 text-muted small fw-bold text-uppercase" style="letter-spacing: 1px; font-size: 0.7rem;">Абонементы</span>
+    <hr class="flex-grow-1 my-0" style="border-top: 1px solid #e9ecef;">
+</div>
+    <div class="row g-2">
+        <div class="col-6">
+            <button id="btn_start_subscription" class="btn shadow-sm w-100 d-flex flex-column align-items-center justify-content-center text-center p-2" 
+                    style="background: #fff; border: 1px solid #f0f0f0; border-radius: 16px; min-height: 80px; color: var(--zen-dark); height: 100%;">
+                <div style="background: rgba(157, 211, 175, 0.15); width: 38px; height: 38px; border-radius: 10px; display: flex; align-items: center; justify-content: center; margin-bottom: 6px;">
+                    <i class="fas fa-plus text-success fs-6"></i>
+                </div>
+                <div class="fw-bold lh-1" style="font-size: 0.9rem;">Купить<br>абонемент</div>
+            </button>
+        </div>
+
+        <div class="col-6">
+            <button id="btn_open_check_balance" class="btn shadow-sm w-100 d-flex flex-column align-items-center justify-content-center text-center p-2" 
+                    style="background: #fff; border: 1px solid #f0f0f0; border-radius: 16px; min-height: 80px; color: var(--zen-dark); height: 100%;"
+                    data-bs-toggle="modal" data-bs-target="#checkBalanceModal">
+                <div style="background: rgba(241, 243, 245, 0.5); width: 38px; height: 38px; border-radius: 10px; display: flex; align-items: center; justify-content: center; margin-bottom: 6px;">
+                    <i class="fas fa-search text-secondary fs-6"></i>
+                </div>
+                <div class="fw-bold lh-1" style="font-size: 0.9rem;">Проверить<br>остаток</div>
+            </button>
+        </div>
+    </div>
+</div>
 
         {# === СЦЕНАРИЙ 1: КАЛЕНДАРЬ === #}
         <div id="module_book_by_room">
@@ -512,7 +974,7 @@ html, body {
                     </div>
                     
                     <!-- ИСПРАВЛЕННЫЙ БЛОК С ВЫРАВНИВАНИЕМ -->
-<div class="row g-3">
+                    <div class="row g-3">
                         <div class="col-6">
                             <div class="input-header">
                                 <label for="find_date" class="form-label">Дата</label>
@@ -563,7 +1025,7 @@ html, body {
 
                         <div class="col-6">
                             <div class="input-header">
-                                <label for="find_people" class="form-label">Гостей</label>
+                                <label for="find_people" class="form-label">Посетителей</label>
                             </div>
                             <select class="form-select text-center" id="find_people" name="find_people">
                                 <option value="1" selected>1-3 чел.</option>
@@ -616,7 +1078,7 @@ html, body {
 
                       <div class="col-6">
                           <div class="input-header">
-                              <label for="booking_people_count" class="form-label">Гостей</label>
+                              <label for="booking_people_count" class="form-label">Посетителей</label>
                           </div>
                           <select class="form-select text-center" id="booking_people_count" name="booking_people_count" style="padding: 0 12px;">
                               <option value="1" selected>1-3</option>
@@ -667,17 +1129,25 @@ html, body {
         </div>
 </div>
 
-            <div class="booking-step hidden" id="step2">
-                <div class="mb-2">
+<div class="booking-step hidden" id="step2">
+                <div class="mb-3">
                     <label for="client_name" class="form-label">Ваше имя</label>
                     <input type="text" class="form-control" id="client_name" name="client_name" required placeholder="Иван">
                 </div>
+                
                 <div class="mb-3">
                     <label for="client_phone" class="form-label">Номер WhatsApp</label>
-                    <input type="tel" class="form-control" id="client_phone" name="client_phone" required placeholder="+7 777 ...">
+                    <div class="position-relative">
+                        <input type="tel" class="form-control" id="client_phone" name="client_phone" required placeholder="7707..." style="padding-right: 50px;">
+                        
+                        <div id="phone_status_icon" class="position-absolute top-50 end-0 translate-middle-y me-3" style="pointer-events: none;">
+                            </div>
+                    </div>
+                    <div id="phone_error_msg" class="form-text text-danger small" style="display: none;">
+                        На этом номере не найден WhatsApp
+                    </div>
                 </div>
-                
-                <div id="booking_summary_text" class="mb-3 p-3 bg-light rounded-3 border small"></div>
+                <div id="booking_summary_text" class="mb-3 p-3 bg-light rounded-4 border small"></div>
 
                 <div class="form-check mb-3">
                     <input class="form-check-input" type="checkbox" value="" id="agreement_checkbox" style="cursor: pointer;">
@@ -686,6 +1156,7 @@ html, body {
                         <a href="https://zenstudio.kz/page/tnc4/" target="_blank" class="text-decoration-none fw-bold" style="color: var(--zen-green);">публичного договора о бронировании</a>
                     </label>
                 </div>
+                
                 <div class="d-grid gap-2">
                     <button id="show_payment_button" class="btn-zen-primary" disabled>Далее <i class="fas fa-arrow-right ms-1"></i></button>
                     <button id="cancel_hold_button" class="btn-zen-outline text-muted" style="border-color: #dee2e6;">Отменить</button>
@@ -703,83 +1174,104 @@ html, body {
             </div>
             <div class="border-start border-secondary border-opacity-25 ps-3">
                 <p class="mb-0 small text-dark lh-sm fw-medium">
-                    Для фиксации брони необходимо произвести оплату в течение <strong>15 минут и отправить нам квитанцию</strong>  
+                Для фиксации брони необходимо произвести оплату в течение <strong>15 минут</strong> и отправить нам квитанцию 
                 </p>
             </div>
         </div>
     </div>
 
-
-    <div class="form-check mb-4 d-flex align-items-start">
-        <input class="form-check-input mt-1" type="checkbox" value="" id="payment_agreement_checkbox" checked style="cursor: pointer; min-width: 18px; height: 18px;">
-        <label class="form-check-label small text-muted lh-sm ms-2" for="payment_agreement_checkbox" style="cursor: pointer; font-size: 0.85rem;">
-            Я подтверждаю, что ознакомился с 
-            <a href="https://zenstudio.kz/page/rools/" target="_blank" class="text-decoration-none fw-bold" style="color: var(--zen-green);">условиями переноса и отмены</a>, 
-            и понимаю, что оплата возврату не подлежит.
-        </label>
-    </div>
-    <div class="mb-4">
-        <div class="d-grid gap-2">
-            <a id="kaspi_link" href="{{ settings.kaspi_payment_link|default:'https://pay.kaspi.kz/pay/p0zhptck' }}" target="_blank" rel="noopener" class="shadow-sm">
-                Оплатить Kaspi
-            </a>
-
-            <button type="button" id="other_bank_toggle" class="btn shadow-sm" 
-                    style="background: #2c3e50; color: white; border-radius: 14px; padding: 12px; font-weight: 600; display: flex; align-items: center; justify-content: center; transition: all 0.2s;"
-                    data-bs-toggle="collapse" 
-                    data-bs-target="#bank_details_collapse" 
-                    aria-expanded="false">
-                <i class="fas fa-credit-card me-2"></i>
-                Оплатить картой (Любой банк) <i class="fas fa-chevron-down ms-2 small opacity-50"></i>
-            </button>
+<div class="payment-segmented-control">
+        <div id="seg_single" class="payment-segment active">
+            <i class="fas fa-wallet"></i> Разовая оплата
         </div>
+        <div id="seg_subscription" class="payment-segment">
+            <i class="fas fa-address-card"></i> Абонемент
+        </div>
+    </div>
 
-        <div class="collapse mt-2" id="bank_details_collapse">
-            <div class="card card-body border-0 bg-light rounded-4 shadow-sm p-3 small">
-                <div class="d-flex justify-content-between align-items-center mb-2 pb-2 border-bottom">
-                    <span class="fw-bold text-dark">Реквизиты для оплаты:</span>
-                    <i class="fas fa-university text-muted"></i>
+    <div class="tab-content">
+        
+        <div id="pane-single" style="display: block;" role="tabpanel">
+            
+            <div class="form-check mb-4 d-flex align-items-start">
+                <input class="form-check-input mt-1" type="checkbox" value="" id="payment_agreement_checkbox" checked style="cursor: pointer; min-width: 18px; height: 18px;">
+                <label class="form-check-label small text-muted lh-sm ms-2" for="payment_agreement_checkbox" style="cursor: pointer; font-size: 0.85rem;">
+                    Я подтверждаю, что ознакомился с 
+                    <a href="https://zenstudio.kz/page/rools/" target="_blank" class="text-decoration-none fw-bold" style="color: var(--zen-green);">условиями переноса и отмены</a>., и понимаю, что оплата возврату не подлежит. 
+
+                </label>
+            </div>
+
+            <div class="mb-4">
+                <div class="d-grid gap-2">
+                    <a id="kaspi_link" href="{{ settings.kaspi_payment_link|default:'https://pay.kaspi.kz/pay/p0zhptck' }}" target="_blank" rel="noopener" class="shadow-sm">
+                        Оплатить Kaspi
+                    </a>
+
+                    <button type="button" id="other_bank_toggle" class="btn shadow-sm" 
+                            style="background: #2c3e50; color: white; border-radius: 14px; padding: 12px; font-weight: 600; display: flex; align-items: center; justify-content: center; transition: all 0.2s;"
+                            data-bs-toggle="collapse" data-bs-target="#bank_details_collapse">
+                        <i class="fas fa-credit-card me-2"></i> Оплатить картой (Любой банк) <i class="fas fa-chevron-down ms-2 small opacity-50"></i>
+                    </button>
                 </div>
-                <div class="mb-2">
-                    <span class="text-muted d-block" style="font-size: 0.75rem;">Получатель:</span>
-                    <strong class="text-dark">ИП ПЛУЖНИКОВА</strong>
-                </div>
-                <div class="mb-2">
-                    <span class="text-muted d-block" style="font-size: 0.75rem;">ИИН/БИН:</span>
-                    <div class="d-flex align-items-center bg-white border rounded-3 px-2 py-1">
-                        <span class="text-dark fw-bold me-auto" id="copy_iin_text">880819499179</span>
-                        <button class="btn btn-sm btn-link text-decoration-none p-0 ms-2 text-primary" onclick="window.copyToClipboard('880819499179', this)"><i class="far fa-copy"></i></button>
+                <div class="collapse mt-2" id="bank_details_collapse">
+                    <div class="card card-body border-0 bg-light rounded-4 shadow-sm p-3 small">
+                        <div class="mb-2"><strong class="text-dark">ИП ПЛУЖНИКОВА</strong></div>
+                        <div class="mb-2">ИИН: <span class="fw-bold" onclick="window.copyToClipboard('880819499179', this)">880819499179 <i class="far fa-copy ms-1 text-primary"></i></span></div>
+                        <div class="mb-2">IBAN: <span class="fw-bold text-break" onclick="window.copyToClipboard('KZ83722S000023853267', this)">KZ83722S000023853267 <i class="far fa-copy ms-1 text-primary"></i></span></div>
                     </div>
-                </div>
-                <div class="mb-3">
-                    <span class="text-muted d-block" style="font-size: 0.75rem;">Номер счёта (IBAN):</span>
-                    <div class="d-flex align-items-center bg-white border rounded-3 px-2 py-1">
-                        <span class="text-dark fw-bold me-auto text-break" style="font-family: monospace; font-size: 0.9rem;" id="copy_iban_text">KZ83722S000023853267</span>
-                        <button class="btn btn-sm btn-link text-decoration-none p-0 ms-2 text-primary" onclick="window.copyToClipboard('KZ83722S000023853267', this)"><i class="far fa-copy"></i></button>
-                    </div>
-                </div>
-                <div class="bg-white rounded-3 p-2 border text-muted" style="font-size: 0.75rem;">
-                    <div class="d-flex justify-content-between"><span>Банк:</span> <strong>АО "Kaspi Bank"</strong></div>
-                    <div class="d-flex justify-content-between"><span>БИК:</span> <strong>CASPKZKA</strong></div>
-                    <div class="d-flex justify-content-between"><span>КБе:</span> <strong>19</strong></div>
-                </div>
-                <div class="mt-2 text-center text-muted fst-italic" style="font-size: 0.7rem;">
-                    Пожалуйста, прикрепите квитанцию ниже.
                 </div>
             </div>
+
+            <div class="mb-4">
+                <button id="to_receipt_step_button" class="btn-zen-primary py-3 shadow-sm">
+                    Я оплатил(а), прикрепить чек <i class="fas fa-arrow-right ms-2"></i>
+                </button>
+            </div>
+        </div>
+
+<div id="pane-subscription" style="display: none;">
+        
+        <div class="sub-balance-card mb-3 bg-light border rounded-4 p-3 text-center">
+            
+    <div class="d-flex align-items-center justify-content-center gap-2 mb-4 text-dark">
+        <i class="fas fa-mobile-alt text-secondary" style="font-size: 1.6rem;"></i>
+
+        <div class="fw-bold fs-4 m-0" id="sub_check_phone_display">
+            ...
+        </div>
+    </div>
+            
+            <button id="btn_check_balance" class="btn btn-white border shadow-sm btn-sm w-100 py-2 fw-bold text-secondary" style="border-radius: 12px;">
+                <i class="fas fa-sync-alt me-1"></i> Проверить баланс
+            </button>
+
+            <div id="sub_balance_result" style="display: none;" class="mt-3 pt-2 border-top">
+                <div class="small text-muted mb-1">Доступно:</div>
+                <div class="balance-value fs-2 fw-bold text-success lh-1 mb-1" id="sub_balance_value">0</div>
+                <div class="small fw-bold" id="sub_balance_msg"></div>
+            </div>
+        </div>
+
+        <button id="btn_confirm_subscription" class="btn-zen-primary shadow-sm w-100" style="display: none;">
+            <span>Списать часы и забронировать</span>
+        </button>
+        
+<div id="sub_buy_offer" style="display: none;" class="mt-3 p-3 rounded-4 bg-secondary bg-opacity-10 border border-secondary border-opacity-25 text-center small">
+            <div class="mb-2 fw-bold text-dark d-flex align-items-center justify-content-center gap-2">
+                <i class="fas fa-exclamation-circle text-secondary"></i> Не хватает часов
+            </div>
+            
+            <button type="button" id="btn_quick_buy_sub_internal" class="btn btn-zen-primary btn-sm w-100 shadow-sm" style="height: 45px; font-size: 0.9rem;">
+                Купить пакет часов
+            </button>
         </div>
     </div>
 
-    <div class="mb-4">
-        <button id="to_receipt_step_button" class="btn-zen-primary py-3 shadow-sm">
-            Я оплатил(а), прикрепить чек <i class="fas fa-arrow-right ms-2"></i>
-        </button>
     </div>
 
-    <div id="booking_summary_text_step3" class="mb-3 text-center small text-muted"></div>
+    <div id="booking_summary_text_step3" class="mb-3 text-center small text-muted mt-3"></div>
 
-
-    
     <div class="row g-2">
         <div class="col-12">
             <button id="cancel_pay_step_button" class="btn-zen-danger-outline">Отмена</button>
@@ -846,6 +1338,46 @@ html, body {
     </div>
   </div>
 </section>
+<div class="modal fade" id="checkBalanceModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content border-0 shadow" style="border-radius: 24px; overflow: hidden;">
+      
+      <div class="modal-header border-0 pb-0">
+        <h5 class="modal-title fw-bold ms-2" style="font-size: 1.1rem;">
+            <i class="fas fa-wallet text-success me-2"></i>Проверка баланса
+        </h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+
+      <div class="modal-body p-4">
+        
+        <div class="mb-4">
+            <label class="form-label small text-muted fw-bold">Введите номер телефона</label>
+            <div class="position-relative">
+                <input type="tel" id="balance_check_phone" class="form-control text-center fw-bold" 
+                       placeholder="7707..." style="height: 54px; font-size: 1.1rem; letter-spacing: 0.5px; border-radius: 14px;">
+                <div id="balance_input_icon" class="position-absolute top-50 end-0 translate-middle-y me-3">
+                    <i class="fas fa-phone-alt text-muted opacity-25"></i>
+                </div>
+            </div>
+        </div>
+
+        <div id="balance_result_container" style="display: none;" class="text-center mb-4 animated-item visible">
+            <div class="p-3 rounded-4 bg-light border">
+                <div class="small text-muted mb-1">Доступно часов:</div>
+                <div id="balance_display_amount" class="display-4 fw-bold text-success" style="letter-spacing: -1px;">0</div>
+                <div id="balance_display_msg" class="small fw-bold text-dark mt-1"></div>
+            </div>
+        </div>
+
+        <button id="btn_do_check_balance" class="btn-zen-primary w-100 shadow-sm">
+            Проверить
+        </button>
+
+      </div>
+    </div>
+  </div>
+</div>
 {% endblock %}
 {% block footer %}
     {% endblock %}
@@ -903,7 +1435,640 @@ document.addEventListener("DOMContentLoaded", function () {
     // --- ГЛОБАЛЬНЫЕ ПЕРЕМЕННЫЕ ---
     const adminPhoneRaw = "{{ settings.phone|default:'77073910808' }}"; 
     const adminPhoneClean = adminPhoneRaw.replace(/\D/g, ''); 
+    // === ЛОГИКА ПОКУПКИ АБОНЕМЕНТА (БЕЗ МОДАЛКИ) ===
     
+// === ЛОГИКА ПОКУПКИ АБОНЕМЕНТА (ОБНОВЛЕННАЯ) ===
+    let isSubscriptionMode = false;
+    let subCurrentPrice = 0;
+    let subCurrentHours = null; // По умолчанию ничего не выбрано
+    
+    // Элементы
+    const btnStartSub = document.getElementById('btn_start_subscription');
+    const moduleSubCalc = document.getElementById('module_subscription_calc');
+    const subBackBtn = document.getElementById('sub_calc_back_btn');
+    
+    const subPeopleSelect = document.getElementById('sub_people_select');
+    const subOptionCards = document.querySelectorAll('.sub-option-card');
+    const subCustomSelect = document.getElementById('sub_custom_hours'); // Новый селект
+    
+    const subDisplayPrice = document.getElementById('sub_display_price');
+    const subDisplaySavings = document.getElementById('sub_display_savings');
+    const subCalcResult = document.getElementById('sub_calc_result');
+    const subCalcLoading = document.getElementById('sub_calc_loading');
+    const btnSubNext = document.getElementById('btn_sub_next_step');
+
+    // 1. Старт (Клик по кнопке на главной)
+    if (btnStartSub) {
+        btnStartSub.addEventListener('click', () => {
+            startSubscriptionFlow();
+            saveBookingState();
+        });
+    }
+
+    function startSubscriptionFlow() {
+        isSubscriptionMode = true;
+        if(roomSelectionContainer) roomSelectionContainer.style.display = 'none';
+        if(btnStartSub) btnStartSub.parentElement.style.display = 'none'; 
+        
+        moduleSubCalc.style.display = 'block';
+        bookingModuleWrapper1.innerHTML = ''; 
+        
+        // СБРОС СОСТОЯНИЯ ПРИ ВХОДЕ
+        resetSubscriptionSelection();
+    }
+    
+    // Функция полного сброса выбора (визуально и логически)
+    function resetSubscriptionSelection() {
+        subCurrentHours = null;
+        subCurrentPrice = 0;
+        
+        // Сброс кнопок
+        subOptionCards.forEach(c => c.classList.remove('active'));
+        
+        // Сброс селекта
+        if(subCustomSelect) subCustomSelect.value = "";
+        
+        // Скрытие цены и блокировка кнопки
+        if(subCalcResult) subCalcResult.style.display = 'none';
+        if(btnSubNext) btnSubNext.disabled = true;
+    }
+
+    // 2. Назад из калькулятора
+    if (subBackBtn) {
+        subBackBtn.addEventListener('click', () => {
+            exitSubscriptionMode();
+        });
+    }
+
+function exitSubscriptionMode() {
+    isSubscriptionMode = false;
+    
+    // Скрываем калькулятор
+    if(moduleSubCalc) moduleSubCalc.style.display = 'none';
+    if(bookingModuleWrapper1) bookingModuleWrapper1.innerHTML = '';
+    
+    // Показываем главный экран
+    if(roomSelectionContainer) roomSelectionContainer.style.display = 'block';
+    
+    // === ВОЗВРАЩАЕМ КНОПКУ ===
+    if(btnStartSub && btnStartSub.parentElement) {
+        btnStartSub.parentElement.style.display = 'block';
+    }
+    
+    clearBookingState();
+}
+
+    // 3. А. ОБРАБОТКА КЛИКА ПО КАРТОЧКЕ (5, 10, 15, 20)
+    subOptionCards.forEach(card => {
+        card.addEventListener('click', () => {
+            const hours = parseInt(card.dataset.hours);
+            subCurrentHours = hours;
+            
+            // Визуал: Активируем карту, сбрасываем селект
+            subOptionCards.forEach(c => c.classList.remove('active'));
+            card.classList.add('active');
+            
+            if(subCustomSelect) subCustomSelect.value = ""; // Сброс списка
+            
+            updateSubCalculation();
+            saveBookingState(); 
+        });
+    });
+    
+    // 3. Б. ОБРАБОТКА ВЫБОРА ИЗ СПИСКА
+    if (subCustomSelect) {
+        subCustomSelect.addEventListener('change', () => {
+            const val = subCustomSelect.value;
+            if (!val) return;
+            
+            subCurrentHours = parseInt(val);
+            
+            // Визуал: Сбрасываем карты (делаем белыми)
+            subOptionCards.forEach(c => c.classList.remove('active'));
+            
+            updateSubCalculation();
+            saveBookingState();
+        });
+    }
+
+    // Вспомогательная функция для восстановления визуала (при F5)
+    function updateVisualSelection(hours) {
+        if (!hours) return;
+        
+        // Проверяем, есть ли такой блок (5, 10, 15, 20)
+        let foundBlock = false;
+        subOptionCards.forEach(c => {
+            if (parseInt(c.dataset.hours) === parseInt(hours)) {
+                c.classList.add('active');
+                foundBlock = true;
+            } else {
+                c.classList.remove('active');
+            }
+        });
+        
+        // Если блок не найден (значит это число из списка), ставим селект
+        if (!foundBlock && subCustomSelect) {
+            subCustomSelect.value = hours;
+        } else if (foundBlock && subCustomSelect) {
+            subCustomSelect.value = "";
+        }
+    }
+
+    // 4. Калькулятор
+    function updateSubCalculation() {
+        if (!subCurrentHours) return; // Не считаем, если часы не выбраны
+
+        const p = subPeopleSelect ? subPeopleSelect.value : '1';
+        const h = subCurrentHours;
+
+        if(subCalcResult) subCalcResult.style.display = 'none';
+        if(subCalcLoading) subCalcLoading.style.display = 'block';
+        if(btnSubNext) btnSubNext.disabled = true;
+
+        fetch(`/api/calculate_sub_benefit/?hours=${h}&people_count=${p}`)
+            .then(res => res.json())
+            .then(data => {
+                if(subCalcLoading) subCalcLoading.style.display = 'none';
+                if (data.success) {
+                    subCurrentPrice = data.price;
+                    if(subDisplayPrice) subDisplayPrice.textContent = data.price + ' ₸';
+                    if(subDisplaySavings) subDisplaySavings.textContent = data.savings;
+                    
+                    if(subCalcResult) subCalcResult.style.display = 'block';
+                    if(btnSubNext) btnSubNext.disabled = false;
+                }
+            });
+    }
+    
+    if(subPeopleSelect) subPeopleSelect.addEventListener('change', () => {
+        if (subCurrentHours) { // Пересчитываем только если часы уже выбраны
+            updateSubCalculation();
+            saveBookingState();
+        }
+    });
+
+    // 5. Переход к ШАГУ 2
+    if (btnSubNext) {
+        btnSubNext.addEventListener('click', () => {
+            transformToSubscriptionDataStep();
+            saveBookingState();
+        });
+    }
+
+    // === ФУНКЦИЯ ТРАНСФОРМАЦИИ ИНТЕРФЕЙСА (ШАГ 2) ===
+    // Она делает из модуля бронирования модуль покупки
+function transformToSubscriptionDataStep() {
+    // 1. Показываем контейнер (чтобы не было белого экрана)
+    if(moduleBookByRoom) moduleBookByRoom.style.display = 'block';
+
+    // 2. Строим модуль
+    setupBookingModule(bookingModuleWrapper1, "Покупка абонемента");
+    
+    const w = bookingModuleWrapper1;
+    const moduleSubCalc = document.getElementById('module_subscription_calc');
+    const subBackBtn = document.getElementById('sub_calc_back_btn');
+
+    // 3. Скрываем калькулятор
+    if(moduleSubCalc) moduleSubCalc.style.display = 'none';
+    
+    // 4. Показываем Шаг 2 (Данные)
+    w.querySelector('#step1').classList.remove('visible');
+    w.querySelector('#step1').style.display = 'none';
+    
+    const s2 = w.querySelector('#step2');
+    s2.classList.remove('hidden');
+    s2.classList.add('visible');
+    s2.style.display = 'block';
+    
+    // Заголовок
+    const title = w.querySelector('#booking-section-title');
+    if(title) title.innerHTML = '<i class="fas fa-user-check"></i> Ваши данные (Шаг 2 из 4)';
+    
+    // === ЛОГИКА ВЕРХНЕЙ СТРЕЛКИ "НАЗАД" ===
+    const backBtn = w.querySelector('#module_back_btn');
+    if(backBtn) {
+        const newBack = backBtn.cloneNode(true);
+        backBtn.parentNode.replaceChild(newBack, backBtn);
+        
+        newBack.addEventListener('click', () => {
+            // Возврат в Калькулятор
+            w.innerHTML = ''; 
+            if(moduleBookByRoom) moduleBookByRoom.style.display = 'none';
+            if(moduleSubCalc) moduleSubCalc.style.display = 'block';
+            if(subBackBtn) subBackBtn.style.display = 'block';
+            
+            isSubscriptionMode = true; 
+            saveBookingState(); 
+        });
+    }
+
+    // === ЛОГИКА НИЖНЕЙ КНОПКИ "ОТМЕНИТЬ" (ФИКС) ===
+    const cancelBtn = w.querySelector('#cancel_hold_button');
+    if (cancelBtn) {
+        const newCancel = cancelBtn.cloneNode(true);
+        cancelBtn.parentNode.replaceChild(newCancel, cancelBtn);
+        
+        newCancel.addEventListener('click', () => {
+            // ТОЖЕ Возврат в Калькулятор (как на шаге оплаты)
+            w.innerHTML = ''; 
+            if(moduleBookByRoom) moduleBookByRoom.style.display = 'none';
+            if(moduleSubCalc) moduleSubCalc.style.display = 'block';
+            if(subBackBtn) subBackBtn.style.display = 'block';
+            
+            isSubscriptionMode = true; 
+            saveBookingState(); 
+        });
+    }
+    
+    // Сводка
+    const summary = w.querySelector('#booking_summary_text');
+    if(summary) {
+        summary.className = "mb-3 p-3 bg-light rounded-4 border small";
+        summary.innerHTML = `
+            <div class="d-flex justify-content-between border-bottom py-2">
+                <span class="text-secondary">Пакет часов:</span> 
+                <span class="fw-bold text-dark">${subCurrentHours} ч.</span>
+            </div>
+            <div class="d-flex justify-content-between pt-2">
+                <span class="text-secondary">К оплате:</span> 
+                <span class="fw-bold text-success fs-6">${subCurrentPrice} ₸</span>
+            </div>
+        `;
+    }
+    
+    // === ВАЛИДАЦИЯ И КНОПКА "ДАЛЕЕ" ===
+    const nextBtn = w.querySelector('#show_payment_button');
+    const newNext = nextBtn.cloneNode(true);
+    nextBtn.parentNode.replaceChild(newNext, nextBtn);
+    
+    newNext.disabled = true;
+
+    const phoneInput = w.querySelector('#client_phone');
+    const chk = w.querySelector('#agreement_checkbox');
+    const statusIcon = w.querySelector('#phone_status_icon');
+    let isPhoneCheckedSuccess = false;
+
+    function checkBtnState() {
+        if (isPhoneCheckedSuccess && chk.checked) {
+            newNext.disabled = false;
+        } else {
+            newNext.disabled = true;
+        }
+    }
+
+    if(chk) {
+        chk.checked = false; 
+        chk.addEventListener('change', checkBtnState);
+    }
+
+    if(phoneInput) {
+        phoneInput.addEventListener('input', () => {
+            isPhoneCheckedSuccess = false;
+            checkBtnState();
+            if(statusIcon) statusIcon.innerHTML = '';
+        });
+
+        phoneInput.addEventListener('blur', async () => {
+            const phone = phoneInput.value.replace(/\D/g, '');
+            if (phone.length < 10) return;
+
+            if(statusIcon) statusIcon.innerHTML = '<div class="spinner-border spinner-border-sm text-secondary" role="status"></div>';
+            
+            try {
+                const res = await fetch(`/api/check_wa_exists/?phone=${phone}`);
+                const data = await res.json();
+                
+                if (data.exists) {
+                    if(statusIcon) statusIcon.innerHTML = '<i class="fas fa-check-circle text-success fs-5"></i>';
+                    isPhoneCheckedSuccess = true;
+                } else {
+                    if(statusIcon) statusIcon.innerHTML = '<i class="fas fa-times-circle text-danger fs-5"></i>';
+                    isPhoneCheckedSuccess = false;
+                }
+            } catch (e) {
+                if(statusIcon) statusIcon.innerHTML = '<i class="fas fa-check-circle text-warning fs-5"></i>';
+                isPhoneCheckedSuccess = true; 
+            }
+            checkBtnState();
+        });
+    }
+
+    newNext.addEventListener('click', () => {
+        const nameVal = w.querySelector('#client_name').value;
+        const phoneVal = w.querySelector('#client_phone').value;
+        if(!nameVal || !phoneVal) { showMessage('error', 'Заполните все поля'); return; }
+        transformToSubscriptionPaymentStep(w);
+        saveBookingState();
+    });
+}
+
+
+
+function transformToSubscriptionPaymentStep(wrapper) {
+    const nameInp = wrapper.querySelector('#client_name');
+    const step2 = wrapper.querySelector('#step2');
+    const step3 = wrapper.querySelector('#step3');
+    const stepReceipt = wrapper.querySelector('#step_receipt');
+    const title = wrapper.querySelector('#booking-section-title');
+    const backBtn = wrapper.querySelector('#module_back_btn');
+
+    // 1. Переключаем шаги (Показываем ШАГ 3)
+    step2.classList.remove('visible');
+    step2.style.display = 'none'; // Просто скрываем, данные остаются в input
+    
+    step3.classList.remove('hidden');
+    step3.classList.add('visible');
+    step3.style.display = 'block';
+    
+    // 2. ЧИСТИМ ИНТЕРФЕЙС
+    const timerBlock = step3.querySelector('.bg-secondary.bg-opacity-10'); 
+    if(timerBlock) timerBlock.style.display = 'none';
+    
+    const segControl = step3.querySelector('.payment-segmented-control');
+    if(segControl) segControl.style.display = 'none';
+    
+    const paneSingle = step3.querySelector('#pane-single');
+    const paneSub = step3.querySelector('#pane-subscription');
+    if(paneSingle) paneSingle.style.display = 'block';
+    if(paneSub) paneSub.style.display = 'none';
+    
+    // 3. Заголовок
+    if(title) title.innerHTML = '<i class="fas fa-wallet"></i> Оплата абонемента (Шаг 3 из 4)';
+    
+    // === ЛОГИКА КНОПКИ НАЗАД (С ШАГА 3 НА ШАГ 2) ===
+    if(backBtn) {
+        const newBack = backBtn.cloneNode(true);
+        backBtn.parentNode.replaceChild(newBack, backBtn);
+        
+        newBack.addEventListener('click', () => {
+            // Скрываем 3, показываем 2
+            step3.classList.remove('visible');
+            step3.style.display = 'none';
+            
+            step2.classList.add('visible');
+            step2.style.display = 'block';
+            
+            // Возвращаем заголовок
+            if(title) title.innerHTML = '<i class="fas fa-user-check"></i> Ваши данные (Шаг 2 из 4)';
+            
+            // ВАЖНО: Возвращаем логику кнопки "Назад" для Шага 2 (чтобы она вела в калькулятор)
+            // Для этого просто вызываем трансформацию в Шаг 2, она перенастроит кнопку, 
+            // но так как HTML уже есть, она просто обновит листенеры.
+            // Но чтобы не сбрасывать поля, лучше вручную навесить листенер:
+            const resetBack = newBack.cloneNode(true);
+            newBack.parentNode.replaceChild(resetBack, newBack);
+            resetBack.addEventListener('click', () => {
+                 wrapper.innerHTML = ''; 
+                 const moduleSubCalc = document.getElementById('module_subscription_calc');
+                 if(moduleSubCalc) moduleSubCalc.style.display = 'block';
+                 const subBackBtn = document.getElementById('sub_calc_back_btn');
+                 if(subBackBtn) subBackBtn.style.display = 'block';
+            });
+            
+            saveBookingState();
+        });
+    }
+
+    // 4. Сводка
+    const sum3 = wrapper.querySelector('#booking_summary_text_step3');
+    if(sum3) {
+        sum3.className = "mb-3 p-3 bg-secondary bg-opacity-10 rounded-4 border border-secondary border-opacity-25 small";
+        sum3.innerHTML = `
+            <div class="d-flex justify-content-between border-bottom border-secondary border-opacity-25 py-2">
+                <span class="text-secondary">Покупатель:</span> 
+                <span class="fw-bold text-dark">${nameInp.value}</span>
+            </div>
+            <div class="d-flex justify-content-between border-bottom border-secondary border-opacity-25 py-2">
+                <span class="text-secondary">Пакет:</span> 
+                <span class="fw-bold text-dark">${subCurrentHours} часов</span>
+            </div>
+            <div class="d-flex justify-content-between pt-2">
+                <span class="text-secondary">К оплате:</span> 
+                <span class="fw-bold text-success fs-6">${subCurrentPrice} ₸</span>
+            </div>
+        `;
+    }
+    
+    // 5. Кнопка "Я оплатил" -> Переход на Шаг 4
+    const toReceiptBtn = step3.querySelector('#to_receipt_step_button');
+    const newToReceipt = toReceiptBtn.cloneNode(true);
+    toReceiptBtn.parentNode.replaceChild(newToReceipt, toReceiptBtn);
+    
+    newToReceipt.addEventListener('click', () => {
+         // Переход на Шаг 4
+         step3.style.display = 'none';
+         stepReceipt.style.display = 'block';
+         stepReceipt.classList.add('visible');
+         
+         if(title) title.innerHTML = '<i class="fas fa-check-circle"></i> Завершение покупки (4 из 4)';
+         
+         // === ЛОГИКА КНОПКИ НАЗАД (С ШАГА 4 НА ШАГ 3) ===
+         // 1. Верхняя стрелка
+         const backBtn4 = wrapper.querySelector('#module_back_btn');
+         const newBack4 = backBtn4.cloneNode(true);
+         backBtn4.parentNode.replaceChild(newBack4, backBtn4);
+         
+         newBack4.addEventListener('click', () => {
+             goBackToStep3From4(wrapper, step3, stepReceipt, title);
+         });
+
+         // 2. Кнопка "Назад к оплате" внизу
+         const bottomBackBtn = wrapper.querySelector('#back_to_payment_button');
+         if(bottomBackBtn) {
+             const newBottomBack = bottomBackBtn.cloneNode(true);
+             bottomBackBtn.parentNode.replaceChild(newBottomBack, bottomBackBtn);
+             newBottomBack.addEventListener('click', () => {
+                 goBackToStep3From4(wrapper, step3, stepReceipt, title);
+             });
+         }
+
+         // Настраиваем финальную кнопку
+         const finishBtn = stepReceipt.querySelector('#confirm_booking_button');
+         finishBtn.innerHTML = '<i class="fas fa-paper-plane me-2"></i> Отправить чек и активировать';
+         const newFinish = finishBtn.cloneNode(true);
+         finishBtn.parentNode.replaceChild(newFinish, finishBtn);
+         newFinish.addEventListener('click', () => {
+             finalizeSubscriptionPurchase(wrapper, nameInp.value, wrapper.querySelector('#client_phone').value);
+         });
+         
+         saveBookingState(); 
+    });
+    
+    // 6. Кнопка "Отмена" на шаге 3
+    const cancelBtn = step3.querySelector('#cancel_pay_step_button');
+    const newCancel = cancelBtn.cloneNode(true);
+    cancelBtn.parentNode.replaceChild(newCancel, cancelBtn);
+    newCancel.addEventListener('click', () => {
+        wrapper.innerHTML = '';
+        const modCalc = document.getElementById('module_subscription_calc');
+        if(modCalc) modCalc.style.display = 'block';
+        saveBookingState();
+    });
+}
+
+// Вспомогательная функция для возврата с 4 на 3
+function goBackToStep3From4(wrapper, step3, stepReceipt, title) {
+    // 1. Принудительно скрываем Шаг 4 (Чек)
+    if (stepReceipt) {
+        stepReceipt.style.display = 'none';
+        stepReceipt.classList.remove('visible');
+        stepReceipt.classList.add('hidden');
+    }
+    
+    // 2. Принудительно скрываем Шаг 2 (Данные), который мог вылезти
+    const step2 = wrapper.querySelector('#step2');
+    if (step2) {
+        step2.style.display = 'none';
+        step2.classList.remove('visible');
+        step2.classList.add('hidden');
+    }
+
+    // 3. Показываем Шаг 3 (Оплата)
+    if (step3) {
+        step3.style.display = 'block';
+        step3.classList.remove('hidden');
+        step3.classList.add('visible');
+    }
+    
+    if(title) title.innerHTML = '<i class="fas fa-wallet"></i> Оплата абонемента (Шаг 3 из 4)';
+    
+    // 4. Перенастраиваем кнопки, чтобы с Шага 3 можно было уйти на Шаг 2
+    transformToSubscriptionPaymentStep(wrapper);
+    
+    saveBookingState();
+}
+// Внутри booking_page.html -> finalizeSubscriptionPurchase
+
+async function finalizeSubscriptionPurchase(wrapper, name, phone) {
+    const fileInput = wrapper.querySelector('#receipt_file');
+    const numInput = wrapper.querySelector('#receipt_number');
+    const btn = wrapper.querySelector('#confirm_booking_button');
+    
+    const file = fileInput.files[0];
+    const num = numInput.value.trim();
+
+    if (!file && num.length < 5) {
+        showMessage('error', "Загрузите чек или введите номер (минимум 5 символов)"); return;
+    }
+
+    btn.disabled = true;
+    btn.innerHTML = '<span class="loading-spinner"></span> Обработка...';
+
+    let fileData = null;
+    let fileName = null;
+
+    if (file) {
+         fileData = await new Promise(r => {
+            const reader = new FileReader();
+            reader.onload = () => r(reader.result);
+            reader.readAsDataURL(file);
+        });
+        fileName = file.name;
+    }
+
+    try {
+        const res = await fetch('/api/buy_subscription/', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                client_name: name,
+                client_phone: phone,
+                hours: subCurrentHours,
+                price: subCurrentPrice,
+                receipt_file_data: fileData,
+                receipt_file_name: fileName,
+                receipt_number: num
+            })
+        });
+        const data = await res.json();
+        
+        if (data.success) {
+            // === КРАСИВЫЙ ЭКРАН УСПЕХА ===
+            
+            // Рассчитаем дату истечения (Сегодня + 90 дней)
+            const today = new Date();
+            const expireDate = new Date(today);
+            expireDate.setDate(today.getDate() + 90);
+            const expireDateStr = expireDate.toLocaleDateString('ru-RU'); // ДД.ММ.ГГГГ
+
+            wrapper.innerHTML = `
+                <div id="booking-section" class="info-section animated-item">
+                    <div class="d-flex align-items-center mb-4">
+                        <h4 class="info-title mb-0" style="display: flex; align-items: center; gap: 10px;">
+                            <i class="fas fa-check-double text-success"></i> Покупка успешна!
+                        </h4>
+                    </div>
+
+                    <div class="booking-step visible" style="display: block; height: auto; opacity: 1;">
+                        
+                        <div class="w-100 bg-light rounded-4 p-4 mb-4 text-center border border-success border-opacity-25 shadow-sm">
+                            <div class="text-muted small text-uppercase fw-bold mb-1" style="font-size: 0.75rem; letter-spacing: 1px;">Вы приобрели</div>
+                            <div class="fw-bold text-success display-2 lh-1 my-2">${subCurrentHours} ч.</div>
+                            <div class="small text-secondary fw-bold">Пакет часов</div>
+                        </div>
+
+                        <div class="d-flex align-items-center gap-3 p-3 rounded-4 bg-secondary bg-opacity-10 mb-4 border border-secondary border-opacity-25">
+                            <i class="fas fa-hourglass-half fs-1 text-warning"></i>
+                            <div>
+                                <div class="fw-bold text-dark">Статус активации</div>
+                                <div class="small text-dark lh-sm">
+                                    Часы будут зачислены на баланс номера 
+                                    <span class="fw-bold text-nowrap">${phone}</span> 
+                                    в ближайшее время после проверки чека администратором.
+                                </div>
+                            </div>
+                        </div>
+
+                        <h6 class="fw-bold text-muted small text-uppercase mb-2 ms-1">Детали абонемента:</h6>
+                        <div class="mb-4 small" style="font-size: 0.95rem;">
+                            <div class="d-flex justify-content-between align-items-center py-2 border-bottom">
+                                <span class="text-secondary">Срок действия:</span> 
+                                <span class="fw-bold text-dark">90 дней (до ${expireDateStr})</span>
+                            </div>
+                            <div class="d-flex justify-content-between align-items-center py-2 border-bottom">
+                                <span class="text-secondary">Покупатель:</span> 
+                                <span class="fw-bold text-dark">${name}</span>
+                            </div>
+                            <div class="d-flex justify-content-between align-items-center py-2">
+                                <span class="text-secondary">Сумма оплаты:</span> 
+                                <span class="fw-bold text-success">${subCurrentPrice} ₸</span>
+                            </div>
+                        </div>
+
+                        <button onclick="window.location.reload()" class="btn-zen-primary py-3 shadow"><i class="fas fa-check me-2"></i> Отлично, спасибо</button>
+
+                        <div class="text-center mt-4">
+                            <a href="https://wa.me/{{ settings.phone|default:'77073910808'|cut:' ' }}" target="_blank" class="btn btn-link text-decoration-none text-muted small p-0">
+                                <i class="fab fa-whatsapp text-success me-1"></i> Связаться с администратором
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            `;
+            
+            // Скрываем калькулятор, чтобы не мешал
+            const modCalc = document.getElementById('module_subscription_calc');
+            if(modCalc) modCalc.style.display = 'none';
+            
+            // Скроллим наверх
+            wrapper.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            
+            clearBookingState(); 
+        } else {
+            showMessage('error', data.error || 'Ошибка сервера');
+            btn.disabled = false;
+            btn.innerHTML = '<i class="fas fa-paper-plane me-2"></i> Отправить чек и активировать';
+        }
+    } catch(e) {
+        showMessage('error', "Ошибка соединения. Проверьте интернет.");
+        console.error(e);
+        btn.disabled = false;
+        btn.innerHTML = '<i class="fas fa-paper-plane me-2"></i> Отправить чек и активировать';
+    }
+}
+
+
+
     let roomId = null;
     let roomName = null;
     let currentScenario = 'room'; 
@@ -923,7 +2088,7 @@ document.addEventListener("DOMContentLoaded", function () {
     const roomSelectionContainer = document.getElementById('room_selection_container');
     const roomChoiceGrid = document.querySelector('.room-choice-grid');
     const btnAnyRoom = document.getElementById('btn_any_room');
-
+    
     const moduleBookByRoom = document.getElementById('module_book_by_room');
     const bookingModuleWrapper1 = document.getElementById('booking-module-wrapper-1');
 
@@ -1099,6 +2264,283 @@ document.addEventListener("DOMContentLoaded", function () {
             bookingSectionTitle.innerHTML = `<i class="fas fa-check-circle text-success"></i> ${roomName} кабинет (Шаг 2 из 5)`;
         }
         setDefaultDate(bookingDateInput);
+
+
+// === ЛОГИКА АБОНЕМЕНТОВ (ВНУТРИ setupBookingModule) ===
+// === ЛОГИКА АБОНЕМЕНТОВ (ВНУТРИ setupBookingModule) ===
+    const btnCheckBalance = wrapperElement.querySelector('#btn_check_balance');
+    const subPhoneDisplay = wrapperElement.querySelector('#sub_check_phone_display');
+    const subBalanceResult = wrapperElement.querySelector('#sub_balance_result');
+    const subBalanceValue = wrapperElement.querySelector('#sub_balance_value');
+    const subBalanceMsg = wrapperElement.querySelector('#sub_balance_msg');
+    const btnConfirmSub = wrapperElement.querySelector('#btn_confirm_subscription');
+    const subBuyOffer = wrapperElement.querySelector('#sub_buy_offer');
+    
+    const tabSubscription = wrapperElement.querySelector('#tab-subscription');
+    const tabSingle = wrapperElement.querySelector('#tab-single'); // <-- Находим вторую вкладку
+
+    // 1. При клике на вкладку АБОНЕМЕНТ
+// === ЛОГИКА ПЕРЕКЛЮЧАТЕЛЯ (БЛОКИ) ===
+    const segSingle = wrapperElement.querySelector('#seg_single');
+    const segSub = wrapperElement.querySelector('#seg_subscription');
+    
+    const paneSingle = wrapperElement.querySelector('#pane-single');
+    const paneSub = wrapperElement.querySelector('#pane-subscription');
+
+    // Функция переключения
+    const switchPaymentTab = (mode) => {
+        if (mode === 'subscription') {
+            // Включаем Абонемент
+            segSingle.classList.remove('active');
+            segSub.classList.add('active');
+            
+            paneSingle.style.display = 'none';
+            paneSub.style.display = 'block';
+            
+            // Логика обновления номера (копируем из прошлого кода)
+            if (clientPhoneInput && typeof subPhoneDisplay !== 'undefined') {
+                 // Находим элементы внутри текущего wrapperElement, если они не глобальны
+                 const disp = wrapperElement.querySelector('#sub_check_phone_display');
+                 if(disp) disp.textContent = clientPhoneInput.value;
+                 
+                 // Сброс UI проверок
+                 const resDiv = wrapperElement.querySelector('#sub_balance_result');
+                 const btnConf = wrapperElement.querySelector('#btn_confirm_subscription');
+                 const btnCheck = wrapperElement.querySelector('#btn_check_balance');
+                 const buyOffer = wrapperElement.querySelector('#sub_buy_offer');
+                 
+                 if(resDiv) resDiv.style.display = 'none';
+                 if(btnConf) btnConf.style.display = 'none';
+                 if(buyOffer) buyOffer.style.display = 'none';
+                 if(btnCheck) {
+                     btnCheck.style.display = 'inline-block';
+                     btnCheck.disabled = false;
+                     btnCheck.innerHTML = '<i class="fas fa-sync-alt me-1"></i> Проверить баланс';
+                 }
+            }
+        } else {
+            // Включаем Разовую
+            segSub.classList.remove('active');
+            segSingle.classList.add('active');
+            
+            paneSub.style.display = 'none';
+            paneSingle.style.display = 'block';
+        }
+        
+        updateStep3ClientInfo(); // Обновить цену
+        saveBookingState();      // Сохранить
+    };
+
+    if (segSingle && segSub) {
+        segSingle.addEventListener('click', () => switchPaymentTab('single'));
+        segSub.addEventListener('click', () => switchPaymentTab('subscription'));
+    }
+
+    // 3. Проверка баланса (остается без изменений)
+    if (btnCheckBalance) {
+        btnCheckBalance.addEventListener('click', async () => {
+            const phone = clientPhoneInput.value.replace(/\D/g, '');
+            if (!phone) return;
+            
+            btnCheckBalance.disabled = true;
+            btnCheckBalance.innerHTML = '<span class="spinner-border spinner-border-sm"></span>';
+            
+            try {
+                const res = await fetch(`/api/check_balance/?phone=${phone}`);
+                const data = await res.json();
+                
+                if(subBalanceResult) subBalanceResult.style.display = 'block';
+                btnCheckBalance.style.display = 'none'; 
+                
+                if (data.success && data.found) {
+                    const balance = parseFloat(data.balance);
+                    const required = parseFloat(selectedSlot.duration);
+                    
+                    if(subBalanceValue) subBalanceValue.textContent = balance;
+                    
+                    if (data.is_expired) {
+                        subBalanceValue.style.color = 'red';
+                        subBalanceMsg.innerHTML = `<span class="text-danger">Срок действия истек (${data.expires_date})</span>`;
+                        if(subBuyOffer) subBuyOffer.style.display = 'block';
+                    } else if (balance >= required) {
+                        subBalanceValue.style.color = 'var(--zen-green)';
+                        subBalanceMsg.innerHTML = `<span class="text-success">Хватает для оплаты (${required} ч)</span>`;
+                        if(btnConfirmSub) btnConfirmSub.style.display = 'block'; 
+                    } else {
+                        subBalanceValue.style.color = '#ffc107'; 
+                        subBalanceMsg.innerHTML = `<span class="text-warning">Не хватает (нужно ${required} ч)</span>`;
+                        if(subBuyOffer) subBuyOffer.style.display = 'block';
+                    }
+                } else {
+                    if(subBalanceValue) subBalanceValue.textContent = "0";
+                    if(subBalanceMsg) subBalanceMsg.textContent = "Абонемент не найден";
+                    if(subBuyOffer) subBuyOffer.style.display = 'block';
+                }
+            } catch (e) {
+                console.error(e);
+                if(subBalanceMsg) subBalanceMsg.textContent = "Ошибка проверки";
+            } finally {
+                 if (!subBalanceResult || subBalanceResult.style.display === 'none') {
+                    btnCheckBalance.disabled = false;
+                    btnCheckBalance.innerHTML = '<i class="fas fa-sync-alt me-1"></i> Проверить снова';
+                 }
+            }
+        });
+    }
+    
+    // 4. Списание и Бронь (остается без изменений)
+// 4. Списание и Бронь (ОБНОВЛЕНО: Передаем баланс)
+    if (btnConfirmSub) {
+        btnConfirmSub.addEventListener('click', async () => {
+            if (!selectedSlot || !holdId) return;
+            btnConfirmSub.disabled = true;
+            btnConfirmSub.innerHTML = '<span class="loading-spinner"></span> Бронируем...';
+            try {
+                const response = await fetch('/api/create_booking/', { 
+                    method: 'POST', 
+                    headers: { 'Content-Type': 'application/json', 'X-CSRFToken': getCookie('csrftoken') }, 
+                    body: JSON.stringify({ 
+                        payment_method: 'subscription', 
+                        hold_id: holdId, 
+                        room_id: roomId, 
+                        client_name: clientNameInput.value, 
+                        client_phone: clientPhoneInput.value.replace(/\D/g, ''),
+                        date: selectedSlot.date,
+                        start_time: selectedSlot.start,
+                        duration: selectedSlot.duration,
+                        people_count: selectedSlot.people
+                    }) 
+                }); 
+                const result = await response.json();
+                if (!result.success) throw new Error(result.error);
+                
+                stopTimer();
+                const successData = {
+                    roomName: roomName,
+                    date: selectedSlot.date,
+                    time: `${selectedSlot.start} (${selectedSlot.duration} ч)`,
+                    price: "Абонемент", 
+                    clientName: clientNameInput.value,
+                    clientPhone: clientPhoneInput.value,
+                    studio_details: result.studio_details,
+                    balance: result.new_balance // <--- ПЕРЕДАЕМ БАЛАНС
+                };
+                renderSuccessScreen(successData);
+                clearBookingState(); 
+            } catch (error) {
+                showMessage('error', error.message, true);
+                btnConfirmSub.disabled = false;
+                btnConfirmSub.innerHTML = '<i class="fas fa-check-circle me-2"></i> Списать часы и забронировать';
+            }
+        });
+    }
+
+// === ЛОГИКА ПРОВЕРКИ НОМЕРА (GREEN API) ===
+    const phoneInput = wrapperElement.querySelector('#client_phone');
+    const statusIcon = wrapperElement.querySelector('#phone_status_icon');
+    const errorMsg = wrapperElement.querySelector('#phone_error_msg');
+    const nextBtn = wrapperElement.querySelector('#show_payment_button');
+    let isPhoneVerified = false; // Флаг проверки
+
+    if (phoneInput) {
+        phoneInput.addEventListener('blur', async () => {
+            const phone = phoneInput.value.replace(/\D/g, '');
+            
+            // Если номер слишком короткий, сбрасываем
+            if (phone.length < 10) {
+                setStatus('none');
+                return;
+            }
+
+            // Ставим статус "Загрузка"
+            setStatus('loading');
+            nextBtn.disabled = true; // Блокируем пока проверяем
+
+            try {
+                const res = await fetch(`/api/check_wa_exists/?phone=${phone}`);
+                const data = await res.json();
+
+                if (data.exists) {
+                    setStatus('success');
+                    isPhoneVerified = true;
+                    checkNextButtonState(); // Проверяем галочку и разблокируем
+                } else {
+                    setStatus('error');
+                    isPhoneVerified = false;
+                }
+            } catch (e) {
+                console.error(e);
+                // Если ошибка сети, лучше разрешить (soft check)
+                setStatus('success'); 
+                isPhoneVerified = true;
+                checkNextButtonState();
+            }
+        });
+
+        // Сброс при вводе (если начал менять цифры - проверка слетает)
+        phoneInput.addEventListener('input', () => {
+            if (isPhoneVerified) {
+                isPhoneVerified = false;
+                setStatus('none');
+                nextBtn.disabled = true;
+            }
+        });
+    }
+
+    function setStatus(state) {
+        if (!statusIcon) return;
+        errorMsg.style.display = 'none';
+        
+        if (state === 'loading') {
+            statusIcon.innerHTML = '<div class="spinner-border spinner-border-sm text-secondary" role="status"></div>';
+        } else if (state === 'success') {
+            statusIcon.innerHTML = '<i class="fas fa-check-circle text-success fs-5"></i>';
+        } else if (state === 'error') {
+            statusIcon.innerHTML = '<i class="fas fa-times-circle text-danger fs-5"></i>';
+            errorMsg.style.display = 'block';
+        } else {
+            statusIcon.innerHTML = '';
+        }
+    }
+
+    // Обновленная проверка кнопки "Далее"
+    function checkNextButtonState() {
+        const chk = wrapperElement.querySelector('#agreement_checkbox');
+        // Кнопка активна ТОЛЬКО если: Номер проверен И Галочка стоит
+        if (isPhoneVerified && chk && chk.checked) {
+            nextBtn.disabled = false;
+        } else {
+            nextBtn.disabled = true;
+        }
+    }
+
+    // Добавляем проверку в чекбокс тоже
+    const agreeChk = wrapperElement.querySelector('#agreement_checkbox');
+    if (agreeChk) {
+        // Удаляем старый слушатель (если был простой) и ставим умный
+        const newChk = agreeChk.cloneNode(true);
+        agreeChk.parentNode.replaceChild(newChk, agreeChk);
+        
+        newChk.addEventListener('change', checkNextButtonState);
+    }
+
+// === ЛОГИКА БЫСТРОЙ ПОКУПКИ ИЗ ОШИБКИ БАЛАНСА ===
+    const quickBuyBtn = wrapperElement.querySelector('#btn_quick_buy_sub_internal');
+    
+    if (quickBuyBtn) {
+        quickBuyBtn.addEventListener('click', () => {
+            // 1. Скрываем текущие модули (календарь или поиск)
+            if(typeof moduleFindByTime !== 'undefined' && moduleFindByTime) moduleFindByTime.style.display = 'none';
+            if(typeof moduleBookByRoom !== 'undefined' && moduleBookByRoom) moduleBookByRoom.style.display = 'none';
+            
+            // 2. Очищаем текущий враппер поиска (если был)
+            if(typeof bookingModuleWrapper2 !== 'undefined' && bookingModuleWrapper2) bookingModuleWrapper2.innerHTML = '';
+
+            // 3. Запускаем стандартный флоу покупки
+            startSubscriptionFlow();
+            saveBookingState();
+        });
+    }
     }
 
     // --- УПРАВЛЕНИЕ ИНТЕРФЕЙСОМ ---
@@ -1283,35 +2725,47 @@ document.addEventListener("DOMContentLoaded", function () {
     
     // --- STATE ---
 function saveBookingState() { 
-        try { 
-            // Ищем чекбокс (он может быть в step3)
-            const payCheck = document.getElementById('payment_agreement_checkbox');
+    try { 
+        const payCheck = document.getElementById('payment_agreement_checkbox');
+        
+        const isTypeSel = (typeof typeSelectionContainer !== 'undefined' && typeSelectionContainer) 
+                          ? typeSelectionContainer.style.display === 'block' 
+                          : false;
+        const activeSegSub = document.querySelector('.payment-segment#seg_subscription');
+        
+        const state = { 
+            scenario: currentScenario, 
+            roomId: roomId, 
+            roomName: roomName, 
+            selectedSlot: selectedSlot, 
+            holdId: holdId, 
+            timerEndTime: timerEndTime, 
+            currentStep: getCurrentStep(), 
+            isTimerRefreshed: isTimerRefreshed, 
+            agreement1: document.getElementById('agreement_checkbox')?.checked || false,
+            paymentAgreement: payCheck ? payCheck.checked : false, 
+            isSubscriptionPayment: activeSegSub ? activeSegSub.classList.contains('active') : false,
+            date: bookingDateInput ? bookingDateInput.value : null, 
+            duration: bookingDurationSelect ? bookingDurationSelect.value : null, 
+            people: bookingPeopleInput ? bookingPeopleInput.value : null, 
+            client_name: clientNameInput ? clientNameInput.value : null, 
+            client_phone: clientPhoneInput ? clientPhoneInput.value : null, 
             
-            const state = { 
-                scenario: currentScenario, 
-                roomId: roomId, 
-                roomName: roomName, 
-                selectedSlot: selectedSlot, 
-                holdId: holdId, 
-                timerEndTime: timerEndTime, 
-                currentStep: getCurrentStep(),
-                isTimerRefreshed: isTimerRefreshed, 
-                agreement1: document.getElementById('agreement_checkbox')?.checked || false,
-                // === НОВОЕ: Сохраняем состояние галочки ===
-                paymentAgreement: payCheck ? payCheck.checked : false, 
-                // ==========================================
-                
-                date: bookingDateInput ? bookingDateInput.value : null, 
-                duration: bookingDurationSelect ? bookingDurationSelect.value : null, 
-                people: bookingPeopleInput ? bookingPeopleInput.value : null, 
-                client_name: clientNameInput ? clientNameInput.value : null, 
-                client_phone: clientPhoneInput ? clientPhoneInput.value : null, 
-                findDate: findDateInput ? findDateInput.value : null, 
-                findTime: findTimeInput ? findTimeInput.value : null, 
-            }; 
-            sessionStorage.setItem(STORAGE_KEY, JSON.stringify(state)); 
-        } catch (e) { console.error(e); } 
-    }
+            // === АБОНЕМЕНТ (Сюда добавили цену!) ===
+            isSubscriptionMode: typeof isSubscriptionMode !== 'undefined' ? isSubscriptionMode : false,
+            subHours: typeof subCurrentHours !== 'undefined' ? subCurrentHours : 5,
+            subPeople: typeof subPeopleSelect !== 'undefined' ? subPeopleSelect.value : '1',
+            subPrice: typeof subCurrentPrice !== 'undefined' ? subCurrentPrice : 0, // <--- ВАЖНО: СОХРАНЯЕМ ЦЕНУ
+            // ================================
+
+            isTypeSelection: isTypeSel,
+            activeRoomBtn: document.querySelector('.room-choice-btn.active')?.dataset.roomId || null
+        }; 
+        sessionStorage.setItem(STORAGE_KEY, JSON.stringify(state)); 
+    } catch (e) { console.error("Save state error:", e); } 
+}
+
+
     function loadBookingState() { try { const saved = sessionStorage.getItem(STORAGE_KEY); if (saved) { const state = JSON.parse(saved); if (state.timerEndTime && state.timerEndTime <= Date.now()) { if (state.holdId) cancelHold(false, state.holdId); clearBookingState(); return null; } return state; } } catch (e) { console.error(e); } return null; }
     function clearBookingState() { sessionStorage.removeItem(STORAGE_KEY); }
 function restoreBookingState(state) { 
@@ -1377,6 +2831,26 @@ function restoreBookingState(state) {
         if (currentStep === 1 && roomId) {
             fetchSlots(true);
         }
+
+        // ... (конец функции restoreBookingState) ...
+
+// Восстановление Переключателя Оплаты
+    setTimeout(() => {
+        if (state.isSubscriptionPayment) {
+            // Если был абонемент - кликаем по нему программно
+            const subBtn = document.getElementById('seg_subscription');
+            // Или ищем внутри активного враппера
+            let w = (roomId) ? bookingModuleWrapper1 : bookingModuleWrapper2;
+            const subBtnInMod = w ? w.querySelector('#seg_subscription') : null;
+            
+            if (subBtnInMod) subBtnInMod.click();
+        } else {
+            // По дефолту разовая, можно кликнуть для уверенности
+            let w = (roomId) ? bookingModuleWrapper1 : bookingModuleWrapper2;
+            const singleBtn = w ? w.querySelector('#seg_single') : null;
+            if(singleBtn) singleBtn.click();
+        }
+    }, 150); // Чуть больше задержка
     }
     function restoreSearchState(state) { if (!state || !findDateInput) return; if (findDateInput && state.findDate) findDateInput.value = state.findDate; if (findTimeInput && state.findTime) findTimeInput.value = state.findTime; if (findDurationSelect && state.duration) findDurationSelect.value = state.duration; if (findPeopleInput && state.people) findPeopleInput.value = state.people; }
     
@@ -1516,7 +2990,7 @@ function updateSummaryText() {
             if (roomSelectionContainer) roomSelectionContainer.style.display = 'none'; if (searchInterfaceContainer) searchInterfaceContainer.style.display = 'block'; if (moduleFindByTime) moduleFindByTime.style.display = 'block';
             if (activeSearchCard && activeSearchCardHTML) { activeSearchCard.innerHTML = activeSearchCardHTML; activeSearchCard.className = activeSearchCardClass; activeSearchCard.style = ''; activeSearchCard = null; }
         } else { if (roomSelectionContainer) roomSelectionContainer.style.display = 'block'; if (moduleBookByRoom) moduleBookByRoom.style.display = 'block'; }
-        if (currentHoldId) { try { fetch('/api/cancel_hold/', { method: 'POST', headers: { 'Content-Type': 'application/json', 'X-CSRFToken': getCookie('csrftoken') }, body: JSON.stringify({ hold_id: currentHoldId }) }); if (showCancelMessage) showMessage('info', 'Резерв отменен', true); } catch (e) { console.error(e); } } else { if (showCancelMessage) showMessage('info', 'Резерв отменен.', true); } 
+        if (currentHoldId) { try { fetch('/api/cancel_hold/', { method: 'POST', headers: { 'Content-Type': 'application/json', 'X-CSRFToken': getCookie('csrftoken') }, body: JSON.stringify({ hold_id: currentHoldId }) }); if (showCancelMessage) showMessage('info', 'Отменено', true); } catch (e) { console.error(e); } } else { if (showCancelMessage) showMessage('info', 'Отменено', true); } 
     }
     
     function getCookie(name) { let cookieValue = null; if (document.cookie && document.cookie !== '') { const cookies = document.cookie.split(';'); for (let i = 0; i < cookies.length; i++) { const cookie = cookies[i].trim(); if (cookie.substring(0, name.length + 1) === (name + '=')) { cookieValue = decodeURIComponent(cookie.substring(name.length + 1)); break; } } } return cookieValue; }
@@ -1524,30 +2998,67 @@ function updateSummaryText() {
     
 // === ОБНОВЛЕНИЕ ДАННЫХ КЛИЕНТА (ШАГ 3 - ОПЛАТА) ===
 // === ОБНОВЛЕНИЕ ДАННЫХ КЛИЕНТА (ШАГ 3) ===
-    function updateStep3ClientInfo() {
+// === ОБНОВЛЕНИЕ ДАННЫХ КЛИЕНТА (ШАГ 3) ===
+function updateStep3ClientInfo() {
         let activeWrapper = (currentScenario === 'room') ? bookingModuleWrapper1 : bookingModuleWrapper2;
-        if (!activeWrapper) return;
+        if (!activeWrapper) activeWrapper = document; 
         
         const summaryStep3 = activeWrapper.querySelector('#booking_summary_text_step3');
-        if (!summaryStep3) return;
+        const name = clientNameInput ? clientNameInput.value.trim() : '';
+        const phone = clientPhoneInput ? clientPhoneInput.value.trim() : '';
         
-        const name = clientNameInput.value.trim();
-        const phone = clientPhoneInput.value.trim();
-        if (!name && !phone) return;
+        // --- ПРОВЕРКА: Абонемент выбран, если у кнопки есть класс active ---
+        const segSub = activeWrapper.querySelector('#seg_subscription');
+        const isSubscription = segSub && segSub.classList.contains('active');
+        // -------------------------
 
-        // Берем данные слота, если они есть
-        if (!selectedSlot) return;
+        // ... (дальше код функции остается без изменений) ...
+        // -------------------------
+
+        // ... (дальше код функции остается без изменений) ...
+        // ---------------------------------------------------
+        
+        // Обновление номера для абонемента
+        const subPhoneDisplay = activeWrapper.querySelector('#sub_check_phone_display');
+        const subBalanceResult = activeWrapper.querySelector('#sub_balance_result');
+        const btnCheckBalance = activeWrapper.querySelector('#btn_check_balance');
+        const btnConfirmSub = activeWrapper.querySelector('#btn_confirm_subscription');
+        const subBuyOffer = activeWrapper.querySelector('#sub_buy_offer');
+
+        if (subPhoneDisplay && phone) {
+            subPhoneDisplay.textContent = phone;
+            // Сброс интерфейса при обновлении
+            if(subBalanceResult) subBalanceResult.style.display = 'none';
+            if(btnConfirmSub) btnConfirmSub.style.display = 'none';
+            if(subBuyOffer) subBuyOffer.style.display = 'none';
+            if(btnCheckBalance) {
+                btnCheckBalance.style.display = 'inline-block';
+                btnCheckBalance.disabled = false;
+                btnCheckBalance.innerHTML = '<i class="fas fa-sync-alt me-1"></i> Проверить баланс';
+            }
+        }
+
+        if (!summaryStep3 || (!name && !phone) || !selectedSlot) return;
 
         let peopleLabel = String(selectedSlot.people);
         if (peopleLabel === '1') peopleLabel = '1-3';
         if (peopleLabel === '4') peopleLabel = '4-8';
 
-        // Полная сводка (как на прошлых шагах) + Имя и Телефон
+        // --- 2. ФОРМИРУЕМ СТРОКУ ЦЕНЫ ---
+        // Если Абонемент - строку с ценой НЕ создаем (будет пусто)
+        // Если Разовая - показываем цену
+        let priceRowHtml = '';
+        if (!isSubscription) {
+            priceRowHtml = `
+            <div class="d-flex justify-content-between align-items-center py-2 border-bottom">
+                <span class="text-secondary">Сумма:</span> <span class="fw-bold text-success">${selectedSlot.price} ₸</span>
+            </div>`;
+        }
+        // -------------------------------
+
         const fullSummaryHTML = `
             <div class="mb-3 small text-start" style="font-size: 0.9rem;">
-                <div class="d-flex justify-content-between align-items-center py-2 border-bottom">
-                    <span class="text-secondary">Сумма:</span> <span class="fw-bold text-success">${selectedSlot.price} ₸</span>
-                </div>
+                ${priceRowHtml}
                 <div class="d-flex justify-content-between align-items-center py-2 border-bottom">
                     <span class="text-secondary">Имя:</span> <span class="fw-bold text-dark">${name}</span>
                 </div>
@@ -1567,6 +3078,8 @@ function updateSummaryText() {
 
         summaryStep3.innerHTML = fullSummaryHTML;
     }
+    // Элементы
+
     async function handleShowPayment() { 
         if (!selectedSlot || !holdId) { showMessage('error', 'Выберите время заново.', true); handleBackToSlots(); return; }
         if (timerEndTime && Date.now() >= timerEndTime) { showMessage('error', 'Время истекло.', true); cancelHold(false); return; }
@@ -1668,6 +3181,7 @@ function handleToReceiptStep() {
         showStep(4); // Переходим к чеку
     }
     // === ОПРЕДЕЛЯЕМ ФУНКЦИЮ RENDER УСПЕХА ВНУТРИ DOMContentLoaded ===
+// === ОПРЕДЕЛЯЕМ ФУНКЦИЮ RENDER УСПЕХА ВНУТРИ DOMContentLoaded ===
     function renderSuccessScreen(data) {
         let container = null;
         if (bookingModuleWrapper1 && bookingModuleWrapper1.innerHTML.trim() !== "") { container = bookingModuleWrapper1; } 
@@ -1679,23 +3193,35 @@ function handleToReceiptStep() {
         const realAddress = details.address || "Адрес уточняется у администратора";
         const enterInstr = details.enter_instruction || "";
         const generalInfo = details.general_info || "";
-const formattedGeneralInfo = generalInfo.replace(/\n/g, '<br>');
+        const formattedGeneralInfo = generalInfo.replace(/\n/g, '<br>');
         
-        // 1. Меняем переносы на BR
         let formattedEnterInstr = enterInstr.replace(/\n/g, '<br>');
-        // 2. УДАЛЯЕМ ЛЮБЫЕ ССЫЛКИ, ЧТОБЫ ОНИ НЕ ДУБЛИРОВАЛИСЬ
         formattedEnterInstr = formattedEnterInstr.replace(/(https?:\/\/[^\s]+)/g, '');
+
+        // === НОВОЕ: БЛОК БАЛАНСА ===
+        let balanceHTML = '';
+        if (data.balance) {
+            balanceHTML = `
+            <div class="w-100 bg-light rounded-4 p-3 mb-4 text-center border border-success border-opacity-25 shadow-sm">
+                <div class="text-muted small text-uppercase fw-bold mb-1" style="font-size: 0.75rem; letter-spacing: 1px;">Остаток абонемента</div>
+                <div class="fw-bold text-success display-6">${data.balance} ч.</div>
+            </div>
+            `;
+        }
+        // ===========================
 
         const successHTML = `
             <div id="booking-section" class="info-section animated-item">
                 <div class="d-flex align-items-center mb-4">
                     <h4 class="info-title mb-0" style="display: flex; align-items: center; gap: 10px;">
-                        <i class="fas fa-check-double text-success"></i> Бронь подтверждена! (Шаг 5 из 5)
+                        <i class="fas fa-check-double text-success"></i> Бронь подтверждена!
                     </h4>
                 </div>
 
                 <div class="booking-step visible" style="display: block; height: auto; opacity: 1;">
                     
+                    ${balanceHTML} 
+
                     <div class="d-flex align-items-center gap-3 p-3 rounded-4 bg-secondary bg-opacity-10 mb-4 border border-secondary border-opacity-25">
                         <i class="fas fa-key fs-1 text-warning"></i>
                         <div>
@@ -1792,16 +3318,13 @@ const formattedGeneralInfo = generalInfo.replace(/\n/g, '<br>');
 
                     <button onclick="window.location.reload()" class="btn-zen-primary py-3 shadow"><i class="fas fa-check me-2"></i> Всё понятно, спасибо</button>
 
-                    
                     <div class="text-center mt-4">
-                        <a href="https://wa.me/${adminPhoneClean}" target="_blank" class="btn btn-link text-decoration-none text-muted small p-0">
+                        <a href="https://wa.me/{{ settings.phone|default:'77073910808'|cut:' ' }}" target="_blank" class="btn btn-link text-decoration-none text-muted small p-0">
                             <i class="fab fa-whatsapp text-success me-1"></i> Связаться с администратором
                         </a>
                     </div>
                 </div>
             </div>`;
-
-
             
         container.innerHTML = successHTML;
         if (roomSelectionContainer) roomSelectionContainer.style.display = 'none';
@@ -1940,38 +3463,258 @@ async function handleConfirmBooking() {
             }
         } 
     }
-    function resetAll(goToList = true) {
-        if (holdId) cancelHold(false, holdId); roomId = null; currentScenario = null; roomName = null; stopTimer();
-        if (bookingModuleWrapper1) bookingModuleWrapper1.innerHTML = ''; if (bookingModuleWrapper2) bookingModuleWrapper2.innerHTML = '';
-        if (findResultsContainer) findResultsContainer.style.display = 'none'; if (findResultsList) findResultsList.innerHTML = '';
-        document.querySelectorAll('.room-choice-btn.active').forEach(b => b.classList.remove('active'));
-        clearBookingState(); hideMessages();
-        if (goToList) { showScenario('room'); if (roomSelectionContainer) roomSelectionContainer.style.display = 'block'; if (searchInterfaceContainer) searchInterfaceContainer.style.display = 'block'; }
-    }
+function resetAll(goToList = true) {
+    // 1. Сброс переменных
+    if (holdId) cancelHold(false, holdId); 
+    roomId = null; 
+    currentScenario = null; 
+    roomName = null; 
+    stopTimer();
     
-    function initializePage() {
-        setDefaultDate(findDateInput); const savedState = loadBookingState();
-        if (savedState) {
-            currentScenario = savedState.scenario; roomId = savedState.roomId; roomName = savedState.roomName;
-            if (roomId || currentScenario === 'time') { if (roomSelectionContainer) roomSelectionContainer.style.display = 'none'; }
-            showScenario(currentScenario);
-            if (currentScenario === 'room') {
-                const roomButton = document.querySelector(`.room-choice-btn[data-room-id="${roomId}"]`);
-                if (roomButton || roomId) { if (roomButton) roomButton.classList.add('active'); setupBookingModule(bookingModuleWrapper1, roomName); restoreBookingState(savedState); } else { resetAll(true); }
-            } else if (currentScenario === 'time') {
-                restoreSearchState(savedState);
-                if (roomId && roomName) {
-                    if (searchInterfaceContainer) searchInterfaceContainer.style.display = 'none';
-                    setupBookingModule(bookingModuleWrapper2, roomName);
-                    const step1Div = bookingModuleWrapper2.querySelector('#step1');
-                    if (step1Div) { step1Div.classList.remove('visible'); step1Div.classList.add('hidden'); step1Div.style.display = 'none'; }
-                    restoreBookingState(savedState);
-                } else { if (searchInterfaceContainer) searchInterfaceContainer.style.display = 'block'; }
+    // 2. Очистка HTML
+    if (bookingModuleWrapper1) bookingModuleWrapper1.innerHTML = ''; 
+    if (bookingModuleWrapper2) bookingModuleWrapper2.innerHTML = '';
+    if (findResultsContainer) findResultsContainer.style.display = 'none'; 
+    if (findResultsList) findResultsList.innerHTML = '';
+    
+    document.querySelectorAll('.room-choice-btn.active').forEach(b => b.classList.remove('active'));
+    
+    clearBookingState(); 
+    hideMessages();
+    
+    if (goToList) { 
+        // 3. Возврат к выбору кабинета
+        showScenario('room'); 
+        
+        if (roomSelectionContainer) roomSelectionContainer.style.display = 'block'; 
+        if (searchInterfaceContainer) searchInterfaceContainer.style.display = 'block'; 
+        
+        // === ВАЖНО: ВКЛЮЧАЕМ КНОПКУ АБОНЕМЕНТА ОБРАТНО ===
+        if (btnStartSub && btnStartSub.parentElement) {
+            btnStartSub.parentElement.style.display = 'block';
+        }
+        // ================================================
+    }
+}
+
+
+function initializePage() {
+    setDefaultDate(findDateInput); 
+    const savedState = loadBookingState();
+    
+    // Скрываем всё по умолчанию
+    if (roomSelectionContainer) roomSelectionContainer.style.display = 'none';
+    if (moduleBookByRoom) moduleBookByRoom.style.display = 'none';
+    if (moduleFindByTime) moduleFindByTime.style.display = 'none';
+    if (moduleSubCalc) moduleSubCalc.style.display = 'none';
+    if (btnStartSub) btnStartSub.parentElement.style.display = 'none';
+
+    if (savedState) {
+        currentScenario = savedState.scenario; 
+        roomId = savedState.roomId; 
+        roomName = savedState.roomName;
+        
+        // === ЛОГИКА ВОССТАНОВЛЕНИЯ АБОНЕМЕНТА ===
+// === ЛОГИКА ВОССТАНОВЛЕНИЯ АБОНЕМЕНТА ===
+        if (savedState.isSubscriptionMode) {
+            isSubscriptionMode = true;
+            
+            subCurrentHours = savedState.subHours || null;
+            subCurrentPrice = savedState.subPrice || 0; 
+            if(subPeopleSelect) subPeopleSelect.value = savedState.subPeople || '1';
+            
+            const step = savedState.currentStep || 1;
+
+            if (step >= 2) {
+                // Строим модуль
+                moduleBookByRoom.style.display = 'block';
+                setupBookingModule(bookingModuleWrapper1, "Покупка абонемента");
+                transformToSubscriptionDataStep();
+                restoreBookingState(savedState); // Восстанавливаем данные в поля
+                
+                // <--- ФИКС ЗАГОЛОВКА: ПРИНУДИТЕЛЬНО СТАВИМ ПРАВИЛЬНЫЙ ЗАГОЛОВОК ПОСЛЕ ВОССТАНОВЛЕНИЯ --->
+                const title = bookingModuleWrapper1.querySelector('#booking-section-title');
+                if(title) {
+                    if (step === 2) title.innerHTML = '<i class="fas fa-user-check"></i> Ваши данные (Шаг 2 из 4)';
+                    if (step === 3) title.innerHTML = '<i class="fas fa-wallet"></i> Оплата абонемента (Шаг 3 из 4)';
+                    if (step === 4) title.innerHTML = '<i class="fas fa-check-circle"></i> Завершение покупки';
+                }
+                // <------------------------------------------------------------------------------------>
+                
+                if (step >= 3) {
+                     const w = bookingModuleWrapper1;
+                     transformToSubscriptionPaymentStep(w);
+                     
+                     if (step === 4) {
+                         const s3 = w.querySelector('#step3');
+                         const sR = w.querySelector('#step_receipt');
+                         
+                         s3.style.display = 'none'; s3.classList.remove('visible');
+                         sR.style.display = 'block'; sR.classList.add('visible');
+                         
+                         const finishBtn = sR.querySelector('#confirm_booking_button');
+                         finishBtn.innerHTML = '<i class="fas fa-paper-plane me-2"></i> Отправить чек и активировать';
+                         const nameInp = w.querySelector('#client_name');
+                         const newFinish = finishBtn.cloneNode(true);
+                         finishBtn.parentNode.replaceChild(newFinish, finishBtn);
+                         newFinish.addEventListener('click', () => {
+                             finalizeSubscriptionPurchase(w, nameInp.value, w.querySelector('#client_phone').value);
+                         });
+
+                         // Переподключение кнопок "Назад"
+                         const backBtn4 = w.querySelector('#module_back_btn');
+                         if (backBtn4) {
+                             const newBack4 = backBtn4.cloneNode(true);
+                             backBtn4.parentNode.replaceChild(newBack4, backBtn4);
+                             newBack4.addEventListener('click', () => goBackToStep3From4(w, s3, sR, title));
+                         }
+                         const bottomBackBtn = w.querySelector('#back_to_payment_button');
+                         if(bottomBackBtn) {
+                             const newBottomBack = bottomBackBtn.cloneNode(true);
+                             bottomBackBtn.parentNode.replaceChild(newBottomBack, bottomBackBtn);
+                             newBottomBack.addEventListener('click', () => goBackToStep3From4(w, s3, sR, title));
+                         }
+                     }
+                }
+                
+                // Обновляем цены в сводке
+                if (subDisplayPrice) subDisplayPrice.textContent = subCurrentPrice + ' ₸';
+                const summaryStep2 = bookingModuleWrapper1.querySelector('#booking_summary_text');
+                if(summaryStep2) {
+                    summaryStep2.innerHTML = `
+                        <div class="d-flex justify-content-between border-bottom py-2">
+                            <span class="text-secondary">Пакет часов:</span> <span class="fw-bold text-dark">${subCurrentHours} ч.</span>
+                        </div>
+                        <div class="d-flex justify-content-between pt-2">
+                            <span class="text-secondary">К оплате:</span> <span class="fw-bold text-success fs-6">${subCurrentPrice} ₸</span>
+                        </div>`;
+                }
+
+            } else {
+                if(btnStartSub) btnStartSub.parentElement.style.display = 'none';
+                moduleSubCalc.style.display = 'block';
+                if (subCurrentHours) {
+                    updateVisualSelection(subCurrentHours);
+                    updateSubCalculation();
+                } else {
+                    resetSubscriptionSelection();
+                }
             }
-        } else { showScenario('room'); if (roomSelectionContainer) roomSelectionContainer.style.display = 'block'; if (searchInterfaceContainer) searchInterfaceContainer.style.display = 'block'; }
+            return;
+        }
+
+        // Обычное бронирование
+        if(btnStartSub) btnStartSub.parentElement.style.display = 'block';
+        if (currentScenario === 'room') {
+            if (roomId) {
+                moduleBookByRoom.style.display = 'block';
+                setupBookingModule(bookingModuleWrapper1, roomName);
+                restoreBookingState(savedState);
+            } else { resetAll(true); }
+        } else if (currentScenario === 'time') {
+            if (roomId && roomName) {
+                moduleFindByTime.style.display = 'block';
+                if (searchInterfaceContainer) searchInterfaceContainer.style.display = 'none';
+                setupBookingModule(bookingModuleWrapper2, roomName);
+                const step1Div = bookingModuleWrapper2.querySelector('#step1');
+                if (step1Div) { step1Div.style.display = 'none'; }
+                restoreBookingState(savedState);
+            } else { 
+                moduleFindByTime.style.display = 'block';
+                if (searchInterfaceContainer) searchInterfaceContainer.style.display = 'block'; 
+            }
+        }
+    } else { 
+        showScenario('room'); 
+        if (roomSelectionContainer) roomSelectionContainer.style.display = 'block'; 
+        if (btnStartSub) btnStartSub.parentElement.style.display = 'block';
+        if (searchInterfaceContainer) searchInterfaceContainer.style.display = 'block'; 
     }
-    
+}
+
+
     initializePage();
+
+
+// === ЛОГИКА МОДАЛКИ ПРОВЕРКИ БАЛАНСА ===
+const btnDoCheck = document.getElementById('btn_do_check_balance');
+const inpCheckPhone = document.getElementById('balance_check_phone');
+const resContainer = document.getElementById('balance_result_container');
+const displayAmount = document.getElementById('balance_display_amount');
+const displayMsg = document.getElementById('balance_display_msg');
+
+if (btnDoCheck && inpCheckPhone) {
+    
+    // 1. При вводе цифр: Скрываем результат, ПОКАЗЫВАЕМ кнопку снова
+    inpCheckPhone.addEventListener('input', () => {
+        resContainer.style.display = 'none';
+        
+        btnDoCheck.style.display = 'block'; // <--- Показываем кнопку
+        btnDoCheck.disabled = false;
+        btnDoCheck.innerHTML = 'Проверить';
+    });
+
+    btnDoCheck.addEventListener('click', async () => {
+        const rawPhone = inpCheckPhone.value.trim();
+        const phone = validateAndNormalizePhone(rawPhone);
+
+        if (!phone) {
+            inpCheckPhone.classList.add('is-invalid');
+            setTimeout(() => inpCheckPhone.classList.remove('is-invalid'), 2000);
+            return;
+        }
+
+        // UI: Показываем загрузку внутри кнопки
+        btnDoCheck.disabled = true;
+        btnDoCheck.innerHTML = '<span class="loading-spinner"></span> Ищем...';
+        resContainer.style.display = 'none';
+
+        try {
+            const res = await fetch(`/api/check_balance/?phone=${phone}`);
+            const data = await res.json();
+            
+            // Показываем результат
+            resContainer.style.display = 'block';
+            
+            // 2. Результат получен -> СКРЫВАЕМ кнопку полностью
+            btnDoCheck.style.display = 'none'; // <--- Скрываем кнопку
+
+            if (data.success && data.found) {
+                const balance = parseFloat(data.balance);
+                displayAmount.textContent = Number.isInteger(balance) ? balance : balance;
+                
+                if (data.is_expired) {
+                    displayAmount.classList.replace('text-success', 'text-danger');
+                    // Добавил кнопку покупки как ссылку в текст сообщения, раз основной кнопки нет
+                    displayMsg.innerHTML = `<span class="text-danger"><i class="fas fa-exclamation-circle"></i> Срок истек (${data.expires_date})</span><div class="mt-2"><a href="#" onclick="document.getElementById('checkBalanceModal').classList.remove('show'); document.body.classList.remove('modal-open'); document.querySelector('.modal-backdrop').remove(); document.getElementById('btn_start_subscription').click(); return false;" class="btn btn-sm btn-outline-danger">Купить новый</a></div>`;
+                } else {
+                    displayAmount.classList.replace('text-danger', 'text-success');
+                    displayAmount.classList.add('text-success'); 
+                    displayMsg.innerHTML = `<span class="text-muted">Активен до: ${data.expires_date}</span>`;
+                }
+            } else {
+                // Не найдено
+                displayAmount.textContent = "0";
+                displayAmount.classList.remove('text-success', 'text-danger');
+                displayAmount.classList.add('text-muted');
+                displayMsg.innerHTML = `<span class="text-secondary">Абонемент не найден</span>`;
+            }
+            
+        } catch (e) {
+            console.error(e);
+            resContainer.style.display = 'none';
+            alert('Ошибка соединения');
+            
+            // Если ошибка, возвращаем кнопку, чтобы можно было нажать еще раз
+            btnDoCheck.style.display = 'block';
+            btnDoCheck.innerHTML = 'Проверить';
+            btnDoCheck.disabled = false;
+        }
+    });
+}
+
 });
+
+
 </script>
 {% endblock %}

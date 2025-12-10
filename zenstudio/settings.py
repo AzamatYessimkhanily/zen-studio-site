@@ -4,7 +4,7 @@ from pathlib import Path
 from dotenv import load_dotenv
 BASE_DIR = Path(__file__).resolve().parent.parent
 
-SECRET_KEY = os.environ.get('SECRET_KEY')
+SECRET_KEY = 'django-insecure-e@#4!&8*@8)7!%5&0!9_6^2!3@1#4&5*@6)8!%9&0!1_2^3!'
 
 # DEBUG = True # <-- ЗАКОММЕНТИРУЙ ИЛИ УДАЛИ СТАРУЮ СТРОКУ
 # Значение 'False' будет браться из .env файла. Если его там нет, по умолчанию будет True.
@@ -114,3 +114,5 @@ GROUP_CHAT_ID = "120363402711453294@g.us" # ID твоей группы
 SPREADSHEET_URL = 'https://docs.google.com/spreadsheets/d/1sorzD7-esaHJmZHnVm276yrdYPbpyOSxvHRq77uFomA/edit'
 DATA_UPLOAD_MAX_MEMORY_SIZE = 10485760
 CLIENTS_HISTORY_SPREADSHEET_URL = os.environ.get('CLIENTS_HISTORY_SPREADSHEET_URL', 'https://docs.google.com/spreadsheets/d/1Q6If_TlZryuEdeupAqj5VIn4wKBXWeaAgVnpRajVxNQ/edit')
+GREEN_API_INSTANCE_ID = '7105260844'
+GREEN_API_TOKEN = '178daf5a389f41e78ea910b09dcf5bd51143835112364b0198'

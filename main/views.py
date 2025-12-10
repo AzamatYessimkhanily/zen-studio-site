@@ -72,6 +72,114 @@ def send_whatsapp_client(phone, message):
     except Exception as e:
         print(f"Client WhatsApp Error: {e}")
 
+
+# --- ФУНКЦИИ ДЛЯ АБОНЕМЕНТОВ (backend) ---
+
+def normalize_phone_for_sheet(phone):
+    """Приводит телефон к виду 7707... для поиска в таблице."""
+    if not phone: return ""
+    clean = ''.join(filter(str.isdigit, str(phone)))
+    if clean.startswith('8'): return '7' + clean[1:]
+    if len(clean) == 10: return '7' + clean
+    return clean
+
+def get_subscription_client(phone):
+    """
+    Ищет клиента в листе 'Абонементы'. 
+    Возвращает: (row_index, balance, expiration_date_str) или None
+    """
+    try:
+        creds = Credentials.from_service_account_file(
+            SERVICE_ACCOUNT_FILE,
+            scopes=["https://www.googleapis.com/auth/spreadsheets"]
+        )
+        client = gspread.authorize(creds)
+        # Открываем таблицу Истории (там же лежит лист Абонементы)
+        sh = client.open_by_url(settings.CLIENTS_HISTORY_SPREADSHEET_URL)
+        ws = sh.worksheet("Абонементы")
+        
+        phone_norm = normalize_phone_for_sheet(phone)
+        
+        # Ищем телефон в колонке C (3-я колонка)
+        # Получаем все значения колонки C
+        phones_col = ws.col_values(3)
+        
+        # Ищем индекс (начинается с 0, в gspread строки с 1)
+        try:
+            row_idx = phones_col.index(phone_norm) + 1 
+        except ValueError:
+            return None # Не найден
+            
+        # Получаем баланс (Колонка I -> 9) и Дату истечения (Колонка J -> 10)
+        # row_values берет всю строку, это быстрее чем брать ячейки по одной
+        row_data = ws.row_values(row_idx)
+        
+        # Индексы в массиве row_data смещены на -1 относительно колонок
+        # Col I (9) -> index 8
+        # Col J (10) -> index 9
+        
+        if len(row_data) < 9: return None # Битая строка
+        
+        balance_str = row_data[8].replace(',', '.') # меняем запятую на точку
+        try:
+            balance = float(balance_str)
+        except:
+            balance = 0.0
+            
+        expire_str = row_data[9] if len(row_data) > 9 else ""
+        
+        return {
+            'row': row_idx,
+            'balance': balance,
+            'expires': expire_str,
+            'sheet_instance': ws # Возвращаем объект листа, чтобы потом списать
+        }
+
+    except Exception as e:
+        print(f"Error checking subscription: {e}")
+        return None
+
+def add_new_subscription_to_sheet(data):
+    """Записывает новый абонемент в таблицу."""
+    try:
+        creds = Credentials.from_service_account_file(
+            SERVICE_ACCOUNT_FILE,
+            scopes=["https://www.googleapis.com/auth/spreadsheets"]
+        )
+        client = gspread.authorize(creds)
+        sh = client.open_by_url(settings.CLIENTS_HISTORY_SPREADSHEET_URL)
+        ws = sh.worksheet("Абонементы")
+        
+        # Рассчитываем даты
+        now = datetime.datetime.now(ALMATY_TZ)
+        valid_until = now + datetime.timedelta(days=90)
+        
+        phone_norm = normalize_phone_for_sheet(data['phone'])
+        
+        # Формируем ID: 7707...@c.us
+        client_id = f"{phone_norm}@c.us"
+        
+        # Строка для записи (A-J)
+        # A: ID, B: Имя, C: Телефон, D: Пакет, E: Макс, F: Цена, G: Дата, H: Новый, I: Остаток, J: До
+        row = [
+            client_id,                  # A
+            data['name'],               # B
+            phone_norm,                 # C
+            data['hours'],              # D (куплено часов)
+            "",                         # E (Макс людей - пусто)
+            data['price'],              # F
+            now.strftime("%Y-%m-%d %H:%M"), # G
+            "Да",                       # H (Новый клиент - всегда Да)
+            data['hours'],              # I (Остаток = Куплено)
+            valid_until.strftime("%Y-%m-%d") # J (Действует до)
+        ]
+        
+        ws.append_row(row)
+        return True
+    except Exception as e:
+        print(f"Error adding subscription: {e}")
+        return False
+
 def cleanup_expired_holds():
     """Удаляет просроченные брони и уведомляет всех."""
     expired_holds = PendingBooking.objects.filter(expires_at__lte=timezone.now())
@@ -435,11 +543,58 @@ def parse_hours(text):
 
 # --- ВСПОМОГАТЕЛЬНЫЕ ФУНКЦИИ (parse_people_range, parse_hours) ---
 # ОСТАВЬ ИХ КАК БЫЛИ В ПРЕДЫДУЩЕМ ОТВЕТЕ
+# main/views.py
+
+@require_GET
+def check_whatsapp_existence(request):
+    """Проверяет наличие WhatsApp на номере через Green API."""
+    phone_raw = request.GET.get('phone')
+    if not phone_raw:
+        return JsonResponse({'success': False, 'error': 'Нет номера'})
+
+    # Чистим номер (оставляем только цифры)
+    phone = ''.join(filter(str.isdigit, str(phone_raw)))
+    
+    # Форматируем под 77... (Green API требует формат без +)
+    if phone.startswith('8') and len(phone) == 11:
+        phone = '7' + phone[1:]
+    elif len(phone) == 10:
+        phone = '7' + phone
+
+    try:
+        # Берем настройки
+        instance_id = getattr(settings, 'GREEN_API_INSTANCE_ID', '')
+        token = getattr(settings, 'GREEN_API_TOKEN', '')
+
+        if not instance_id or not token:
+            # Если ключей нет, пропускаем проверку (чтобы не блокировать работу)
+            return JsonResponse({'success': True, 'exists': True, 'bypass': True})
+
+        url = f"https://api.green-api.com/waInstance{instance_id}/checkWhatsapp/{token}"
+        
+        payload = {
+            "phoneNumber": phone
+        }
+        
+        # Делаем запрос к Green API
+        response = requests.post(url, json=payload, timeout=5)
+        data = response.json()
+
+        # Green API возвращает: {"existsWhatsapp": true}
+        if data.get('existsWhatsapp'):
+            return JsonResponse({'success': True, 'exists': True})
+        else:
+            return JsonResponse({'success': True, 'exists': False})
+
+    except Exception as e:
+        print(f"Green API Check Error: {e}")
+        # В случае ошибки API лучше разрешить, чем запретить
+        return JsonResponse({'success': True, 'exists': True, 'error': str(e)})
+# main/views.py
 
 def get_price_from_sheet(duration_hours: Decimal, people_count: int):
-    """Читает прайс-лист из Google Sheets и находит цену по новой логике."""
+    """Читает прайс-лист из Google Sheets (с поддержкой 'по 1500 в час')."""
     try:
-        # --- Подключение к Google Sheets (как раньше) ---
         creds = Credentials.from_service_account_file(
             SERVICE_ACCOUNT_FILE,
             scopes=["https://www.googleapis.com/auth/spreadsheets.readonly"]
@@ -447,111 +602,149 @@ def get_price_from_sheet(duration_hours: Decimal, people_count: int):
         client = gspread.authorize(creds)
         spreadsheet = client.open_by_url(settings.SPREADSHEET_URL)
         worksheet = spreadsheet.worksheet("Прайс-лист")
-        data = worksheet.get_all_values()[1:] # Пропускаем заголовок
+        data = worksheet.get_all_values()[1:] 
 
-        # --- Собираем все правила для нужной группы людей ---
         rules_for_group = []
         for row in data:
             if len(row) < 3: continue
             grp_text, hours_text, price_text = row[0], row[1], row[2]
+            
             min_p, max_p = parse_people_range(grp_text)
             hours_val, is_min = parse_hours(hours_text)
 
-            # Проверяем группу людей
             if min_p is None or max_p is None or not (min_p <= people_count <= max_p):
                 continue
-            # Проверяем часы и цену
             if hours_val is None: continue
-            try:
-                total_price = int(str(price_text).strip().replace(' ', ''))
-                # Сохраняем цену за час из колонки D, если она есть и правило >=
-                rate = None
-                if is_min and len(row) >= 4:
-                     try: rate = int(str(row[3]).strip().replace(' ', ''))
-                     except: pass
+            
+            # === ИСПРАВЛЕНИЕ: ПАРСИНГ ЦЕНЫ (ТЕКСТ ИЛИ ЧИСЛО) ===
+            total_price = None
+            hourly_rate = None
+            
+            clean_price = str(price_text).strip().lower().replace(' ', '')
+            
+            # 1. Если написано "по 1500 в час"
+            if 'по' in clean_price or 'вчас' in clean_price:
+                # Ищем число внутри текста
+                match = re.search(r'(\d+)', clean_price)
+                if match:
+                    rate = int(match.group(1))
+                    # Если это правило ">= 20 часов", то цена = ставка * запрошенные часы
+                    # Но пока сохраним ставку, посчитаем ниже
+                    hourly_rate = Decimal(rate)
+                    # Предварительная цена для сортировки (ставка * часы из правила)
+                    total_price = hourly_rate * hours_val
+            
+            # 2. Если просто число "30000"
+            else:
+                try:
+                    total_price = Decimal(clean_price)
+                except:
+                    continue # Непонятная цена
+            
+            if total_price is None and hourly_rate is None: continue
 
-                rules_for_group.append({
-                    'hours': hours_val,
-                    'is_minimum': is_min,
-                    'price': Decimal(total_price), # Используем Decimal для точности
-                    'rate': Decimal(rate) if rate is not None else None
-                })
-            except (ValueError, TypeError, InvalidOperation):
-                continue # Неверный формат цены
+            rules_for_group.append({
+                'hours': hours_val,
+                'is_minimum': is_min,
+                'price': total_price, 
+                'rate': hourly_rate # Запоминаем ставку, если она была
+            })
+            # ==================================================
 
         if not rules_for_group:
-            print(f"Warning: No price rules found for people count {people_count}")
             return None
 
-        # Сортируем правила по часам
         rules_for_group.sort(key=lambda x: x['hours'])
 
-        # --- РАСЧЕТ ЦЕНЫ ---
         final_price = None
 
-        # 1. Точное совпадение по часам (целым или дробным)
+        # 1. Точное совпадение
         exact_rule = next((r for r in rules_for_group if not r['is_minimum'] and r['hours'] == duration_hours), None)
         if exact_rule:
             final_price = exact_rule['price']
-            print(f"Price found (sheet, exact): {final_price} for {duration_hours}h, {people_count}p")
 
-        # 2. Дробные часы (X.5) - ИСПОЛЬЗУЕМ НОВУЮ ЛОГИКУ
+        # 2. Дробные часы (X.5)
         elif duration_hours % 1 == Decimal('0.5'):
             base_hour = duration_hours - Decimal('0.5')
-
-            # Особый случай 0.5 часа
             if base_hour == 0:
                 one_hour_rule = next((r for r in rules_for_group if not r['is_minimum'] and r['hours'] == 1), None)
-                if one_hour_rule:
-                    final_price = one_hour_rule['price'] / 2
-                    print(f"Price calculated (sheet, 0.5h): {final_price}")
-                else:
-                    print("Warning: 1h rule needed for 0.5h calculation not found")
+                if one_hour_rule: final_price = one_hour_rule['price'] / 2
             else:
-                # Ищем цену для базового целого часа (X)
                 base_hour_rule = next((r for r in rules_for_group if not r['is_minimum'] and r['hours'] == base_hour), None)
                 if base_hour_rule:
                     base_price = base_hour_rule['price']
                     if base_hour > 0:
-                        half_hour_price = base_price / (base_hour * 2) # Твоя формула
+                        half_hour_price = base_price / (base_hour * 2)
                         final_price = base_price + half_hour_price
-                        print(f"Price calculated (sheet, fractional {duration_hours}h): {final_price} = {base_price} + {half_hour_price}")
-                    else: # Не должно случиться из-за проверки base_hour == 0
-                        final_price = base_price # На всякий случай
-                else:
-                    print(f"Warning: Base hour rule ({base_hour}h) not found for fractional calculation")
 
-        # 3. Если цена все еще не найдена (например, целое число часов без точного совпадения),
-        #    ищем правило ">= X часов"
+        # 3. Правило ">= X часов" (для абонементов 20+)
         if final_price is None:
             min_rules_applicable = [r for r in rules_for_group if r['is_minimum'] and r['hours'] <= duration_hours]
             if min_rules_applicable:
                 best_min_rule = max(min_rules_applicable, key=lambda x: x['hours'])
-                hourly_rate = best_min_rule['rate'] # Берем ставку из колонки D
+                
+                # Если у правила была ставка "по 1500 в час"
+                if best_min_rule['rate'] is not None:
+                    final_price = best_min_rule['rate'] * duration_hours
+                else:
+                    # Если была фикс цена, но правило >= (например "более 5 часов - 15000")
+                    # Тут спорно: либо это цена за всё, либо надо вычислять ставку.
+                    # Обычно в таблице для >= пишут ставку. Если нет — берем как фикс.
+                    final_price = best_min_rule['price']
 
-                if hourly_rate is not None and hourly_rate >= 0:
-                    final_price = hourly_rate * duration_hours
-                    print(f"Price calculated (sheet, minimum rule rate): {final_price} from rate {hourly_rate}")
-                elif best_min_rule['hours'] > 0: # Если ставки нет, пробуем рассчитать из total_price
-                    approx_rate = best_min_rule['price'] / best_min_rule['hours']
-                    final_price = approx_rate * duration_hours
-                    print(f"Price calculated (sheet, minimum rule approx rate): {final_price} from approx rate {approx_rate}")
-                else: # Если часы = 0 в правиле >=
-                     final_price = best_min_rule['price']
-
-        # Округляем до целого в конце
         if final_price is not None:
-            return int(final_price.to_integral_value(rounding='ROUND_HALF_UP')) # Округление до ближайшего целого
+            return int(final_price.to_integral_value(rounding='ROUND_HALF_UP'))
         else:
-             print(f"Warning: No applicable price rule found for {duration_hours}h, {people_count}p")
-             return None # Возвращаем None, если цена не найдена
+             return None
 
-    except gspread.exceptions.WorksheetNotFound:
-        print("Error: Worksheet 'Прайс-лист' not found.")
-        return None
     except Exception as e:
         print(f"Error reading Price List sheet: {e}")
         return None
+
+# main/views.py
+
+@require_GET
+def calculate_subscription_benefit(request):
+    """Считает стоимость пакета и экономию."""
+    try:
+        hours_str = request.GET.get('hours')
+        people_str = request.GET.get('people_count', '1')
+        
+        if not hours_str:
+            return JsonResponse({'success': False, 'error': 'No hours specified'})
+
+        hours = Decimal(hours_str)
+        people_count = int(people_str)
+        
+        # 1. Получаем цену ПАКЕТА (как сейчас считает система для таблицы)
+        package_price = get_price_from_sheet(hours, people_count)
+        
+        if package_price is None:
+             return JsonResponse({'success': False, 'error': 'Цена для такого пакета не найдена'})
+
+        # 2. Получаем БАЗОВУЮ цену за 1 час для этого кол-ва людей
+        base_price_1h = get_price_from_sheet(Decimal('1'), people_count)
+        
+        if base_price_1h is None:
+             return JsonResponse({'success': True, 'price': package_price, 'savings': 0})
+
+        # 3. Считаем экономию
+        standard_cost = base_price_1h * int(hours)
+        savings = standard_cost - package_price
+        if savings < 0: savings = 0
+
+        return JsonResponse({
+            'success': True,
+            'price': package_price,
+            'savings': savings
+        })
+
+    except Exception as e:
+        return JsonResponse({'success': False, 'error': str(e)}, status=500)
+
+
+
+
 def _validate_receipt(file_name, file_data_b64):
     """
     Проверяет чек (PDF или фото).
@@ -775,6 +968,9 @@ def get_price(request):
 
 # === НОВЫЙ VIEW ДЛЯ ПОИСКА СВОБОДНЫХ КАБИНЕТОВ ===
 # main/views.py
+
+
+
 
 @require_GET
 def find_available_rooms(request):
@@ -1060,37 +1256,36 @@ def cancel_hold(request):
 
     except Exception as e:
          return JsonResponse({'success': False, 'error': str(e)}, status=500)
+
 @require_POST
 @csrf_exempt
 def create_booking(request):
     if request.method != "POST": return HttpResponseBadRequest("POST only")
-    try: data = json.loads(request.body.decode("utf-8") or "{}")
-    except json.JSONDecodeError: return HttpResponseBadRequest("Invalid JSON")
+    try: 
+        data = json.loads(request.body.decode("utf-8") or "{}")
+    except json.JSONDecodeError: 
+        return HttpResponseBadRequest("Invalid JSON")
 
     # --- ПОЛУЧЕНИЕ ДАННЫХ ---
     hold_id_str = data.get('hold_id')
     client_name = data.get('client_name')
     client_phone = data.get('client_phone')
+    payment_method = data.get('payment_method', 'single') # 'single' или 'subscription'
     
-    file_data_b64 = data.get('receipt_file_data') # Может быть None
-    file_name = data.get('receipt_file_name')     # Может быть None
-    receipt_number = data.get('receipt_number')   # Может быть None
+    # Данные чека (только для single)
+    file_data_b64 = data.get('receipt_file_data') 
+    file_name = data.get('receipt_file_name')     
+    receipt_number = data.get('receipt_number')   
 
-    # 1. ВАЛИДАЦИЯ: Основные поля
+    # 1. БАЗОВАЯ ВАЛИДАЦИЯ
     if not hold_id_str or not client_name or not client_phone:
          return JsonResponse({'success': False, 'error': 'Не заполнены обязательные поля (Имя, Телефон, ID).'}, status=400)
 
-    # 2. ВАЛИДАЦИЯ: Чек (Файл ИЛИ Номер)
-    # Если нет ни файла, ни номера - ошибка
-    if not file_data_b64 and not receipt_number:
-         return JsonResponse({'success': False, 'error': 'Прикрепите скан чека или введите номер квитанции.'}, status=400)
-
-    # 3. Проверка временного резерва
+    # 2. ПРОВЕРКА ВРЕМЕННОГО РЕЗЕРВА
     try:
         hold_uuid = uuid.UUID(hold_id_str)
         pending_booking = get_object_or_404(PendingBooking, hold_id=hold_uuid)
         
-        # Если время истекло
         if pending_booking.expires_at < timezone.now():
              return JsonResponse({'success': False, 'error': 'Время бронирования истекло. Пожалуйста, начните заново.'}, status=410)
 
@@ -1110,37 +1305,86 @@ def create_booking(request):
          print(f"Error validating hold_id: {e}")
          return JsonResponse({'success': False, 'error': 'Ошибка данных бронирования.'}, status=400)
 
-    # 4. ПРОВЕРКА ФАЙЛА (Только если он есть)
-    if file_data_b64:
-        is_valid, message = _validate_receipt(file_name, file_data_b64)
-        if not is_valid:
-            return JsonResponse({'success': False, 'error': message}, status=400)
+    # 3. ЛОГИКА ОПЛАТЫ
+    payment_info_text = ""
+    is_subscription = (payment_method == 'subscription')
+    current_balance_display = "" # === НОВОЕ: Переменная для хранения остатка ===
 
-    # 5. ОБНОВЛЕНИЕ КАЛЕНДАРЯ
+    if is_subscription:
+        # === АБОНЕМЕНТ ===
+        # Проверяем баланс перед списанием
+        sub_data = get_subscription_client(client_phone)
+        
+        if not sub_data:
+            return JsonResponse({'success': False, 'error': 'Абонемент не найден. Оплатите разово.'}, status=400)
+        
+        required_hours = float(duration_hours)
+        if sub_data['balance'] < required_hours:
+             return JsonResponse({'success': False, 'error': f'Недостаточно часов. Ваш баланс: {sub_data["balance"]} ч.'}, status=400)
+        
+        # Списываем часы
+        try:
+            new_balance = sub_data['balance'] - required_hours
+            ws = sub_data['sheet_instance']
+            row_idx = sub_data['row']
+            # Колонка I (Остаток) - это 9-я колонка
+            ws.update_cell(row_idx, 9, new_balance)
+            print(f"Subscription deducted: {required_hours}h. New balance: {new_balance}")
+            
+            # === НОВОЕ: Сохраняем красивый вид остатка (если 2.0 -> 2) ===
+            if float(new_balance).is_integer():
+                current_balance_display = str(int(new_balance))
+            else:
+                current_balance_display = str(new_balance)
+            # =============================================================
+
+        except Exception as e:
+            print(f"Error updating balance: {e}")
+            return JsonResponse({'success': False, 'error': 'Ошибка списания баланса.'}, status=500)
+            
+        payment_info_text = f"Абонемент (списано {required_hours}ч)"
+        price = 0 
+
+    else:
+        # === РАЗОВАЯ ОПЛАТА ===
+        if not file_data_b64 and not receipt_number:
+             return JsonResponse({'success': False, 'error': 'Прикрепите скан чека или введите номер квитанции.'}, status=400)
+
+        # Проверка файла
+        if file_data_b64:
+            is_valid, message = _validate_receipt(file_name, file_data_b64)
+            if not is_valid:
+                return JsonResponse({'success': False, 'error': message}, status=400)
+            payment_info_text = f"Чек загружен: {file_name}"
+        else:
+            payment_info_text = f"Номер чека: {receipt_number}"
+
+    # 4. ОБНОВЛЕНИЕ КАЛЕНДАРЯ
     try:
         service = get_calendar_service()
         calendar_id = str(room.google_calendar_id).strip().replace('"', '').replace("'", "").replace(' ', '')
         
         event_summary = f'Сайт:{client_name} ({client_phone})'
         
-        # Формируем описание оплаты
-        if file_data_b64:
-            payment_info = f"Чек загружен: {file_name}"
+        # Формируем описание для календаря
+        if is_subscription:
+            desc_payment = f"Абонемент (списано {duration_hours}ч, остаток {current_balance_display}ч)"
         else:
-            payment_info = f"Номер чека: {receipt_number}"
+            desc_payment = payment_info_text
 
         event_description = (
             f'Клиент: {client_name}\nТел: {client_phone}\nКол-во: {people_count}\n'
-            f'Длит: {duration_hours} ч.\nЦена: {price} тг\n'
-            f'Оплата: {payment_info}\nИсточник: Сайт' 
+            f'Длит: {duration_hours} ч.\nЦена: {data.get("price", price)} тг\n'
+            f'Оплата: {desc_payment}\nИсточник: Сайт' 
         )
         
         event_patch = {
             'summary': event_summary,
             'description': event_description,
-            'colorId': None,
-            }
+            'colorId': None, # Дефолтный цвет календаря
+        }
         
+        # Если событие уже есть (создано при hold_slot), обновляем его
         if pending_booking.google_event_id:
             try:
                 service.events().patch(
@@ -1150,23 +1394,24 @@ def create_booking(request):
                 ).execute()
             except Exception as e:
                 print(f"Failed to patch event, creating new one: {e}")
-                # Fallback: создаем новое, если старое не найдено
+                # Fallback: создаем новое
                 event_patch['start'] = {'dateTime': start_dt_aware.isoformat(), 'timeZone': settings.TIME_ZONE}
                 event_patch['end'] = {'dateTime': end_dt_aware.isoformat(), 'timeZone': settings.TIME_ZONE}
                 service.events().insert(calendarId=calendar_id, body=event_patch).execute()
         else:
+            # Создаем с нуля
             event_patch['start'] = {'dateTime': start_dt_aware.isoformat(), 'timeZone': settings.TIME_ZONE}
             event_patch['end'] = {'dateTime': end_dt_aware.isoformat(), 'timeZone': settings.TIME_ZONE}
             service.events().insert(calendarId=calendar_id, body=event_patch).execute()
 
     except Exception as e:
         print(f"Error updating Google Calendar: {e}")
-        # Не блокируем успех, если календарь сбоит, главное - запись в БД
+        # Не блокируем успех, если календарь сбоит
 
-    # 6. Удаляем временный резерв
+    # 5. Удаляем временный резерв
     pending_booking.delete()
 
-    # 7. ЗАПИСЬ В ИСТОРИЮ (Google Sheets)
+    # 6. ЗАПИСЬ В ИСТОРИЮ (Google Sheets)
     try:
         sheet_booking_data = {
             "client_name": client_name,
@@ -1176,25 +1421,31 @@ def create_booking(request):
             "duration_hours": duration_hours,
             "people_count": people_count,
             "room_name": room.name,
-            "price": price,
+            "price": "Абонемент" if is_subscription else data.get('price', 0), # В историю пишем словами
             "is_client_new": True 
         }
         save_booking_to_sheet(sheet_booking_data)
     except Exception as e:
         print(f"Error saving to History Sheet: {e}")
 
-    # 8. Отправка WhatsApp и возврат ответа
+    # 7. ОТПРАВКА УВЕДОМЛЕНИЙ (WhatsApp)
+# ... (код выше без изменений) ...
+
+    # 7. ОТПРАВКА УВЕДОМЛЕНИЙ (WhatsApp)
     studio_details = {}
     try:
         door_code, client_message_text, studio_details = get_door_code_and_instructions(room.name)        
         
-        # Определяем текст оплаты для админа
-        if file_data_b64:
-            payment_status_text = f"📎 Загружен Чек"
+        # === ОБНОВЛЕНИЕ: Текст для группы и КЛИЕНТА ===
+        if is_subscription:
+            # Для группы
+            group_payment_text = f"💳 Абонемент (Списано {duration_hours}ч)\n📉 Остаток: {current_balance_display} ч"
+            # Для клиента (Добавляем остаток в конец сообщения)
+            client_message_text += f"\n\n📉 Ваш остаток часов: {current_balance_display}"
         else:
-            payment_status_text = f"🔢 Номер чека: {receipt_number}"
+            group_payment_text = f"💰 Оплата: {data.get('price', 0)} ₸\n{payment_info_text}"
+        # ==============================================
 
-        # Формируем КРАСИВОЕ сообщение для группы
         group_message_text = (
             "〰〰〰〰〰〰〰〰〰〰\n"
             "📅 Новая бронь (Сайт)\n\n"
@@ -1203,8 +1454,7 @@ def create_booking(request):
             f"⏳ Длительность: {duration_hours} ч\n"
             f"👥 Гостей: {people_count}\n"
             f"👤 Клиент: {client_name} ({client_phone})\n"
-            f"💰 Оплата: {price} ₸\n"
-            f"{payment_status_text}\n"
+            f"{group_payment_text}\n"
             "〰〰〰〰〰〰〰〰〰〰"
         )
 
@@ -1212,33 +1462,138 @@ def create_booking(request):
         group_chat_id = getattr(settings, 'GROUP_CHAT_ID', None)
 
         if bot_api_url:
-            # 1. Отправка КЛИЕНТУ (Инструкция)
+            # Клиенту
             client_chat_id = ''.join(filter(str.isdigit, client_phone)) + '@c.us'
             if client_chat_id.startswith('8'): client_chat_id = '7' + client_chat_id[1:]
             elif not client_chat_id.startswith('7') and len(client_chat_id.split('@')[0]) == 10:
                 client_chat_id = '7' + client_chat_id
             
-            print(f"Attempting to send to client: {client_chat_id}")
             try: requests.post(bot_api_url, json={'chat_id': client_chat_id, 'message': client_message_text}, timeout=10)
             except Exception as req_err: print(f"Error sending to client API: {req_err}")
             
-            # 2. Отправка в ГРУППУ АДМИНОВ (Полный отчет)
+            # Группе
             if group_chat_id:
-                print(f"Attempting to send to group: {group_chat_id}")
                 try: requests.post(bot_api_url, json={'chat_id': group_chat_id, 'message': group_message_text}, timeout=10)
                 except Exception as req_err: print(f"Error sending to group API: {req_err}")
-        else:
-           print("Warning: BOT_WHATSAPP_API_URL not configured.")
 
     except Exception as e:
         print(f"Error preparing/sending WhatsApp notifications: {e}")
 
+    # Возвращаем баланс на фронтенд
     return JsonResponse({
             'success': True, 
-            'studio_details': studio_details
+            'studio_details': studio_details,
+            'new_balance': current_balance_display if is_subscription else None
+    })
+
+@require_GET
+def check_balance_api(request):
+    """API: Проверяет баланс по номеру телефона."""
+    phone = request.GET.get('phone')
+    if not phone:
+        return JsonResponse({'success': False, 'error': 'Нет номера'})
+        
+    sub_data = get_subscription_client(phone)
+    
+    if not sub_data:
+        # Клиент не найден в базе абонементов
+        return JsonResponse({
+            'success': True, 
+            'found': False, 
+            'balance': 0
+        })
+    
+    # Проверяем срок действия
+    is_expired = False
+    try:
+        # Формат в таблице: YYYY-MM-DD
+        expire_date = datetime.datetime.strptime(sub_data['expires'], "%Y-%m-%d").date()
+        if expire_date < datetime.date.today():
+            is_expired = True
+    except:
+        pass # Если дата кривая, считаем что не истек (или можно наоборот)
+
+    return JsonResponse({
+        'success': True,
+        'found': True,
+        'balance': sub_data['balance'],
+        'is_expired': is_expired,
+        'expires_date': sub_data['expires']
     })
 
 
+@require_POST
+@csrf_exempt
+def buy_subscription_api(request):
+    """API: Покупка абонемента + Уведомление в группу + Уведомление клиенту."""
+    try:
+        data = json.loads(request.body.decode("utf-8"))
+        
+        name = data.get('client_name')
+        phone = data.get('client_phone')
+        hours = data.get('hours')
+        price = data.get('price')
+        
+        # Данные чека
+        file_data = data.get('receipt_file_data') 
+        file_name = data.get('receipt_file_name', 'receipt.jpg')
+        receipt_num = data.get('receipt_number')
+        
+        if not all([name, phone, hours, price]):
+             return JsonResponse({'success': False, 'error': 'Неполные данные'}, status=400)
+
+        # 1. ВАЛИДАЦИЯ ЧЕКА
+        receipt_status_text = ""
+        if file_data:
+             is_valid, msg = _validate_receipt(file_name, file_data)
+             if not is_valid:
+                 return JsonResponse({'success': False, 'error': f'Ошибка чека: {msg}'}, status=400)
+             receipt_status_text = "Файл загружен (проверен)"
+        elif receipt_num:
+             receipt_status_text = f"Номер: {receipt_num}"
+        else:
+             return JsonResponse({'success': False, 'error': 'Прикрепите чек или введите его номер'}, status=400)
+             
+        # 2. Запись в Гугл Таблицу
+        success = add_new_subscription_to_sheet({
+            'name': name,
+            'phone': phone,
+            'hours': hours,
+            'price': price
+        })
+        
+        if not success:
+            return JsonResponse({'success': False, 'error': 'Ошибка записи в таблицу'}, status=500)
+            
+        # 3. Уведомление в WhatsApp (ГРУППА АДМИНОВ)
+        msg_group = (
+            "〰〰〰〰〰〰〰〰〰〰\n"
+            "🎉 *ПРОДАН АБОНЕМЕНТ* (Сайт)\n\n"
+            f"👤 Клиент: {name}\n"
+            f"📱 Телефон: {phone}\n"
+            f"📦 Пакет: {hours} часов\n"
+            f"💰 Сумма: {price} ₸\n"
+            f"🧾 Чек: {receipt_status_text}\n"
+            "〰〰〰〰〰〰〰〰〰〰"
+        )
+        send_whatsapp_group(msg_group)
+
+        # 4. Уведомление в WhatsApp (КЛИЕНТ) <--- НОВОЕ
+        msg_client = (
+            f"🎉 Здравствуйте, {name}!\n\n"
+            f"Ваша заявка на покупку абонемента принята.\n\n"
+            f"📦 Пакет: *{hours} часов*\n"
+            f"💰 Сумма: {price} ₸\n"
+            f"📅 Срок действия: 90 дней\n\n"
+            "⏳ Мы проверяем вашу оплату. Часы будут зачислены на баланс в ближайшее время.\n\n"
+            "С уважением, Zen Studio"
+        )
+        send_whatsapp_client(phone, msg_client)
+        
+        return JsonResponse({'success': True})
+
+    except Exception as e:
+        return JsonResponse({'success': False, 'error': str(e)}, status=500)
 
 class BookingPageView(TemplateView):
     template_name = 'main/booking_page.html' # Указываем новый шаблон
