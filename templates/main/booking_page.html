@@ -812,6 +812,111 @@ html, body {
         margin-top: 4px;
     }
 }
+
+/* === НОВЫЙ СТИЛЬ: КАРТОЧКИ С ФОТО (КАК В ПОИСКЕ) === */
+
+/* 1. Сетка: На мобильном лучше в 1 колонку (список), на ПК можно в 2 */
+.room-choice-grid {
+    display: grid;
+    grid-template-columns: 1fr; /* Одна колонка (Список) */
+    gap: 10px;
+}
+
+/* На планшетах и ПК можно 2 колонки */
+@media (min-width: 768px) {
+    .room-choice-grid {
+        grid-template-columns: 1fr 1fr;
+    }
+}
+
+/* 2. Сама кнопка-карточка */
+.room-choice-btn.room-card-style {
+    background: #fff;
+    border: 1px solid #f0f0f0;
+    border-radius: 16px !important;
+    padding: 10px !important;
+    min-height: 80px !important; /* Высота поменьше */
+    display: flex;
+    flex-direction: row !important; /* Горизонтально! */
+    align-items: center;
+    justify-content: flex-start; /* Всё слева */
+    gap: 15px; /* Отступ фото от текста */
+    transition: all 0.2s;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.03);
+    width: 100%;
+}
+
+/* Активная карточка */
+.room-choice-btn.room-card-style.active {
+    border: 2px solid var(--zen-green);
+    background-color: #f0fff4;
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(157, 211, 175, 0.3);
+}
+
+/* 3. Фото (Слева) */
+.room-card-img-wrapper {
+    width: 65px;
+    height: 65px;
+    flex-shrink: 0; /* Чтобы не сжималось */
+    border-radius: 12px;
+    overflow: hidden;
+    background: #f8f9fa;
+    border: 1px solid #e9ecef;
+}
+
+.room-card-img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover; /* Фото обрезается ровно по квадрату */
+}
+
+/* Заглушка (если нет фото или кнопка поиска) */
+.room-card-placeholder {
+    width: 100%;
+    height: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #cbd3da;
+    font-size: 1.5rem;
+}
+.search-placeholder {
+    color: var(--zen-green);
+    background: rgba(157, 211, 175, 0.15);
+}
+
+/* 4. Текст (Справа) */
+.room-card-info {
+    flex-grow: 1;
+    text-align: left; /* Текст слева */
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    gap: 4px;
+}
+
+.room-card-header .room-name {
+    font-weight: 800;
+    font-size: 1rem;
+    color: var(--zen-dark);
+    line-height: 1.2;
+}
+
+/* Адрес */
+.room-meta {
+    font-size: 0.75rem;
+    color: #8e8e93;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    line-height: 1.3;
+}
+.room-meta i {
+    font-size: 0.8rem;
+    width: 12px; /* Фикс ширина иконки, чтобы текст ровно стоял */
+    text-align: center;
+}
 </style>
 {% endblock %}
 
@@ -915,18 +1020,55 @@ html, body {
 <div id="room_selection_container" class="info-section mb-4">
     <h4 class="info-title mb-4"><i class="fas fa-door-open"></i> Выберите кабинет (Шаг 1 из 5)</h4>
     
-    <div class="room-choice-grid mb-3"> {% for room in rooms %}
-        <button class="room-choice-btn" data-room-id="{{ room.pk }}" data-room-name="{{ room.name }}">
-          <i class="fas fa-couch"></i>
-          <span>{{ room.name }}</span>
-        </button>
-      {% endfor %}
+<div class="room-choice-grid mb-3"> 
+  {% for room in rooms %}
+    <button class="room-choice-btn room-card-style" data-room-id="{{ room.pk }}" data-room-name="{{ room.name }}">
+      
+      <div class="room-card-img-wrapper">
+          {% if room.main_image %}
+            <img src="{{ room.main_image.url }}" alt="{{ room.name }}" class="room-card-img">
+          {% else %}
+            <div class="room-card-placeholder">
+                <i class="fas fa-camera"></i>
+            </div>
+          {% endif %}
+      </div>
 
-      <button class="room-choice-btn any-room-btn" id="btn_any_room">
-         <i class="fas fa-search-location fa-2x mb-2"></i>
-         <span>Любой <br>кабинет</span>
-      </button>
-    </div>
+      <div class="room-card-info">
+          <div class="room-card-header">
+              <span class="room-name">Кабинет {{ room.name }}</span>
+          </div>
+
+          {% if room.location and room.location.address %}
+            <div class="room-meta">
+                <i class="fas fa-map-marker-alt text-danger opacity-75"></i>
+                <span>{{ room.location.address }}</span>
+            </div>
+          {% else %}
+             <div class="room-meta text-muted">Адрес уточняется</div>
+          {% endif %}
+      </div>
+
+    </button>
+  {% endfor %}
+
+  <button class="room-choice-btn room-card-style any-room-btn" id="btn_any_room">
+     <div class="room-card-img-wrapper">
+         <div class="room-card-placeholder search-placeholder">
+            <i class="fas fa-search-location"></i>
+         </div>
+     </div>
+     <div class="room-card-info">
+         <div class="room-card-header">
+             <span class="room-name">Любой кабинет</span>
+         </div>
+         <div class="room-meta">
+            <i class="fas fa-clock text-success"></i>
+            <span>Поиск по времени</span>
+         </div>
+     </div>
+  </button>
+</div>
 
 <div class="d-flex align-items-center my-4">
     <hr class="flex-grow-1 my-0" style="border-top: 1px solid #e9ecef;">
@@ -1127,6 +1269,19 @@ html, body {
     <label class="form-label small text-muted mb-2">Выберите свободное время:</label>
     <div id="available_slots_container">
         </div>
+<div class="text-center mt-4 mb-2">
+        <p class="small text-muted mb-1" style="font-size: 0.85rem;">
+            Не нашли подходящее время?
+        </p>
+        
+        <a href="https://wa.me/77073910808" target="_blank" class="text-decoration-underline small fw-bold" style="color: #25D366;">
+            <i class="fab fa-whatsapp me-1"></i>Обратитесь к администратору
+        </a>
+        
+        <span class="small text-muted">
+            для бронирования альтернативного кабинета
+        </span>
+    </div>
 </div>
 
 <div class="booking-step hidden" id="step2">
@@ -2611,7 +2766,22 @@ async function finalizeSubscriptionPurchase(wrapper, name, phone) {
                          card.addEventListener('click', handleFoundRoomClick);
                          findResultsList.appendChild(card);
                      });
-                 } else { findResultsList.innerHTML = '<div class="alert alert-warning text-center small">Нет мест.</div>'; }
+                 } else { 
+                     // Если кабинетов нет — показываем сообщение с WhatsApp
+                     findResultsList.innerHTML = `
+                        <div class="text-center py-4">
+                            <div class="alert alert-light border shadow-sm mb-3 text-muted small">
+                                <i class="fas fa-search mb-2 d-block fs-4 opacity-50"></i>
+                                К сожалению, на это время свободных кабинетов нет.
+                            </div>
+                            
+                            <p class="small text-muted mb-1">Обратитесь к администратору для бронирования альтернативного кабинета</p>
+                            <a href="https://wa.me/77073910808" target="_blank" class="btn btn-sm btn-outline-success rounded-pill px-4 shadow-sm">
+                                <i class="fab fa-whatsapp me-2"></i> Написать администратору
+                            </a>
+                        </div>
+                     `; 
+                 }
              } catch (error) { findResultsList.innerHTML = '<div class="alert alert-danger text-center small">Ошибка.</div>'; } 
              finally { findRoomsSubmitBtn.disabled = false; findRoomsSubmitBtn.innerHTML = '<i class="fas fa-search me-2"></i> Найти'; }
         });
