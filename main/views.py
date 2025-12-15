@@ -413,7 +413,7 @@ def get_door_code_and_instructions(room_name):
                 headers = worksheet_doors.row_values(1)
                 room_details = dict(zip(headers, row_data))
 
-                door_code = room_details.get("Код", "Код не найден")
+                door_code = room_details.get("🔑 Код от ключницы для открытия двери", "Код не найден")
                 address = room_details.get("Адрес", "")
                 instructions_text = room_details.get("Как открыть кабинет", "")
                 
