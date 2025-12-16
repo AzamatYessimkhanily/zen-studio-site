@@ -942,13 +942,6 @@
           <div class="room-content">
             <div class="room-header">
               <h3 class="room-title">{{ room.name }}</h3>
-              {% if room.area_sq_m %}
-                <div class="room-price" title="Площадь кабинета">
-                  <span class="price-label">площадь</span>
-                  <span class="price-value">{{ room.area_sq_m }}</span>
-                  <span class="price-currency">м²</span>
-                </div>
-              {% endif %}
             </div>
             <p class="room-description">{{ room.short_description }}</p>
           </div>

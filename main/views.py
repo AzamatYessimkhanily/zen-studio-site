@@ -1595,6 +1595,93 @@ def buy_subscription_api(request):
     except Exception as e:
         return JsonResponse({'success': False, 'error': str(e)}, status=500)
 
+def add_new_subscription_to_sheet(data):
+    """
+    Добавляет абонемент или ОБНОВЛЯЕТ существующий (суммирует часы).
+    """
+    try:
+        # 1. Авторизация (как у тебя было)
+        creds = Credentials.from_service_account_file(
+            SERVICE_ACCOUNT_FILE,
+            scopes=["https://www.googleapis.com/auth/spreadsheets"]
+        )
+        client = gspread.authorize(creds)
+        sh = client.open_by_url(settings.CLIENTS_HISTORY_SPREADSHEET_URL)
+        ws = sh.worksheet("Абонементы")
+        
+        # Данные
+        phone_norm = normalize_phone_for_sheet(data['phone'])
+        new_hours = float(data['hours'])
+        name = data['name']
+        price = data['price']
+        
+        # Даты
+        now = datetime.datetime.now(ALMATY_TZ)
+        valid_until = (now + datetime.timedelta(days=90)).strftime("%Y-%m-%d") # Новая дата окончания
+        sale_date = now.strftime("%Y-%m-%d %H:%M")
+
+        # 2. ПОИСК КЛИЕНТА
+        # Ищем телефон в колонке C (индекс 3)
+        try:
+            cell = ws.find(phone_norm, in_column=3)
+        except gspread.exceptions.CellNotFound:
+            cell = None
+
+        # 3. ЕСЛИ КЛИЕНТ НАЙДЕН -> ОБНОВЛЯЕМ
+        if cell:
+            row_idx = cell.row
+            print(f"Клиент найден в строке {row_idx}. Суммируем часы...")
+            
+            # Получаем текущий баланс из колонки I (индекс 9)
+            current_balance_str = ws.cell(row_idx, 9).value
+            
+            try:
+                if current_balance_str:
+                    current_balance = float(str(current_balance_str).replace(',', '.'))
+                else:
+                    current_balance = 0.0
+            except:
+                current_balance = 0.0
+                
+            # Складываем
+            total_hours = current_balance + new_hours
+            
+            # Обновляем ячейки
+            # Колонка I (9) - Баланс
+            ws.update_cell(row_idx, 9, total_hours)
+            # Колонка J (10) - Дата окончания (ПРОДЛЕВАЕМ)
+            ws.update_cell(row_idx, 10, valid_until)
+            # Колонка B (2) - Имя (на всякий случай обновляем)
+            ws.update_cell(row_idx, 2, name)
+            
+            return True
+
+        # 4. ЕСЛИ НЕ НАЙДЕН -> СОЗДАЕМ НОВОГО
+        else:
+            print(f"Клиент новый. Создаем строку...")
+            client_id = f"{phone_norm}@c.us"
+            
+            # Строка для записи (A-J)
+            row = [
+                client_id,      # A: ID
+                name,           # B: Имя
+                phone_norm,     # C: Телефон
+                new_hours,      # D: Куплено (для истории первой покупки)
+                "",             # E: Макс (пусто)
+                price,          # F: Цена
+                sale_date,      # G: Дата покупки
+                "Да",           # H: Новый
+                new_hours,      # I: Остаток (Баланс)
+                valid_until     # J: Действует до
+            ]
+            ws.append_row(row)
+            return True
+
+    except Exception as e:
+        print(f"Error adding/updating subscription: {e}")
+        return False
+
+
 class BookingPageView(TemplateView):
     template_name = 'main/booking_page.html' # Указываем новый шаблон
 
