@@ -1005,7 +1005,7 @@ def find_available_rooms(request):
 
     available_rooms = []
     # Получаем все активные кабинеты с ID календаря
-    all_rooms = Room.objects.filter(is_active=True).exclude(google_calendar_id__isnull=True).exclude(google_calendar_id__exact='')
+    all_rooms = Room.objects.filter(is_active=True, show_in_booking=True).exclude(google_calendar_id__isnull=True).exclude(google_calendar_id__exact='')
 
     for room in all_rooms:
         
@@ -1104,12 +1104,20 @@ def hold_slot(request):
                     return JsonResponse({'success': False, 'error': 'Слот занят в календаре.'}, status=409)
 
                 # Создаем серое событие
+    # === СКРЫТИЕ НОМЕРА (Серый резерв) ===
+                if room.hide_phone_in_calendar:
+                    summary_text = f'⏳ Временный резерв {room.name}: {client_name}'
+                else:
+                    summary_text = f'⏳ Временный резерв {room.name}: {client_name} ({client_phone})'
+                # =====================================
+
+                # Создаем серое событие
                 event_body = {
-                    'summary': f'⏳ Временный резерв  {room.name}: {client_name} ({client_phone})',
+                    'summary': summary_text, # Используем переменную
                     'description': 'Клиент перешел к оплате. Резерв 15 минут.',
                     'start': {'dateTime': start_dt_aware.isoformat(), 'timeZone': settings.TIME_ZONE},
                     'end': {'dateTime': end_dt_aware.isoformat(), 'timeZone': settings.TIME_ZONE},
-                    'colorId': None # Серый цвет
+                    'colorId': None 
                 }
                 gcal_event = service.events().insert(calendarId=calendar_id, body=event_body).execute()
                 gcal_event_id = gcal_event.get('id')
@@ -1364,24 +1372,44 @@ def create_booking(request):
         service = get_calendar_service()
         calendar_id = str(room.google_calendar_id).strip().replace('"', '').replace("'", "").replace(' ', '')
         
-        event_summary = f'Сайт:{client_name} ({client_phone})'
         
         # Формируем описание для календаря
+
+# Формируем описание для календаря
         if is_subscription:
             desc_payment = f"Абонемент (списано {duration_hours}ч, остаток {current_balance_display}ч)"
         else:
             desc_payment = payment_info_text
 
-        event_description = (
-            f'Клиент: {client_name}\nТел: {client_phone}\nКол-во: {people_count}\n'
-            f'Длит: {duration_hours} ч.\nЦена: {data.get("price", price)} тг\n'
-            f'Оплата: {desc_payment}\nИсточник: Сайт' 
-        )
+        # === СКРЫТИЕ НОМЕРА (Зеленая бронь) ===
+        if room.hide_phone_in_calendar:
+            # 1. Заголовок БЕЗ телефона
+            event_summary = f'Сайт:{client_name}' 
+            
+            # 2. Описание БЕЗ строки "Тел:" вообще
+            event_description = (
+                f'Клиент: {client_name}\n'
+                f'Кол-во: {people_count}\n'
+                f'Длительность: {duration_hours} ч.\nЦена: {data.get("price", price)} тг\n'
+                f'Оплата: {desc_payment}\nИсточник: Сайт' 
+            )
+        else:
+            # 1. Заголовок С телефоном
+            event_summary = f'Сайт:{client_name} ({client_phone})'
+            
+            # 2. Описание С телефоном
+            event_description = (
+                f'Клиент: {client_name}\nТел: {client_phone}\n'
+                f'Кол-во: {people_count}\n'
+                f'Длительность: {duration_hours} ч.\nЦена: {data.get("price", price)} тг\n'
+                f'Оплата: {desc_payment}\nИсточник: Сайт' 
+            )
+        # ======================================
         
         event_patch = {
             'summary': event_summary,
             'description': event_description,
-            'colorId': None, # Дефолтный цвет календаря
+            'colorId': None, 
         }
         
         # Если событие уже есть (создано при hold_slot), обновляем его
@@ -1683,13 +1711,13 @@ def add_new_subscription_to_sheet(data):
 
 
 class BookingPageView(TemplateView):
-    template_name = 'main/booking_page.html' # Указываем новый шаблон
+    template_name = 'main/booking_page.html'
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
-        # Передаем в шаблон список всех активных кабинетов
-        context['rooms'] = Room.objects.filter(is_active=True).order_by('order')
-        context['settings'] = SiteSettings.objects.first() # Также передаем настройки
+        # ФИЛЬТРУЕМ: только активные И те, у которых стоит галочка show_in_booking
+        context['rooms'] = Room.objects.filter(is_active=True, show_in_booking=True).order_by('order')
+        context['settings'] = SiteSettings.objects.first()
         return context
 
 class IndexView(TemplateView):

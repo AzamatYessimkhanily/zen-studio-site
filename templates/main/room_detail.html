@@ -6,7 +6,6 @@
 {% block extra_css %}
 <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css">
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/glightbox/dist/css/glightbox.min.css">
-
 <style>
   /* --- Общие стили --- */
   .page-header { font-size: clamp(2.2rem, 5vw, 3rem); font-weight: 700; }
@@ -41,11 +40,51 @@
   .equipment-content { font-size: 1.2rem; color: #555; }
 
   /* --- Видео-плеер --- */
-  .video-container { position: relative; width: 100%; padding-bottom: 56.25%; height: 0; overflow: hidden; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,.1); margin-bottom: 1rem; background-color: #000; }
-  .video-container iframe,
-  .video-container video { position: absolute; top: 0; left: 0; width: 100%; height: 100%; border: 0; background-color: #000; }
-  .video-title { font-size: 1.1rem; font-weight: 600; margin-top: 0.5rem; color: var(--zen-dark); }
+/* --- Видео-плеер (ИСПРАВЛЕННЫЙ) --- */
+  .video-wrapper {
+      position: relative;
+      width: 100%;
+      background-color: #000;
+      border-radius: 12px;
+      overflow: hidden;
+      box-shadow: 0 4px 15px rgba(0,0,0,.1);
+      margin-bottom: 1rem;
+      /* Важно для адаптивности: не даем вылезать за контейнер */
+      max-width: 100%; 
+  }
   
+  .video-container { 
+      position: relative; 
+      width: 100%; 
+      /* Используем aspect-ratio вместо padding-bottom */
+      aspect-ratio: 16 / 9; 
+  }
+
+  /* Класс для вертикальных видео (Shorts) */
+  .video-container.vertical {
+      aspect-ratio: 9 / 16;
+      /* Ограничиваем ширину на десктопе, чтобы не было огромным, 
+         но на мобильном будет 100% (до 350px) */
+      max-width: 350px; 
+      margin: 0 auto;
+  }
+
+  .video-container iframe { 
+      position: absolute; 
+      top: 0; 
+      left: 0; 
+      width: 100%; 
+      height: 100%; 
+      border: 0; 
+  }
+
+  /* Для загруженных файлов */
+  .video-uploaded video {
+      width: 100%;
+      height: auto; /* Высота авто, пропорции сохраняются */
+      max-height: 80vh; 
+      display: block;
+  }
   /* --- Структура страницы --- */
   .room-layout-grid { display: grid; grid-template-columns: 1fr; gap: 2rem; }
   @media (min-width: 992px) {
@@ -121,33 +160,38 @@
   /* --- Фиксированная кнопка на мобильных --- */
 /* --- Фиксированная кнопка на мобильных --- */
 .mobile-booking-bar {
-    position: fixed;
-    bottom: 0;
-    left: 0;
-    width: 100%;
-    background: rgba(255, 255, 255, 0.95);
-    backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px);
-    border-top: 1px solid rgba(0,0,0,0.05);
-    padding: 12px 0;
-    z-index: 1000;
-    box-shadow: 0 -4px 20px rgba(0,0,0,0.05);
-    padding-bottom: env(safe-area-inset-bottom, 12px);
-}
+      position: fixed;
+      bottom: 0;
+      left: 0;
+      width: 100%;
+      background: rgba(255, 255, 255, 0.95);
+      backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px);
+      border-top: 1px solid rgba(0,0,0,0.05);
+      z-index: 1000;
+      box-shadow: 0 -4px 20px rgba(0,0,0,0.05);
+      /* Добавляем больше отступа снизу, чтобы не прилипало к черте iPhone */
+      padding: 12px 16px calc(12px + env(safe-area-inset-bottom)); 
+  }
 
 /* Стиль кнопки в мобильном баре (единый с сайтом) */
 .btn-book-mobile {
-    background: var(--zen-green);
-    color: white;
-    padding: 12px 24px;
-    border-radius: 16px; /* Как у остальных кнопок */
-    font-weight: 600;
-    text-decoration: none;
-    display: inline-flex;
-    align-items: center;
-    box-shadow: 0 4px 15px rgba(157, 211, 175, 0.4);
-    transition: transform 0.2s;
-}
-.btn-book-mobile:active { transform: scale(0.96); }
+      background: var(--zen-green);
+      color: white;
+      padding: 14px 24px; /* Чуть больше кнопка */
+      border-radius: 16px;
+      font-weight: 600;
+      font-size: 1.1rem;
+      text-decoration: none;
+      display: flex; /* Flex для центровки иконки и текста */
+      justify-content: center;
+      align-items: center;
+      box-shadow: 0 4px 15px rgba(157, 211, 175, 0.4);
+      transition: transform 0.2s;
+      width: 100%; /* На всю ширину */
+      max-width: 500px; /* Ограничение для планшетов */
+      margin: 0 auto; /* Центровка */
+  }
+  .btn-book-mobile:active { transform: scale(0.96); }
 
 /* Отступ снизу для body */
 @media (max-width: 992px) {
@@ -186,6 +230,32 @@
 .btn-book-desktop:active {
     transform: scale(0.98);
 }
+
+
+/* 1. Запрещаем горизонтальный скролл на уровне всей страницы */
+  html, body {
+      max-width: 100vw;
+      overflow-x: hidden;
+  }
+
+  /* 2. Заставляем ВСЕ картинки, видео и карты сжиматься под экран */
+  img, video, iframe, table, .leaflet-container {
+      max-width: 100% !important;
+      height: auto !important;
+  }
+
+  /* 3. Фикс для карты (она часто глючит с шириной) */
+  #map {
+      width: 100% !important;
+      max-width: 100%;
+      box-sizing: border-box;
+  }
+
+  /* 4. Фикс для контейнеров контента */
+  .container, .section, .room-layout-grid {
+      max-width: 100vw;
+      overflow-x: hidden;
+  }
 </style>
 {% endblock %}
 
@@ -259,25 +329,38 @@
         </div>
         {% endif %}
 
-        {% if room.videos.exists %}
+{% if room.videos.exists %}
         <div id="video" class="scroll-target info-section animated-item">
             <div class="info-title"><i class="fas fa-video"></i> Видеообзор</div>
-            <div class="row g-4">
+            <div class="row g-4 justify-content-center">
             {% for video_obj in room.videos.all %}
-                <div class="col-12">
+                <div class="col-12 text-center">
+                
                 {% if video_obj.embed_url %}
-                    <div class="video-container">
-                    <iframe src="{{ video_obj.get_embed_src }}" title="{{ video_obj.title|default:'Видеообзор' }}" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" allowfullscreen {% if video_obj.poster %} style="background-image: url('{{ video_obj.poster.url }}'); background-size: cover; background-position: center;" {% endif %}></iframe>
+                    <div class="video-wrapper">
+                        <div class="video-container {% if 'shorts' in video_obj.embed_url %}vertical{% endif %}">
+                            <iframe src="{{ video_obj.get_embed_src }}" 
+                                    title="{{ video_obj.title|default:'Видеообзор' }}" 
+                                    frameborder="0" 
+                                    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" 
+                                    allowfullscreen 
+                                    {% if video_obj.poster %} style="background-image: url('{{ video_obj.poster.url }}'); background-size: cover; background-position: center;" {% endif %}>
+                            </iframe>
+                        </div>
                     </div>
+
                 {% elif video_obj.video_file %}
-                    <div class="video-container">
-                    <video controls {% if video_obj.poster %}poster="{{ video_obj.poster.url }}"{% endif %} preload="metadata">
-                        <source src="{{ video_obj.video_file.url }}" type="video/mp4">
-                        Ваш браузер не поддерживает видео.
-                    </video>
+                    <div class="video-wrapper video-uploaded">
+                        <video controls {% if video_obj.poster %}poster="{{ video_obj.poster.url }}"{% endif %} preload="metadata">
+                            <source src="{{ video_obj.video_file.url }}" type="video/mp4">
+                            Ваш браузер не поддерживает видео.
+                        </video>
                     </div>
                 {% endif %}
-                {% if video_obj.title %}<p class="video-title text-center">{{ video_obj.title }}</p>{% endif %}
+
+                {% if video_obj.title %}
+                    <p class="video-title">{{ video_obj.title }}</p>
+                {% endif %}
                 </div>
             {% endfor %}
             </div>
@@ -355,20 +438,15 @@
 </section>
 
 <div class="mobile-booking-bar d-lg-none">
-    <div class="container d-flex align-items-center justify-content-between">
-        <div class="d-flex flex-column">
-
-        </div>
-        <a href="{% url 'main:booking_page' %}" class="btn-book-mobile">
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="me-2">
-                <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
-                <line x1="16" y1="2" x2="16" y2="6"></line>
-                <line x1="8" y1="2" x2="8" y2="6"></line>
-                <line x1="3" y1="10" x2="21" y2="10"></line>
-            </svg>
-            Забронировать
-        </a>
-    </div>
+    <a href="{% url 'main:booking_page' %}" class="btn-book-mobile">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="me-2">
+            <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
+            <line x1="16" y1="2" x2="16" y2="6"></line>
+            <line x1="8" y1="2" x2="8" y2="6"></line>
+            <line x1="3" y1="10" x2="21" y2="10"></line>
+        </svg>
+        Забронировать
+    </a>
 </div>
 {% endblock %}
 

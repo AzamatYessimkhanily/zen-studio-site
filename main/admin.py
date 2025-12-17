@@ -164,13 +164,29 @@ class TariffInline(admin.TabularInline):
 
 
 
+# 1. Создаем Inline (вставь где-то рядом с TariffInline)
+class FooterLinkInline(admin.TabularInline):
+    model = FooterLink
+    extra = 1
+    fields = ("title", "url", "icon_class", "open_in_new_tab", "order")
+    
+    # Подключаем твой виджет для выбора иконок
+    formfield_overrides = {
+        models.CharField: {'widget': DatalistTextInput("fa-icons-footer", ICON_SUGGESTIONS)},
+    }
+
+# 2. Обновляем SiteSettingsAdmin (добавляем FooterLinkInline в список)
 @admin.register(SiteSettings)
 class SiteSettingsAdmin(admin.ModelAdmin):
     list_display = ["__str__", "phone", "email"]
-    inlines = [HeroSliderInline, TariffInline]
+    
+    # === ДОБАВИЛ FooterLinkInline СЮДА ===
+    inlines = [HeroSliderInline, TariffInline, FooterLinkInline]
+    # =====================================
+    
     fieldsets = (
         ("Базовые", {"fields": ("site_name","logo","phone","email","address")}),
-        ("Линки", {"fields": ("instagram_link","whatsapp_admin","whatsapp_bot","reviews_link")}),
+        ("Линки (фиксированные)", {"fields": ("instagram_link","whatsapp_admin","whatsapp_bot","reviews_link")}),
         ("SEO по умолчанию", {
             "fields": ("default_meta_title","default_meta_description","default_meta_robots","default_og_image")
         }),
@@ -262,27 +278,32 @@ class RoomVideoInline(admin.TabularInline):
 
 @admin.register(Room)
 class RoomAdmin(admin.ModelAdmin):
-    list_display = ['name', 'area_sq_m','google_calendar_id', 'order', 'is_active', 'image_preview']  # <-- площадь вместо цены
-    list_editable = ['order', 'is_active']
-    list_filter = ['is_active']
+    list_display = ['name', 'area_sq_m', 'google_calendar_id', 'order', 'is_active', 'show_in_booking', 'image_preview']
+    list_editable = ['order', 'is_active', 'show_in_booking'] # Добавил возможность менять галочку прямо из списка
+    list_filter = ['is_active', 'show_in_booking']
     search_fields = ['name', 'google_calendar_id','description']
 
     fieldsets = (
-            (None, {
-                'fields': (
-                    'name', 'google_calendar_id',
-                    ('work_time_start', 'work_time_end'), # <-- ДОБАВЛЕНО СЮДА (в одну строку)
-                    'short_description', 'main_image',
-                    'is_active', 'order'
-                )
+                (None, {
+                    'fields': (
+                        'name', 'google_calendar_id',
+                        ('work_time_start', 'work_time_end'),
+                        
+                        # === ДОБАВИЛ НОВЫЕ ГАЛОЧКИ СЮДА ===
+                        ('show_in_booking', 'hide_phone_in_calendar'),
+                        # ==================================
+                        
+                        'short_description', 'main_image',
+                        'is_active', 'order'
+                    )
+                }),
+            ("Характеристики", {
+                'fields': ('area_sq_m',)
             }),
-        ("Характеристики", {  # <-- вместо блока "Цены"
-            'fields': ('area_sq_m',)
-        }),
-        ("Контент (без подпунктов)", {
-            'fields': ('equipment_text',)
-        }),
-    )
+            ("Контент (без подпунктов)", {
+                'fields': ('equipment_text',)
+            }),
+        )
 
     inlines = [DescriptionInline, RoomLocationInline, RoomImageInline, RoomVideoInline]
 
@@ -320,14 +341,28 @@ class PageContentBlockInline(nested_admin.NestedStackedInline):
     )
     inlines = [ContentImageInline]  # ← вот они, фото внутри блока
     sortable_field_name = "order"
-
+    
+# 1. Инлайн для кнопок (используем NestedTabularInline!)
+class PageLinkInline(nested_admin.NestedTabularInline):
+    model = PageLink
+    extra = 1
+    fields = ("text", "url", "style", "icon_class", "order")
+    sortable_field_name = "order"  # <--- Обязательно для сортировки
+    
+    # Подсказки для иконок
+    formfield_overrides = {
+        models.CharField: {'widget': DatalistTextInput("fa-icons-links", ICON_SUGGESTIONS)},
+    }
 
 @admin.register(Page)
 class PageAdmin(nested_admin.NestedModelAdmin):
     list_display = ("title", "slug", "order", "is_active")
     list_editable = ("order", "is_active")
     prepopulated_fields = {"slug": ("title",)}
-    inlines = [PageContentBlockInline]
+    
+    # Добавляем PageLinkInline в список
+    inlines = [PageContentBlockInline, PageLinkInline] 
+    
     search_fields = ("title", "slug")
     fieldsets = (
         ("Страница", {"fields": ("title","slug","content","is_active")}),

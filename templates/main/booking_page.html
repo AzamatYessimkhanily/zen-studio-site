@@ -1188,6 +1188,15 @@ html, body {
                             <hr class="flex-grow-1 ms-3 my-0" style="opacity:0.1">
                         </div>
                         <div id="find_results_list"></div>
+
+                        <div class="text-center py-4">
+
+                            
+                            <p class="small text-muted mb-1">Обратитесь к администратору для бронирования альтернативного кабинета</p>
+                            <a href="https://wa.me/77073910808" target="_blank" class="btn btn-sm btn-outline-success rounded-pill px-4 shadow-sm">
+                                <i class="fab fa-whatsapp me-2"></i> Написать администратору
+                            </a>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -2762,7 +2771,8 @@ async function finalizeSubscriptionPurchase(wrapper, name, phone) {
                          card.innerHTML = `
                              <img src="${room.main_image_url || '{% static "img/favicon-32x32.png" %}'}" alt="${room.name}" class="room-result-img">
                              <div class="room-result-info"><h5>Кабинет ${room.name}</h5><p>${room.short_description || ''}</p>${room.area ? `<p><strong>${room.area} м²</strong></p>` : ''}</div>
-                             <div class="room-result-price">${room.price} ₸</div>`;
+                             <div class="room-result-price">${room.price} ₸</div>
+                                                     <div class="text-center py-4">`;
                          card.addEventListener('click', handleFoundRoomClick);
                          findResultsList.appendChild(card);
                      });
@@ -2921,23 +2931,51 @@ function saveBookingState() {
             client_name: clientNameInput ? clientNameInput.value : null, 
             client_phone: clientPhoneInput ? clientPhoneInput.value : null, 
             
-            // === АБОНЕМЕНТ (Сюда добавили цену!) ===
+            // АБОНЕМЕНТ
             isSubscriptionMode: typeof isSubscriptionMode !== 'undefined' ? isSubscriptionMode : false,
             subHours: typeof subCurrentHours !== 'undefined' ? subCurrentHours : 5,
             subPeople: typeof subPeopleSelect !== 'undefined' ? subPeopleSelect.value : '1',
-            subPrice: typeof subCurrentPrice !== 'undefined' ? subCurrentPrice : 0, // <--- ВАЖНО: СОХРАНЯЕМ ЦЕНУ
-            // ================================
+            subPrice: typeof subCurrentPrice !== 'undefined' ? subCurrentPrice : 0, 
 
             isTypeSelection: isTypeSel,
-            activeRoomBtn: document.querySelector('.room-choice-btn.active')?.dataset.roomId || null
+            activeRoomBtn: document.querySelector('.room-choice-btn.active')?.dataset.roomId || null,
+            
+            // === НОВОЕ: ВРЕМЯ СОХРАНЕНИЯ ===
+            timestamp: Date.now() 
         }; 
-        sessionStorage.setItem(STORAGE_KEY, JSON.stringify(state)); 
+        // ИСПОЛЬЗУЕМ LOCALSTORAGE ВМЕСТО SESSIONSTORAGE
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(state)); 
     } catch (e) { console.error("Save state error:", e); } 
 }
 
+function loadBookingState() { 
+    try { 
+        // ЧИТАЕМ ИЗ LOCALSTORAGE
+        const saved = localStorage.getItem(STORAGE_KEY); 
+        if (saved) { 
+            const state = JSON.parse(saved); 
+            
+            // === НОВОЕ: ПРОВЕРКА ВРЕМЕНИ (30 минут) ===
+            const now = Date.now();
+            if (now - (state.timestamp || 0) > 30 * 60 * 1000) {
+                clearBookingState(); // Удаляем, если старое
+                return null;
+            }
 
-    function loadBookingState() { try { const saved = sessionStorage.getItem(STORAGE_KEY); if (saved) { const state = JSON.parse(saved); if (state.timerEndTime && state.timerEndTime <= Date.now()) { if (state.holdId) cancelHold(false, state.holdId); clearBookingState(); return null; } return state; } } catch (e) { console.error(e); } return null; }
-    function clearBookingState() { sessionStorage.removeItem(STORAGE_KEY); }
+            // Если время бронирования (холда) уже истекло
+            if (state.timerEndTime && state.timerEndTime <= now) { 
+                if (state.holdId) cancelHold(false, state.holdId); 
+                clearBookingState(); 
+                return null; 
+            } 
+            return state; 
+        } 
+    } catch (e) { console.error(e); } 
+    return null; 
+}
+function clearBookingState() { 
+    localStorage.removeItem(STORAGE_KEY);
+}
 function restoreBookingState(state) { 
         if (!state) return; 
         roomId = state.roomId; 

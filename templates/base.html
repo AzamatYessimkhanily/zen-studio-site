@@ -369,50 +369,54 @@
     </button>
 
     <div class="collapse navbar-collapse" id="mainMenu">
-    <!-- Меню: Desktop = 3 пункта + «Ещё» / Mobile = полный список -->
-<!-- DESKTOP: показываем первые 3 + "Еще" -->
-    <ul class="navbar-nav me-auto mb-2 mb-lg-0 ms-lg-4 d-none d-lg-flex">
-      {% for page in pages_menu %}
-        {% if forloop.counter <= 3 %}
+      
+      <ul class="navbar-nav me-auto mb-2 mb-lg-0 ms-lg-4 d-none d-lg-flex">
+        
+        <li class="nav-item">
+          <a href="/#rooms-section" class="nav-link">Кабинеты</a>
+        </li>
+        {% for page in pages_menu %}
+          {% if forloop.counter <= 3 %}
+            <li class="nav-item">
+              <a href="{% url 'main:page_detail' slug=page.slug %}" class="nav-link">{{ page.title }}</a>
+            </li>
+          {% endif %}
+        {% endfor %}
+
+        {% if pages_menu|length > 3 %}
+          <li class="nav-item dropdown">
+            <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+              Еще
+            </a>
+            <ul class="dropdown-menu">
+              {% for page in pages_menu %}
+                {% if forloop.counter > 3 %}
+                  <li><a class="dropdown-item" href="{% url 'main:page_detail' slug=page.slug %}">{{ page.title }}</a></li>
+                {% endif %}
+              {% endfor %}
+            </ul>
+          </li>
+        {% endif %}
+      </ul>
+
+      <ul class="navbar-nav me-auto mb-2 mb-lg-0 ms-lg-4 d-lg-none">
+        
+        <li class="nav-item">
+          <a href="/#rooms-section" class="nav-link">Кабинеты</a>
+        </li>
+        {% for page in pages_menu %}
           <li class="nav-item">
             <a href="{% url 'main:page_detail' slug=page.slug %}" class="nav-link">{{ page.title }}</a>
           </li>
-        {% endif %}
+        {% endfor %}
+      </ul>
 
-      {% endfor %}
-      {% if pages_menu|length > 3 %}
-        <li class="nav-item dropdown">
-          <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false">
-            Еще
-          </a>
-          <ul class="dropdown-menu">
-            {% for page in pages_menu %}
-              {% if forloop.counter > 3 %}
-                <li><a class="dropdown-item" href="{% url 'main:page_detail' slug=page.slug %}">{{ page.title }}</a></li>
-              {% endif %}
-            {% endfor %}
-          </ul>
-        </li>
-      {% endif %}
-    </ul>
-
-    <!-- MOBILE: показываем весь список -->
-    <ul class="navbar-nav me-auto mb-2 mb-lg-0 ms-lg-4 d-lg-none">
-      {% for page in pages_menu %}
-        <li class="nav-item">
-          <a href="{% url 'main:page_detail' slug=page.slug %}" class="nav-link">{{ page.title }}</a>
-        </li>
-      {% endfor %}
-    </ul>
-
-      <!-- Остальной код хедера без изменений -->
       <div class="header-actions">
-        <!-- Language switch -->
-      <div class="lang-switch-nav notranslate" translate="no" data-gt-ignore="true">
-        <button class="btn-lang" data-lang="ru" id="btn-lang-ru" type="button">RU</button>
-        <button class="btn-lang" data-lang="en" id="btn-lang-en" type="button">EN</button>
-        <button class="btn-lang" data-lang="kk" id="btn-lang-kk" type="button">KZ</button>
-      </div>
+        <div class="lang-switch-nav notranslate" translate="no" data-gt-ignore="true">
+          <button class="btn-lang" data-lang="ru" id="btn-lang-ru" type="button">РУ</button>
+          <button class="btn-lang" data-lang="en" id="btn-lang-en" type="button">EN</button>
+          <button class="btn-lang" data-lang="kk" id="btn-lang-kk" type="button">ҚАЗ</button>
+        </div>
 
         <div class="header-socials">
           {% if settings.instagram_link %}<a href="{{ settings.instagram_link }}" target="_blank" aria-label="Instagram"><i class="fab fa-instagram"></i></a>{% endif %}
@@ -428,11 +432,11 @@
           {% if settings.instagram_link %}<a href="{{ settings.instagram_link }}" target="_blank" aria-label="Instagram"><i class="fab fa-instagram"></i></a>{% endif %}
           {% if settings.whatsapp_admin %}<a href="{{ settings.whatsapp_admin }}" target="_blank" aria-label="WhatsApp"><i class="fab fa-whatsapp"></i></a>{% endif %}
         </div>
-    <div class="lang-switch-nav notranslate mt-3" translate="no" data-gt-ignore="true">
-        <button class="btn-lang" data-lang="ru" type="button">RU</button>
-        <button class="btn-lang" data-lang="en" type="button">EN</button>
-        <button class="btn-lang" data-lang="kk" type="button">KZ</button>
-      </div>
+        <div class="lang-switch-nav notranslate mt-3" translate="no" data-gt-ignore="true">
+          <button class="btn-lang" data-lang="ru" type="button">РУ</button>
+          <button class="btn-lang" data-lang="en" type="button">EN</button>
+          <button class="btn-lang" data-lang="kk" type="button">ҚАЗ</button>
+        </div>
       </div>
     </div>
   </nav>
@@ -443,28 +447,101 @@
   </main>
 {% block footer %}
 <footer class="footer" id="footer">
-  <div class="container-fluid">  <!-- Изменили на container-fluid -->
-    <div class="row justify-content-between">  <!-- Добавили выравнивание -->
-      <div class="col-lg-5 col-md-6 mb-4 mb-lg-0">
-        <h5>{{ settings.footer_welcome_text|default:"ДОБРО ПОЖАЛОВАТЬ В ZENSTUDIO!" }}</h5>
-        <p class="small text-white-50 mb-3">Место для вашей продуктивной работы и душевного равновесия.</p>
+  <div class="container"> {# Можно вернуть container, чтобы не было слишком широко, или оставить container-fluid #}
+    <div class="row">
+      
+      {# === КОЛОНКА 1: ЛОГО/ПРИВЕТСТВИЕ + СОЦСЕТИ === #}
+      <div class="col-lg-4 col-md-6 mb-4">
+        <h5 class="mb-3">{{ settings.footer_welcome_text|default:"ZENSTUDIO" }}</h5>
+        <p class="small text-white-50 mb-3">
+            Место для вашей продуктивной работы и душевного равновесия.
+        </p>
+        
+        {# Фиксированные соцсети (Instagram, WhatsApp) #}
         <div class="footer-social">
-          {% if settings.instagram_link %}<a href="{{ settings.instagram_link }}" target="_blank" aria-label="Instagram"><i class="fab fa-instagram"></i></a>{% endif %}
-          {% if settings.whatsapp_admin %}<a href="{{ settings.whatsapp_admin }}" target="_blank" aria-label="WhatsApp"><i class="fab fa-whatsapp"></i></a>{% endif %}
+          {% if settings.instagram_link %}
+            <a href="{{ settings.instagram_link }}" target="_blank" aria-label="Instagram" class="me-2">
+                <i class="fab fa-instagram fa-lg"></i>
+            </a>
+          {% endif %}
+          {% if settings.whatsapp_admin %}
+            <a href="{{ settings.whatsapp_admin }}" target="_blank" aria-label="WhatsApp" class="me-2">
+                <i class="fab fa-whatsapp fa-lg"></i>
+            </a>
+          {% endif %}
         </div>
       </div>
-      <div class="col-lg-5 col-md-6 mb-4 mb-lg-0">
-        <h5>Контакты</h5>
+
+      {# === КОЛОНКА 2: ПОЛЕЗНОЕ (ДИНАМИЧЕСКИЕ ССЫЛКИ) === #}
+      <div class="col-lg-4 col-md-6 mb-4">
+        <h5 class="mb-3">Полезное</h5>
+        {% if settings.footer_links.exists %}
+        <ul class="list-unstyled footer-contacts"> {# Используем тот же класс стиля, что и у контактов #}
+            {% for link in settings.footer_links.all %}
+            <li class="mb-2">
+                <a href="{{ link.url }}" 
+                   {% if link.open_in_new_tab %}target="_blank"{% endif %} 
+                   class="text-decoration-none text-white-50 hover-white">
+                   
+                   {# Иконка #}
+                   {% if link.icon_class %}
+                       <i class="{{ link.icon_class }} me-2" style="width: 20px; text-align: center;"></i>
+                   {% else %}
+                       <i class="fas fa-angle-right me-2" style="width: 20px; text-align: center;"></i>
+                   {% endif %}
+                   
+                   {{ link.title }}
+                </a>
+            </li>
+            {% endfor %}
+        </ul>
+        {% else %}
+            <p class="text-white-50 small">Раздел обновляется...</p>
+        {% endif %}
+      </div>
+
+      {# === КОЛОНКА 3: КОНТАКТЫ === #}
+      <div class="col-lg-4 col-md-12 mb-4">
+        <h5 class="mb-3">Контакты</h5>
         <ul class="list-unstyled footer-contacts">
-          {% if settings.address %}<li class="mb-2"><i class="fas fa-map-marker-alt me-2"></i> {{ settings.address }}</li>{% endif %}
-          {% if settings.phone %}<li class="mb-2"><i class="fas fa-phone me-2"></i> <a href="tel:{{ settings.phone }}">{{ settings.phone }}</a></li>{% endif %}
-          {% if settings.email %}<li class="mb-2"><i class="fas fa-envelope me-2"></i> <a href="mailto:{{ settings.email }}">{{ settings.email }}</a></li>{% endif %}
-          {% if settings.whatsapp_bot %}<li class="mb-2"><i class="fab fa-whatsapp me-2"></i><a href="{{ settings.whatsapp_bot }}" target="_blank">ИИ-ассистент</a></li>{% endif %}
-          {% if settings.reviews_link %}<li class="mb-2"><i class="fa-solid fa-quote-left me-2"></i><a href="{{ settings.reviews_link }}" target="_blank">Отзывы</a></li>{% endif %}
+          {% if settings.address %}
+            <li class="mb-2"><i class="fas fa-map-marker-alt me-2" style="width: 20px; text-align: center;"></i> {{ settings.address }}</li>
+          {% endif %}
+          
+          {% if settings.phone %}
+            <li class="mb-2">
+                <i class="fas fa-phone me-2" style="width: 20px; text-align: center;"></i> 
+                <a href="tel:{{ settings.phone }}">{{ settings.phone }}</a>
+            </li>
+          {% endif %}
+          
+          {% if settings.email %}
+            <li class="mb-2">
+                <i class="fas fa-envelope me-2" style="width: 20px; text-align: center;"></i> 
+                <a href="mailto:{{ settings.email }}">{{ settings.email }}</a>
+            </li>
+          {% endif %}
+          
+          {% if settings.whatsapp_bot %}
+            <li class="mb-2">
+                <i class="fab fa-whatsapp me-2" style="width: 20px; text-align: center;"></i>
+                <a href="{{ settings.whatsapp_bot }}" target="_blank">ИИ-ассистент</a>
+            </li>
+          {% endif %}
+          
+          {% if settings.reviews_link %}
+            <li class="mb-2">
+                <i class="fa-solid fa-quote-left me-2" style="width: 20px; text-align: center;"></i>
+                <a href="{{ settings.reviews_link }}" target="_blank">Отзывы</a>
+            </li>
+          {% endif %}
         </ul>
       </div>
+
     </div>
+
     <hr class="my-4" style="border-color:rgba(255,255,255,.1);" />
+    
     <div class="text-center text-white-50 small">
       <p class="mb-0">{{ settings.copyright_text|default:"Copyright Zenstudio.kz 2024. All rights reserved" }}</p>
     </div>
@@ -548,9 +625,9 @@
 function freezeLangButtonsLabel(){
   document.querySelectorAll('.btn-lang').forEach(btn=>{
     const code = (btn.getAttribute('data-lang') || '').toLowerCase();
-    if (code === 'ru') btn.textContent = 'RU';
+    if (code === 'ru') btn.textContent = 'РУ';
     if (code === 'en') btn.textContent = 'EN';
-    if (code === 'kk') btn.textContent = 'KZ';
+    if (code === 'kk') btn.textContent = 'ҚАЗ';
   });
 }
   document.addEventListener('click', e=>{

@@ -266,7 +266,7 @@
   display: flex;
   align-items: flex-end;
   justify-content: center;
-  padding: 24px;
+  padding: 15px;
   opacity: 0;
   transition: opacity 0.3s ease;
 }
@@ -915,7 +915,7 @@
 </section>
 
 <!-- Rooms Section -->
-<section class="rooms-section">
+<section class="rooms-section" id="rooms-section">
   <div class="container">
     <div class="section-header">
       <h2 class="section-title">Наши кабинеты</h2>
@@ -947,6 +947,25 @@
           </div>
         </article>
       {% endfor %}
+
+      <article class="room-item">
+        <div class="room-image-wrapper">
+          <img src="/static/img/partner.jpeg" class="room-image" alt="Ваш кабинет" style="object-fit: cover;">
+          
+          <div class="room-overlay">
+            <a href="https://zenstudio.kz/page/partners/" class="room-link">
+              <span>Подробнее</span>
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M5 12h14M12 5l7 7-7 7"/>
+              </svg>
+            </a>
+          </div>
+        </div>
+        
+        <div class="room-content">
+          <p class="room-description">Партнерам</p>
+        </div>
+      </article>
     </div>
     <div class="cta-wrapper">
       <a href="{% url 'main:booking_page' %}" class="btn-book" style="text-decoration: none; display: inline-flex; align-items: center; justify-content: center;">

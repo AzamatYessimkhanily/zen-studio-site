@@ -3,7 +3,6 @@
 
 {# TITLE и DESCRIPTION берём из контекста #}
 {% block title %}{{ seo_title|default:page.title }}{% endblock %}
-{% block description %}{{ seo_description|default:settings.default_meta_description }}{% endblock %}
 {% block robots %}{{ seo_robots|default:settings.default_meta_robots|default:"index,follow" }}{% endblock %}
 
 {% block canonical %}
@@ -197,6 +196,43 @@
   width: 25px;
   border-radius: 5px;
 }
+/* Контейнер кнопок */
+.bottom-links-container {
+    margin-top: 4rem;
+    padding-top: 2rem;
+    border-top: 1px solid #e9ecef;
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 15px;
+}
+
+/* Стиль кнопки */
+.bottom-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 12px 24px;
+    border-radius: 50px;
+    text-decoration: none;
+    font-weight: 600;
+    transition: all 0.2s ease;
+    border: 2px solid transparent;
+}
+.bottom-btn:hover {
+    transform: translateY(-2px);
+    text-decoration: none;
+}
+
+/* Цвета */
+.bottom-btn.style-primary { background-color: var(--zen-green); color: #fff; box-shadow: 0 4px 10px rgba(157, 211, 175, 0.3); }
+.bottom-btn.style-primary:hover { background:#8BC49D;color:#fff;box-shadow:0 4px 15px rgba(var(--zen-green-rgb),.3);}
+
+.bottom-btn.style-outline { background-color: transparent; border-color: var(--zen-green); color: var(--zen-green); }
+.bottom-btn.style-outline:hover { background-color: var(--zen-green); color: #fff; }
+
+.bottom-btn.style-dark { background-color: var(--zen-dark); color: #fff; }
+.bottom-btn.style-dark:hover { background-color: #000; color: #fff; }
 </style>
 {% endblock %}
 
@@ -296,6 +332,22 @@
           {% endif %}
         {% empty %}
         {% endfor %}
+
+
+        {# === ВЫВОД КНОПОК === #}
+        {% if page.bottom_links.exists %}
+            <div class="bottom-links-container">
+                {% for link in page.bottom_links.all %}
+                    <a href="{{ link.url }}" target="_blank" class="bottom-btn style-{{ link.style }}">
+                        {% if link.icon_class %}
+                            <i class="fas {{ link.icon_class }}"></i>
+                        {% endif %}
+                        <span>{{ link.text }}</span>
+                    </a>
+                {% endfor %}
+            </div>
+        {% endif %}
+        {# ==================== #}
       </div>
     </div>
   </div>

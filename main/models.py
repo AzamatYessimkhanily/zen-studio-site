@@ -153,6 +153,19 @@ class Room(models.Model):
         default=datetime.time(23, 0), # Значение по умолчанию 23:00
         help_text="Время окончания работы кабинета (ЧЧ:ММ). Если пусто, используется 23:00."
     )
+    # === НОВЫЕ ПОЛЯ ===
+    hide_phone_in_calendar = models.BooleanField(
+        default=False, 
+        verbose_name="Скрывать телефон в календаре",
+        help_text="Если галочка стоит, номер клиента НЕ попадет в Google Календарь (для партнерских кабинетов)."
+    )
+    
+    show_in_booking = models.BooleanField(
+        default=True,
+        verbose_name="Показывать в модуле бронирования",
+        help_text="Если галочка СНЯТА, этот кабинет нельзя будет выбрать в модуле брони (он исчезнет из списков)."
+    )
+    # ==================
     class Meta:
         verbose_name = 'Кабинет'
         verbose_name_plural = 'Кабинеты'
@@ -490,3 +503,55 @@ class PendingBooking(models.Model):
         local_start = timezone.localtime(self.start_time)
         local_expires = timezone.localtime(self.expires_at)
         return f"Резерв {self.room.name} с {local_start.strftime('%H:%M %d.%m')} до {local_expires.strftime('%H:%M:%S')}"
+    
+
+class PageLink(models.Model):
+    """Кнопки-ссылки внизу страницы"""
+    page = models.ForeignKey(Page, related_name="bottom_links", on_delete=models.CASCADE, verbose_name="Страница")
+    text = models.CharField("Текст кнопки", max_length=100)
+    url = models.URLField("Ссылка")
+    
+    STYLE_CHOICES = [
+        ('primary', 'Зеленая (Основная)'),
+        ('outline', 'Прозрачная (Контур)'),
+        ('dark', 'Черная'),
+    ]
+    style = models.CharField("Стиль", max_length=20, choices=STYLE_CHOICES, default='primary')
+    icon_class = models.CharField("Иконка (Font Awesome)", max_length=50, blank=True)
+    order = models.PositiveIntegerField("Порядок", default=0)
+
+    class Meta:
+        ordering = ("order", "id")
+        verbose_name = "Кнопка-ссылка"
+        verbose_name_plural = "Кнопки-ссылки внизу"
+
+    def __str__(self):
+        return self.text
+    
+
+class FooterLink(models.Model):
+    """Дополнительные ссылки в футере"""
+    site = models.ForeignKey(
+        'SiteSettings',
+        related_name='footer_links',
+        on_delete=models.CASCADE,
+        verbose_name='Сайт'
+    )
+    title = models.CharField("Название", max_length=100, help_text="Например: Telegram, TikTok, Договор оферты")
+    url = models.URLField("Ссылка")
+    icon_class = models.CharField(
+        "Иконка (Font Awesome)", 
+        max_length=50, 
+        blank=True, 
+        help_text="Например: fa-telegram, fa-tiktok, fa-file-contract"
+    )
+    open_in_new_tab = models.BooleanField("Открывать в новой вкладке", default=True)
+    order = models.PositiveIntegerField("Порядок", default=0)
+
+    class Meta:
+        verbose_name = 'Ссылка в футере'
+        verbose_name_plural = 'Ссылки в футере'
+        ordering = ['order']
+
+    def __str__(self):
+        return self.title
