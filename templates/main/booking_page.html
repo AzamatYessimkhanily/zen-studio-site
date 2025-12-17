@@ -925,6 +925,17 @@ html, body {
   <div class="container">
     <div class="row justify-content-center">
       <div class="col-lg-6 col-md-8 col-12 p-0 p-sm-2"> 
+
+
+        {# === НОВОЕ: ЗАГОЛОВОК И ГОРОД === #}
+        <div class="d-flex align-items-center justify-content-between mb-3 px-1">
+           <h4 class="fw-bold mb-0 text-dark" style="letter-spacing: -0.5px;">Бронирование</h4>
+           <div class="d-flex align-items-center bg-white border rounded-pill px-3 py-2 shadow-sm">
+               <i class="fas fa-map-marker-alt text-danger me-2"></i>
+               <span class="fw-bold small text-dark">г. Алматы</span>
+           </div>
+        </div>
+        {# ================================ #}
         {# === ГЛАВНЫЙ БЛОК ВЫБОРА === #}
         <div id="booking_success_message" class="alert alert-success mt-3 small rounded-3 border-0 shadow-sm" style="display: none;"></div>
 <div id="booking_error_message" class="alert alert-danger mt-3 small rounded-3 border-0 shadow-sm" style="display: none;"></div>
@@ -1070,6 +1081,14 @@ html, body {
   </button>
 </div>
 
+
+{# === НОВОЕ: КНОПКА ОБЗОРА === #}
+    <a href="/#rooms-section" class="btn w-100 py-3 rounded-4 mb-2 shadow-sm d-flex align-items-center justify-content-center text-decoration-none" 
+       style="background: #fff; border: 1px solid #e9ecef; color: var(--zen-dark); font-weight: 700;">
+        <i class="fas fa-images text-success me-2 fs-5"></i> 
+        <span>Обзор кабинетов</span>
+    </a>
+    {# ============================ #}
 <div class="d-flex align-items-center my-4">
     <hr class="flex-grow-1 my-0" style="border-top: 1px solid #e9ecef;">
     <span class="mx-3 text-muted small fw-bold text-uppercase" style="letter-spacing: 1px; font-size: 0.7rem;">Абонементы</span>
