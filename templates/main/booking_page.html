@@ -1464,17 +1464,19 @@ html, body {
 
 <div class="booking-step hidden" id="step_receipt">
 
-
     <div class="mb-4">
-        <label for="receipt_file" class="form-label">Загрузить квитанцию</label>
+        <label for="receipt_file" class="form-label">Загрузить квитанцию (PDF)</label>
         
         <div class="input-group mb-2">
-            <span class="input-group-text bg-white border-end-0"><i class="fas fa-receipt text-muted"></i></span>
-            <input type="file" class="form-control border-start-0 ps-0" id="receipt_file" name="receipt_file" accept="image/*,.pdf" style="height: 52px; line-height: 38px;">
+            <span class="input-group-text bg-white border-end-0"><i class="fas fa-file-pdf text-danger"></i></span>
+            {# === ИЗМЕНЕНИЕ: Убрали image/* из accept, оставили только .pdf === #}
+            <input type="file" class="form-control border-start-0 ps-0" id="receipt_file" name="receipt_file" accept=".pdf" style="height: 52px; line-height: 38px;">
         </div>
+        <div class="form-text small mb-2">Принимаются только файлы в формате PDF</div>
 
-        <div class="mb-2"> <button type="button" id="toggle_manual_receipt" class="btn btn-link btn-sm text-decoration-none text-muted p-0" style="font-size: 0.85rem;">
-                Не получилось загрузить чек?
+        <div class="mb-2"> 
+            <button type="button" id="toggle_manual_receipt" class="btn btn-link btn-sm text-decoration-none text-muted p-0" style="font-size: 0.85rem;">
+                Нет PDF файла? Ввести номер чека
             </button>
         </div>
 
@@ -1490,12 +1492,11 @@ html, body {
     <div class="d-flex align-items-start gap-2 p-3 rounded-4 bg-secondary bg-opacity-10 mb-4 border border-secondary border-opacity-25">
         <i class="fas fa-exclamation-circle text-secondary mt-1 fs-5"></i>
         <span class="small text-dark fw-bold lh-sm">
-            Бронирование в календаре происходит после оплаты и загрузки чека. 
+            Бронирование в календаре происходит после проверки квитанции. 
             <br>
             <span class="text-muted fw-normal">По вопросам WhatsApp: +7 707 391 0808</span>
         </span>
     </div>
-
         
     <div class="row g-2 mt-2">
         <div class="col-12">
@@ -3576,8 +3577,15 @@ async function handleConfirmBooking() {
 
         // Вариант А: Есть файл
         if (file) {
+            // === НОВАЯ ПРОВЕРКА ===
+            if (file.type !== 'application/pdf') {
+                showMessage('error', 'Пожалуйста, загрузите файл в формате PDF', true);
+                confirmBookingButton.disabled = false;
+                return;
+            }
+            // ======================
             isReceiptValid = true;
-        } 
+        }
         // Вариант Б: Нет файла, но есть номер
         else if (receiptNumber.length > 5) { // Минимальная длина номера
             // Если ввел только цифры, добавляем QR сами
