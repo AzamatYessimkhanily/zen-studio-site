@@ -85,8 +85,7 @@ def normalize_phone_for_sheet(phone):
 
 def get_subscription_client(phone):
     """
-    Ищет клиента в листе 'Абонементы'. 
-    Возвращает: (row_index, balance, expiration_date_str) или None
+    Ищет клиента в листе 'Абонементы' ДИНАМИЧЕСКИ (по названиям колонок).
     """
     try:
         creds = Credentials.from_service_account_file(
@@ -94,51 +93,81 @@ def get_subscription_client(phone):
             scopes=["https://www.googleapis.com/auth/spreadsheets"]
         )
         client = gspread.authorize(creds)
-        # Открываем таблицу Истории (там же лежит лист Абонементы)
         sh = client.open_by_url(settings.CLIENTS_HISTORY_SPREADSHEET_URL)
         ws = sh.worksheet("Абонементы")
         
         phone_norm = normalize_phone_for_sheet(phone)
         
-        # Ищем телефон в колонке C (3-я колонка)
-        # Получаем все значения колонки C
-        phones_col = ws.col_values(3)
+        # 1. Получаем заголовки (первая строка)
+        headers = ws.row_values(1)
+        # Приводим заголовки к нижнему регистру для надежности
+        headers_lower = [h.lower().strip() for h in headers]
+
+        # 2. Ищем индексы нужных колонок
+        # Настройте названия ниже точно как у вас в таблице!
+        try:
+            # Ищем колонку с телефоном (варианты: "телефон", "phone")
+            phone_col_idx = headers_lower.index("телефон") + 1
+        except ValueError:
+            print("Ошибка: Колонка 'Телефон' не найдена в таблице")
+            return None
+
+        try:
+            # Ищем колонку с остатком (варианты: "остаток", "баланс", "купил")
+            # Если у вас колонка называется I:Остаток, ищите "остаток"
+            balance_col_idx = headers_lower.index("остаток") + 1
+        except ValueError:
+            # Запасной вариант - ищем "баланс"
+            if "баланс" in headers_lower:
+                balance_col_idx = headers_lower.index("баланс") + 1
+            else:
+                print("Ошибка: Колонка 'Остаток' не найдена")
+                return None
+
+        try:
+            # Ищем колонку срока действия
+            expire_col_idx = headers_lower.index("действует до") + 1
+        except ValueError:
+            expire_col_idx = None # Не критично, если нет
+
+        # 3. Ищем телефон в найденной колонке
+        phones_col = ws.col_values(phone_col_idx)
         
-        # Ищем индекс (начинается с 0, в gspread строки с 1)
         try:
             row_idx = phones_col.index(phone_norm) + 1 
         except ValueError:
-            return None # Не найден
+            return None # Телефон не найден
             
-        # Получаем баланс (Колонка I -> 9) и Дату истечения (Колонка J -> 10)
-        # row_values берет всю строку, это быстрее чем брать ячейки по одной
-        row_data = ws.row_values(row_idx)
+        # 4. Получаем данные конкретной строки
+        # Получаем значение баланса напрямую по координатам
+        balance_str = ws.cell(row_idx, balance_col_idx).value
         
-        # Индексы в массиве row_data смещены на -1 относительно колонок
-        # Col I (9) -> index 8
-        # Col J (10) -> index 9
-        
-        if len(row_data) < 9: return None # Битая строка
-        
-        balance_str = row_data[8].replace(',', '.') # меняем запятую на точку
+        # Получаем дату истечения
+        expire_str = ""
+        if expire_col_idx:
+            expire_str = ws.cell(row_idx, expire_col_idx).value
+
+        # Парсим баланс
+        if not balance_str: balance_str = "0"
+        balance_str = str(balance_str).replace(',', '.')
         try:
             balance = float(balance_str)
         except:
             balance = 0.0
             
-        expire_str = row_data[9] if len(row_data) > 9 else ""
-        
         return {
             'row': row_idx,
             'balance': balance,
             'expires': expire_str,
-            'sheet_instance': ws # Возвращаем объект листа, чтобы потом списать
+            'sheet_instance': ws,
+            'balance_col_idx': balance_col_idx, # Возвращаем номер колонки для записи
+            'expire_col_idx': expire_col_idx
         }
 
     except Exception as e:
         print(f"Error checking subscription: {e}")
         return None
-
+    
 def add_new_subscription_to_sheet(data):
     """Записывает новый абонемент в таблицу."""
     try:
@@ -1318,9 +1347,9 @@ def create_booking(request):
     is_subscription = (payment_method == 'subscription')
     current_balance_display = "" # === НОВОЕ: Переменная для хранения остатка ===
 
+# Внутри create_booking ...
     if is_subscription:
         # === АБОНЕМЕНТ ===
-        # Проверяем баланс перед списанием
         sub_data = get_subscription_client(client_phone)
         
         if not sub_data:
@@ -1335,24 +1364,23 @@ def create_booking(request):
             new_balance = sub_data['balance'] - required_hours
             ws = sub_data['sheet_instance']
             row_idx = sub_data['row']
-            # Колонка I (Остаток) - это 9-я колонка
-            ws.update_cell(row_idx, 9, new_balance)
+            
+            # === ИСПРАВЛЕНИЕ: Используем динамический индекс колонки ===
+            balance_col_idx = sub_data['balance_col_idx'] 
+            
+            ws.update_cell(row_idx, balance_col_idx, new_balance)
             print(f"Subscription deducted: {required_hours}h. New balance: {new_balance}")
             
-            # === НОВОЕ: Сохраняем красивый вид остатка (если 2.0 -> 2) ===
+            # Красивый вывод остатка
             if float(new_balance).is_integer():
                 current_balance_display = str(int(new_balance))
             else:
                 current_balance_display = str(new_balance)
-            # =============================================================
 
         except Exception as e:
             print(f"Error updating balance: {e}")
             return JsonResponse({'success': False, 'error': 'Ошибка списания баланса.'}, status=500)
-            
-        payment_info_text = f"Абонемент (списано {required_hours}ч)"
-        price = 0 
-
+        
     else:
         # === РАЗОВАЯ ОПЛАТА ===
         if not file_data_b64 and not receipt_number:
@@ -1625,10 +1653,9 @@ def buy_subscription_api(request):
 
 def add_new_subscription_to_sheet(data):
     """
-    Добавляет абонемент или ОБНОВЛЯЕТ существующий (суммирует часы).
+    Добавляет/обновляет абонемент, учитывая ПЕРЕМЕЩЕНИЕ КОЛОНОК.
     """
     try:
-        # 1. Авторизация (как у тебя было)
         creds = Credentials.from_service_account_file(
             SERVICE_ACCOUNT_FILE,
             scopes=["https://www.googleapis.com/auth/spreadsheets"]
@@ -1637,78 +1664,80 @@ def add_new_subscription_to_sheet(data):
         sh = client.open_by_url(settings.CLIENTS_HISTORY_SPREADSHEET_URL)
         ws = sh.worksheet("Абонементы")
         
-        # Данные
+        # 1. Читаем заголовки, чтобы понять, где какая колонка
+        headers = ws.row_values(1)
+        header_map = {name.lower().strip(): i for i, name in enumerate(headers)}
+        
+        # Проверяем наличие ключевых колонок (названия должны совпадать с таблицей!)
+        col_phone = header_map.get('телефон')
+        col_balance = header_map.get('остаток') or header_map.get('баланс')
+        col_expires = header_map.get('действует до')
+        col_name = header_map.get('имя')
+        
+        if col_phone is None or col_balance is None:
+            print("Ошибка: Не найдены обязательные колонки (Телефон, Остаток) в таблице")
+            return False
+
+        # Данные для записи
         phone_norm = normalize_phone_for_sheet(data['phone'])
         new_hours = float(data['hours'])
         name = data['name']
-        price = data['price']
         
-        # Даты
         now = datetime.datetime.now(ALMATY_TZ)
-        valid_until = (now + datetime.timedelta(days=90)).strftime("%Y-%m-%d") # Новая дата окончания
-        sale_date = now.strftime("%Y-%m-%d %H:%M")
-
-        # 2. ПОИСК КЛИЕНТА
-        # Ищем телефон в колонке C (индекс 3)
+        valid_until = (now + datetime.timedelta(days=90)).strftime("%Y-%m-%d")
+        
+        # 2. Поиск клиента (по колонке телефона)
         try:
-            cell = ws.find(phone_norm, in_column=3)
+            # col_phone + 1, так как gspread нумерует с 1, а python с 0
+            cell = ws.find(phone_norm, in_column=(col_phone + 1))
         except gspread.exceptions.CellNotFound:
             cell = None
 
-        # 3. ЕСЛИ КЛИЕНТ НАЙДЕН -> ОБНОВЛЯЕМ
+        # --- ОБНОВЛЕНИЕ СУЩЕСТВУЮЩЕГО ---
         if cell:
             row_idx = cell.row
-            print(f"Клиент найден в строке {row_idx}. Суммируем часы...")
             
-            # Получаем текущий баланс из колонки I (индекс 9)
-            current_balance_str = ws.cell(row_idx, 9).value
-            
+            # Читаем текущий баланс
+            current_val = ws.cell(row_idx, col_balance + 1).value
             try:
-                if current_balance_str:
-                    current_balance = float(str(current_balance_str).replace(',', '.'))
-                else:
-                    current_balance = 0.0
+                current_balance = float(str(current_val).replace(',', '.')) if current_val else 0.0
             except:
                 current_balance = 0.0
-                
-            # Складываем
+            
             total_hours = current_balance + new_hours
             
-            # Обновляем ячейки
-            # Колонка I (9) - Баланс
-            ws.update_cell(row_idx, 9, total_hours)
-            # Колонка J (10) - Дата окончания (ПРОДЛЕВАЕМ)
-            ws.update_cell(row_idx, 10, valid_until)
-            # Колонка B (2) - Имя (на всякий случай обновляем)
-            ws.update_cell(row_idx, 2, name)
-            
+            # Обновляем ячейки (используем найденные индексы)
+            ws.update_cell(row_idx, col_balance + 1, total_hours)
+            if col_expires is not None:
+                ws.update_cell(row_idx, col_expires + 1, valid_until)
+            if col_name is not None:
+                ws.update_cell(row_idx, col_name + 1, name)
+                
             return True
 
-        # 4. ЕСЛИ НЕ НАЙДЕН -> СОЗДАЕМ НОВОГО
+        # --- СОЗДАНИЕ НОВОГО ---
         else:
-            print(f"Клиент новый. Создаем строку...")
-            client_id = f"{phone_norm}@c.us"
+            # Создаем пустой список размером с количество заголовков
+            new_row = [""] * len(headers)
             
-            # Строка для записи (A-J)
-            row = [
-                client_id,      # A: ID
-                name,           # B: Имя
-                phone_norm,     # C: Телефон
-                new_hours,      # D: Куплено (для истории первой покупки)
-                "",             # E: Макс (пусто)
-                price,          # F: Цена
-                sale_date,      # G: Дата покупки
-                "Да",           # H: Новый
-                new_hours,      # I: Остаток (Баланс)
-                valid_until     # J: Действует до
-            ]
-            ws.append_row(row)
+            # Заполняем известные поля по индексам из header_map
+            if col_phone is not None: new_row[col_phone] = phone_norm
+            if col_balance is not None: new_row[col_balance] = new_hours
+            if col_expires is not None: new_row[col_expires] = valid_until
+            if col_name is not None: new_row[col_name] = name
+            
+            # Доп. поля (если есть такие колонки)
+            if 'id' in header_map: new_row[header_map['id']] = f"{phone_norm}@c.us"
+            if 'цена' in header_map: new_row[header_map['цена']] = data['price']
+            if 'куплено' in header_map: new_row[header_map['куплено']] = new_hours
+            if 'дата' in header_map: new_row[header_map['дата']] = now.strftime("%Y-%m-%d")
+
+            ws.append_row(new_row)
             return True
 
     except Exception as e:
         print(f"Error adding/updating subscription: {e}")
         return False
-
 
 class BookingPageView(TemplateView):
     template_name = 'main/booking_page.html'
