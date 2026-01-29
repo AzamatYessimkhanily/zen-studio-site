@@ -868,7 +868,26 @@ def _ensure_unique_booking_id(ws, booking_id: str) -> str:
 # --- НОВАЯ ФУНКЦИЯ: ЗАПИСЬ В ИСТОРИЮ КЛИЕНТОВ ---
 def save_booking_to_sheet(booking_data):
     """Записывает данные о бронировании с сайта в 'История клиентов'."""
-    
+    headers = ws.row_values(1)
+    new_headers = []
+    if "ID брони" not in headers:
+        headers.append("ID брони")
+        new_headers.append("ID брони")
+    if "Источник" not in headers:
+        headers.append("Источник")
+        new_headers.append("Источник")
+        
+    # === ДОБАВЛЯЕМ КОЛОНКУ ДЛЯ НАПОМИНАНИЯ ===
+    if "Напоминание" not in headers:
+        headers.append("Напоминание")
+        new_headers.append("Напоминание")
+    # =========================================
+
+    if new_headers:
+        ws.resize(cols=len(headers))
+        range_label = f"R1C1:R1C{len(headers)}"
+        ws.update(range_label, [headers], raw=False)
+        print(f"[HIST] Добавлены колонки: {new_headers}")
     # --- ИЗМЕНЕНИЕ: Форматируем ID клиента (как для WhatsApp) ---
     client_phone = booking_data.get("client_phone", "")
     
@@ -943,7 +962,8 @@ def save_booking_to_sheet(booking_data):
             "Дата/время бронирования": booking_timestamp,
             "Новый клиент": "Да", # С сайта пока всегда "Да" (или можно добавить проверку)
             "ID брони": booking_id,
-            "Источник": "Сайт" # <-- Твоя пометка
+            "Источник": "Сайт", # <-- Твоя пометка
+            "Напоминание": "Нет" # По умолчанию не отправлено
         }
 
         # Собираем строку в правильном порядке заголовков
@@ -1488,25 +1508,60 @@ def create_booking(request):
 # ... (код выше без изменений) ...
 
     # 7. ОТПРАВКА УВЕДОМЛЕНИЙ (WhatsApp)
+# 7. ОТПРАВКА УВЕДОМЛЕНИЙ (WhatsApp)
     studio_details = {}
     try:
-        door_code, client_message_text, studio_details = get_door_code_and_instructions(room.name)        
+        # Получаем данные, но сообщение будем собирать сами заново
+        door_code, _, studio_details = get_door_code_and_instructions(room.name)
         
-        # === ОБНОВЛЕНИЕ: Текст для группы и КЛИЕНТА ===
+        # Извлекаем тексты из полученного словаря
+        address = studio_details.get("address", "Адрес уточняется")
+        enter_instr = studio_details.get("enter_instruction", "")
+        general_info = studio_details.get("general_info", "")
+        
+        # Рассчитываем время окончания для красивого отображения (например: 14:00 - 16:00)
+        end_time_dt = start_dt_aware + datetime.timedelta(hours=duration_hours)
+        end_time_str = end_time_dt.strftime('%H:%M')
+        
+        # Телефон админа
+        settings_obj = SiteSettings.objects.first()
+        admin_phone = settings_obj.phone if settings_obj else "77073910808"
+
+        # === ГЕНЕРАЦИЯ СООБЩЕНИЯ КЛИЕНТУ ===
+        client_message_text = (
+            f"✅ Ваша бронь кабинета {room.name} подтверждена!\n"
+            f"📍 Адрес: {address}\n"
+            f"🔑 Код двери: {door_code}\n"
+            f"🗓 {date_str} | {start_time_str} - {end_time_str}\n"
+        )
+
+        # Если это абонемент — вставляем остаток СРАЗУ ПОСЛЕ времени
         if is_subscription:
-            # Для группы
+            client_message_text += f"📉 Ваш остаток часов: {current_balance_display}\n"
+
+        # Далее инструкции по открытию
+        if enter_instr:
+            client_message_text += f"\n🚪 Как открыть:\n{enter_instr}\n"
+        
+        # Общие правила (Про уборку и т.д.)
+        if general_info:
+            client_message_text += f"\n{general_info}\n"
+
+        # Футер
+        client_message_text += f"\n📞 По вопросам обращайтесь к администратору: {admin_phone}"
+        # ====================================
+
+        # === ГЕНЕРАЦИЯ СООБЩЕНИЯ ДЛЯ ГРУППЫ АДМИНОВ ===
+        if is_subscription:
             group_payment_text = f"💳 Абонемент (Списано {duration_hours}ч)\n📉 Остаток: {current_balance_display} ч"
-            # Для клиента (Добавляем остаток в конец сообщения)
-            client_message_text += f"\n\n📉 Ваш остаток часов: {current_balance_display}"
         else:
             group_payment_text = f"💰 Оплата: {data.get('price', 0)} ₸\n{payment_info_text}"
-        # ==============================================
 
         group_message_text = (
             "〰〰〰〰〰〰〰〰〰〰\n"
             "📅 Новая бронь (Сайт)\n\n"
             f"🏠 Кабинет: {room.name}\n"
-            f"🗓 Дата: {date_str} | {start_time_str}\n"
+            f"🗓 Дата: {date_str} | {start_time_str} - {end_time_str}\n"
             f"⏳ Длительность: {duration_hours} ч\n"
             f"👥 Гостей: {people_count}\n"
             f"👤 Клиент: {client_name} ({client_phone})\n"
@@ -1514,6 +1569,7 @@ def create_booking(request):
             "〰〰〰〰〰〰〰〰〰〰"
         )
 
+        # Отправка через API
         bot_api_url = getattr(settings, 'BOT_WHATSAPP_API_URL', None)
         group_chat_id = getattr(settings, 'GROUP_CHAT_ID', None)
 
