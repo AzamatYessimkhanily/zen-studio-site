@@ -81,20 +81,24 @@ html, body {
       height: 100%; /* Занимает всю высоту контейнера */
   }
 
-  .form-control, .form-select {
-      height: 50px;
-      border-radius: 14px;
-      border: 1px solid transparent;
-      background-color: #f2f2f7;
-      font-size: 16px;
-      font-weight: 500;
-      color: #000;
-      padding-left: 12px;
-      box-shadow: none;
-      transition: all 0.2s ease;
-      display: flex;
-      align-items: center; /* Центрируем текст внутри */
-  }
+/* В блоке <style> замените существующие правила для этих классов */
+.form-control, .form-select {
+    height: 56px !important; /* Единая высота для всех полей */
+    border-radius: 16px !important;
+    border: 1px solid transparent !important;
+    background-color: #f2f2f7 !important;
+    font-size: 1.05rem !important; /* Единый размер шрифта */
+    font-weight: 600 !important;
+    color: #1c1c1e !important;
+    padding: 0 16px !important;
+    box-shadow: none !important;
+    transition: all 0.2s ease;
+}
+
+/* Убираем специфические стили для number-инпута, чтобы он не выделялся */
+input[type="number"] {
+    text-align: left !important; /* Убираем центровку, если нужна идентичность с селектом */
+}
 /* === ЗЕЛЕНЫЙ ЧЕКБОКС (ZEN STYLE) === */
 .form-check-input:checked {
     background-color: var(--zen-green);
@@ -942,7 +946,7 @@ html, body {
 
 
 
-{# === БЛОК: КОНСТРУКТОР АБОНЕМЕНТА === #}
+{# === БЛОК: КОНСТРУКТОР АБОНЕМЕНТА (ОБНОВЛЕННЫЙ) === #}
 <div id="module_subscription_calc" style="display: none;">
     <div class="info-section animated-item">
         
@@ -961,29 +965,25 @@ html, body {
                 <option value="1" selected>от 1 до 3</option>
                 <option value="4">Группа от 4 до 8</option>
             </select>
-            
         </div>
-<div class="mb-4">
-                <div class="input-header">
-                <label class="form-label">Выберите часы</label>
+
+        <div class="mb-4">
+            <div class="input-header">
+                <label class="form-label">Количество часов</label>
             </div>
-                    <select id="sub_custom_hours" class="form-select" style="height: 54px;">
-                <option value="3">3 часа</option>
-                <option value="4">4 часа</option>
-                <option value="6">6 часов</option>
-                <option value="7">7 часов</option>
-                <option value="8">8 часов</option>
-                <option value="9">9 часов</option>
-                <option value="11">11 часов</option>
-                <option value="12">12 часов</option>
-                <option value="13">13 часов</option>
-                <option value="14">14 часов</option>
-                <option value="16">16 часов</option>
-                <option value="17">17 часов</option>
-                <option value="18">18 часов</option>
-                <option value="19">19 часов</option>
-                </select>
-</div>
+            <input type="number" 
+                   id="sub_hours_input" 
+                   class="form-control" 
+                   placeholder="Например: 5" 
+                   min="3" 
+                   step="1"
+                   inputmode="numeric"
+                   oninput="this.value = this.value.replace(/[^0-9]/g, '');">
+            <div class="form-text small text-muted mt-2">
+                <i class="fas fa-info-circle me-1"></i> Только целые часы (минимум 3)
+            </div>
+        </div>
+
         <div class="mb-4">
             <label class="form-label mb-2">Или выберите популярный пакет:</label>
             <div class="sub-options-grid mb-3">
@@ -1004,9 +1004,6 @@ html, body {
                     <div class="label">часов</div>
                 </div>
             </div>
-
-
-
         </div>
 
         <div id="sub_calc_loading" class="text-center py-4" style="display: none;">
@@ -1016,7 +1013,6 @@ html, body {
         <div id="sub_calc_result" class="sub-result-card text-center mb-4" style="display: none;">
             <div class="text-muted small mb-1 text-uppercase fw-bold">Итого к оплате</div>
             <div class="display-5 fw-bold text-dark mb-3" id="sub_display_price" style="letter-spacing: -1px;">0 ₸</div>
-            
             <div class="savings-badge">
                 <i class="fas fa-check-circle"></i> Экономия: <span id="sub_display_savings">0</span> ₸
             </div>
@@ -1633,7 +1629,7 @@ document.addEventListener("DOMContentLoaded", function () {
     
     const subPeopleSelect = document.getElementById('sub_people_select');
     const subOptionCards = document.querySelectorAll('.sub-option-card');
-    const subCustomSelect = document.getElementById('sub_custom_hours'); // Новый селект
+    const subHoursInput = document.getElementById('sub_hours_input'); // Новый селект
     
     const subDisplayPrice = document.getElementById('sub_display_price');
     const subDisplaySavings = document.getElementById('sub_display_savings');
@@ -1663,20 +1659,19 @@ document.addEventListener("DOMContentLoaded", function () {
     
     // Функция полного сброса выбора (визуально и логически)
     function resetSubscriptionSelection() {
-        subCurrentHours = null;
-        subCurrentPrice = 0;
-        
-        // Сброс кнопок
-        subOptionCards.forEach(c => c.classList.remove('active'));
-        
-        // Сброс селекта
-        if(subCustomSelect) subCustomSelect.value = "";
-        
-        // Скрытие цены и блокировка кнопки
-        if(subCalcResult) subCalcResult.style.display = 'none';
-        if(btnSubNext) btnSubNext.disabled = true;
-    }
-
+            subCurrentHours = null;
+            subCurrentPrice = 0;
+            
+            // Очищаем инпут
+            if(subHoursInput) subHoursInput.value = "";
+            
+            // Снимаем подсветку с карточек
+            subOptionCards.forEach(c => c.classList.remove('active'));
+            
+            // Прячем цену
+            if(subCalcResult) subCalcResult.style.display = 'none';
+            if(btnSubNext) btnSubNext.disabled = true;
+        }
     // 2. Назад из калькулятора
     if (subBackBtn) {
         subBackBtn.addEventListener('click', () => {
@@ -1702,36 +1697,44 @@ function exitSubscriptionMode() {
     clearBookingState();
 }
 
-    // 3. А. ОБРАБОТКА КЛИКА ПО КАРТОЧКЕ (5, 10, 15, 20)
+// 3. ЛОГИКА ВЫБОРА ЧАСОВ (КАРТОЧКИ + ИНПУТ)
+
+    // А. Если кликнули по карточке (5, 10, 15...)
     subOptionCards.forEach(card => {
         card.addEventListener('click', () => {
-            const hours = parseInt(card.dataset.hours);
-            subCurrentHours = hours;
+            const hours = card.dataset.hours;
             
-            // Визуал: Активируем карту, сбрасываем селект
+            // 1. Пишем значение в инпут
+            if(subHoursInput) subHoursInput.value = hours;
+            
+            // 2. Подсвечиваем карточку
             subOptionCards.forEach(c => c.classList.remove('active'));
             card.classList.add('active');
             
-            if(subCustomSelect) subCustomSelect.value = ""; // Сброс списка
-            
+            // 3. Считаем
             updateSubCalculation();
             saveBookingState(); 
         });
     });
-    
-    // 3. Б. ОБРАБОТКА ВЫБОРА ИЗ СПИСКА
-    if (subCustomSelect) {
-        subCustomSelect.addEventListener('change', () => {
-            const val = subCustomSelect.value;
-            if (!val) return;
+
+    // Б. Если ввели руками
+    if (subHoursInput) {
+        let debounceTimer;
+        subHoursInput.addEventListener('input', () => {
+            clearTimeout(debounceTimer);
             
-            subCurrentHours = parseInt(val);
-            
-            // Визуал: Сбрасываем карты (делаем белыми)
+            // Сбрасываем подсветку карточек (так как ввод может быть любым)
             subOptionCards.forEach(c => c.classList.remove('active'));
             
-            updateSubCalculation();
-            saveBookingState();
+            // Визуально показываем, что идет процесс (полупрозрачность)
+            if(subCalcResult) subCalcResult.style.opacity = '0.5';
+            if(btnSubNext) btnSubNext.disabled = true;
+
+            // Ждем немного, чтобы человек закончил печатать
+            debounceTimer = setTimeout(() => {
+                updateSubCalculation();
+                saveBookingState();
+            }, 600);
         });
     }
 
@@ -1759,20 +1762,33 @@ function exitSubscriptionMode() {
     }
 
     // 4. Калькулятор
-    function updateSubCalculation() {
-        if (!subCurrentHours) return; // Не считаем, если часы не выбраны
+function updateSubCalculation() {
+        // 1. Читаем из инпута
+        if (!subHoursInput) return;
+        const val = subHoursInput.value;
 
+        // 2. Если пусто или меньше 3 — скрываем итог
+        const h = parseInt(val, 10);
+        if (!val || isNaN(h) || h < 3) {
+            if(subCalcResult) subCalcResult.style.display = 'none';
+            if(btnSubNext) btnSubNext.disabled = true;
+            return;
+        }
+
+        subCurrentHours = h; // Сохраняем в глобальную переменную
         const p = subPeopleSelect ? subPeopleSelect.value : '1';
-        const h = subCurrentHours;
 
+        // ... Дальше ваш старый код fetch запроса остается без изменений ...
         if(subCalcResult) subCalcResult.style.display = 'none';
         if(subCalcLoading) subCalcLoading.style.display = 'block';
-        if(btnSubNext) btnSubNext.disabled = true;
-
+        
+        // (Остаток функции fetch... без изменений)
         fetch(`/api/calculate_sub_benefit/?hours=${h}&people_count=${p}`)
             .then(res => res.json())
             .then(data => {
                 if(subCalcLoading) subCalcLoading.style.display = 'none';
+                if(subCalcResult) subCalcResult.style.opacity = '1'; // Возвращаем яркость
+                
                 if (data.success) {
                     subCurrentPrice = data.price;
                     if(subDisplayPrice) subDisplayPrice.textContent = data.price + ' ₸';
@@ -1783,7 +1799,7 @@ function exitSubscriptionMode() {
                 }
             });
     }
-    
+
     if(subPeopleSelect) subPeopleSelect.addEventListener('change', () => {
         if (subCurrentHours) { // Пересчитываем только если часы уже выбраны
             updateSubCalculation();
@@ -1812,7 +1828,7 @@ function transformToSubscriptionDataStep() {
     const moduleSubCalc = document.getElementById('module_subscription_calc');
     const subBackBtn = document.getElementById('sub_calc_back_btn');
 
-    // 3. Скрываем калькулятор
+    // 3. Скрываем калькуляторf
     if(moduleSubCalc) moduleSubCalc.style.display = 'none';
     
     // 4. Показываем Шаг 2 (Данные)
