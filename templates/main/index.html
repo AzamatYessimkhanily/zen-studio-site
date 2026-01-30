@@ -48,22 +48,59 @@
     align-items: center;
     justify-content: center;
     gap: 10px;
-    padding: 12px 30px;   /* Меньше отступы */
+    width: 100%;          /* Кнопка растягивается на всю ширину группы (260px) */
+    height: 52px;         /* Фиксированная высота для идеальной одинаковости */
     background: var(--zen-green);
     color: #fff;
-    border-radius: 16px;  /* Круглые края */
-    font-size: 1rem;      /* Аккуратный шрифт */
+    border-radius: 16px;
+    font-size: 1rem;
     font-weight: 600;
     text-decoration: none;
-    box-shadow: 0 5px 15px rgba(0,0,0,0.3);
-    transition: transform 0.2s;
+    box-shadow: 0 5px 15px rgba(0,0,0,0.2);
+    transition: all 0.2s;
+    border: none;
+    white-space: nowrap;  /* Запрещаем перенос текста */
 }
 .hero-btn-compact:hover {
     transform: translateY(-2px);
-    background: #8BC6A0;
-    color: white;
+    opacity: 0.9;
+    color: inherit;
 }
 
+
+/* Контейнер для кнопок */
+.hero-btns-group {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 12px;
+    width: 100%;
+    max-width: 260px; /* Фиксируем ширину всей группы, чтобы кнопки были одной длины */
+    margin: 0 auto;   /* Центрируем группу */
+}
+
+/* Вторая кнопка (Абонемент) - Белая, чтобы отличалась, но в том же стиле */
+.hero-btn-white {
+    background: #ffffff !important;
+    color: var(--zen-green) !important;
+}
+.hero-btn-white {
+    background: #ffffff !important;
+    color: var(--zen-green) !important;
+}
+
+/* НАСТРОЙКА ДЛЯ КОМПЬЮТЕРА (ширина больше 768px) */
+@media (min-width: 768px) {
+  .hero-btns-group {
+          flex-direction: row;
+          max-width: 540px; /* Расширяем для двух кнопок в ряд */
+      }
+    
+    /* Сделаем кнопки одинаковой ширины на ПК для красоты */
+    .hero-btn-compact {
+        min-width: 220px;
+    }
+}
 /* ВОЗВРАЩАЕМ СТРЕЛКИ И ТОЧКИ */
 .swiper-pagination {
   bottom: 20px !important; /* Чуть ниже */
@@ -885,19 +922,29 @@
 <!-- Hero Slider -->
 <section class="hero-slider">
   
-  <div class="hero-content">
+<div class="hero-content">
     <h1>Почасовая аренда кабинетов в центре Алматы</h1>
     
-    <a href="{% url 'main:booking_page' %}" class="hero-btn-compact">
-        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-          <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
-          <line x1="16" y1="2" x2="16" y2="6"></line>
-          <line x1="8" y1="2" x2="8" y2="6"></line>
-          <line x1="3" y1="10" x2="21" y2="10"></line>
-        </svg>
-        <span>Забронировать кабинет</span>
-    </a>
-  </div>
+    <div class="hero-btns-group">
+        <a href="{% url 'main:booking_page' %}" class="hero-btn-compact">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
+              <line x1="16" y1="2" x2="16" y2="6"></line>
+              <line x1="8" y1="2" x2="8" y2="6"></line>
+              <line x1="3" y1="10" x2="21" y2="10"></line>
+            </svg>
+            <span>Забронировать</span>
+        </a>
+
+        <a href="{% url 'main:booking_page' %}#subscription" class="hero-btn-compact hero-btn-white">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <rect x="2" y="5" width="20" height="14" rx="2" />
+              <line x1="2" y1="10" x2="22" y2="10" />
+            </svg>
+            <span>Купить абонемент</span>
+        </a>
+    </div>
+</div>
   
   <div class="swiper hero-swiper">
     <div class="swiper-wrapper">

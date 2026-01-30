@@ -1682,6 +1682,9 @@ document.addEventListener("DOMContentLoaded", function () {
 function exitSubscriptionMode() {
     isSubscriptionMode = false;
     
+    // Очищаем URL от хеша
+    history.pushState("", document.title, window.location.pathname + window.location.search);
+
     // Скрываем калькулятор
     if(moduleSubCalc) moduleSubCalc.style.display = 'none';
     if(bookingModuleWrapper1) bookingModuleWrapper1.innerHTML = '';
@@ -1689,7 +1692,7 @@ function exitSubscriptionMode() {
     // Показываем главный экран
     if(roomSelectionContainer) roomSelectionContainer.style.display = 'block';
     
-    // === ВОЗВРАЩАЕМ КНОПКУ ===
+    // Возвращаем кнопку
     if(btnStartSub && btnStartSub.parentElement) {
         btnStartSub.parentElement.style.display = 'block';
     }
@@ -3733,6 +3736,13 @@ function resetAll(goToList = true) {
     clearBookingState(); 
     hideMessages();
     
+    // === ВОТ ЭТО ДОБАВЛЕННЫЙ КОД: ОЧИСТКА URL ===
+    // Убираем #subscription или #balance из адресной строки без перезагрузки
+    if (window.location.hash) {
+        history.pushState("", document.title, window.location.pathname + window.location.search);
+    }
+    // ===========================================
+    
     if (goToList) { 
         // 3. Возврат к выбору кабинета
         showScenario('room'); 
@@ -3740,17 +3750,65 @@ function resetAll(goToList = true) {
         if (roomSelectionContainer) roomSelectionContainer.style.display = 'block'; 
         if (searchInterfaceContainer) searchInterfaceContainer.style.display = 'block'; 
         
-        // === ВАЖНО: ВКЛЮЧАЕМ КНОПКУ АБОНЕМЕНТА ОБРАТНО ===
+        // Включаем кнопку абонемента обратно
         if (btnStartSub && btnStartSub.parentElement) {
             btnStartSub.parentElement.style.display = 'block';
         }
-        // ================================================
     }
 }
 
+// === НОВАЯ ФУНКЦИЯ ДЛЯ ПРЯМЫХ ССЫЛОК ===
+function handleDirectLinks() {
+    const hash = window.location.hash;
+
+    // 1. Ссылка на ПОКУПКУ АБОНЕМЕНТА (#subscription)
+    if (hash === '#subscription') {
+        console.log("Direct link: Subscription");
+        resetAll(false); 
+        startSubscriptionFlow();
+        saveBookingState();
+        return true; // Возвращаем true, если ссылка сработала
+    } 
+    // 2. Ссылка на ПРОВЕРКУ БАЛАНСА (#balance)
+    else if (hash === '#balance') {
+        console.log("Direct link: Balance");
+        // Показываем главный экран, если модалка поверх него
+        if (roomSelectionContainer) roomSelectionContainer.style.display = 'block';
+        if (btnStartSub) btnStartSub.parentElement.style.display = 'block';
+        
+        const modalEl = document.getElementById('checkBalanceModal');
+        if (modalEl && typeof bootstrap !== 'undefined') {
+            const modal = new bootstrap.Modal(modalEl);
+            modal.show();
+        }
+        return true;
+    }
+    // 3. Ссылка на ПОИСК ПО ВРЕМЕНИ (#search)
+    else if (hash === '#search') {
+        console.log("Direct link: Search");
+        resetAll(false);
+        showScenario('time');
+        if (roomSelectionContainer) roomSelectionContainer.style.display = 'none';
+        saveBookingState();
+        return true;
+    }
+    
+    return false; // Ссылка не сработала (хеша нет или он неизвестен)
+}
 
 function initializePage() {
     setDefaultDate(findDateInput); 
+    
+    // 1. СНАЧАЛА проверяем прямые ссылки (они важнее истории!)
+    // Если в адресной строке есть хеш (#subscription), мы игнорируем localStorage
+    const linkHandled = handleDirectLinks();
+
+    if (linkHandled) {
+        // Если сработала прямая ссылка — выходим, состояние из памяти НЕ восстанавливаем
+        return; 
+    }
+
+    // 2. Если прямой ссылки нет, пробуем восстановить состояние
     const savedState = loadBookingState();
     
     // Скрываем всё по умолчанию
@@ -3765,32 +3823,26 @@ function initializePage() {
         roomId = savedState.roomId; 
         roomName = savedState.roomName;
         
-        // === ЛОГИКА ВОССТАНОВЛЕНИЯ АБОНЕМЕНТА ===
-// === ЛОГИКА ВОССТАНОВЛЕНИЯ АБОНЕМЕНТА ===
         if (savedState.isSubscriptionMode) {
-            isSubscriptionMode = true;
-            
-            subCurrentHours = savedState.subHours || null;
-            subCurrentPrice = savedState.subPrice || 0; 
-            if(subPeopleSelect) subPeopleSelect.value = savedState.subPeople || '1';
-            
-            const step = savedState.currentStep || 1;
+             isSubscriptionMode = true;
+             subCurrentHours = savedState.subHours || null;
+             subCurrentPrice = savedState.subPrice || 0; 
+             if(subPeopleSelect) subPeopleSelect.value = savedState.subPeople || '1';
+             
+             const step = savedState.currentStep || 1;
 
-            if (step >= 2) {
-                // Строим модуль
+             if (step >= 2) {
                 moduleBookByRoom.style.display = 'block';
                 setupBookingModule(bookingModuleWrapper1, "Покупка абонемента");
                 transformToSubscriptionDataStep();
-                restoreBookingState(savedState); // Восстанавливаем данные в поля
+                restoreBookingState(savedState); 
                 
-                // <--- ФИКС ЗАГОЛОВКА: ПРИНУДИТЕЛЬНО СТАВИМ ПРАВИЛЬНЫЙ ЗАГОЛОВОК ПОСЛЕ ВОССТАНОВЛЕНИЯ --->
                 const title = bookingModuleWrapper1.querySelector('#booking-section-title');
                 if(title) {
                     if (step === 2) title.innerHTML = '<i class="fas fa-user-check"></i> Ваши данные (Шаг 2 из 4)';
                     if (step === 3) title.innerHTML = '<i class="fas fa-wallet"></i> Оплата абонемента (Шаг 3 из 4)';
                     if (step === 4) title.innerHTML = '<i class="fas fa-check-circle"></i> Завершение покупки';
                 }
-                // <------------------------------------------------------------------------------------>
                 
                 if (step >= 3) {
                      const w = bookingModuleWrapper1;
@@ -3799,7 +3851,6 @@ function initializePage() {
                      if (step === 4) {
                          const s3 = w.querySelector('#step3');
                          const sR = w.querySelector('#step_receipt');
-                         
                          s3.style.display = 'none'; s3.classList.remove('visible');
                          sR.style.display = 'block'; sR.classList.add('visible');
                          
@@ -3811,7 +3862,7 @@ function initializePage() {
                          newFinish.addEventListener('click', () => {
                              finalizeSubscriptionPurchase(w, nameInp.value, w.querySelector('#client_phone').value);
                          });
-
+                         
                          // Переподключение кнопок "Назад"
                          const backBtn4 = w.querySelector('#module_back_btn');
                          if (backBtn4) {
@@ -3828,7 +3879,6 @@ function initializePage() {
                      }
                 }
                 
-                // Обновляем цены в сводке
                 if (subDisplayPrice) subDisplayPrice.textContent = subCurrentPrice + ' ₸';
                 const summaryStep2 = bookingModuleWrapper1.querySelector('#booking_summary_text');
                 if(summaryStep2) {
@@ -3840,7 +3890,6 @@ function initializePage() {
                             <span class="text-secondary">К оплате:</span> <span class="fw-bold text-success fs-6">${subCurrentPrice} ₸</span>
                         </div>`;
                 }
-
             } else {
                 if(btnStartSub) btnStartSub.parentElement.style.display = 'none';
                 moduleSubCalc.style.display = 'block';
@@ -3851,31 +3900,31 @@ function initializePage() {
                     resetSubscriptionSelection();
                 }
             }
-            return;
-        }
-
-        // Обычное бронирование
-        if(btnStartSub) btnStartSub.parentElement.style.display = 'block';
-        if (currentScenario === 'room') {
-            if (roomId) {
-                moduleBookByRoom.style.display = 'block';
-                setupBookingModule(bookingModuleWrapper1, roomName);
-                restoreBookingState(savedState);
-            } else { resetAll(true); }
-        } else if (currentScenario === 'time') {
-            if (roomId && roomName) {
-                moduleFindByTime.style.display = 'block';
-                if (searchInterfaceContainer) searchInterfaceContainer.style.display = 'none';
-                setupBookingModule(bookingModuleWrapper2, roomName);
-                const step1Div = bookingModuleWrapper2.querySelector('#step1');
-                if (step1Div) { step1Div.style.display = 'none'; }
-                restoreBookingState(savedState);
-            } else { 
-                moduleFindByTime.style.display = 'block';
-                if (searchInterfaceContainer) searchInterfaceContainer.style.display = 'block'; 
+        } else {
+            // Обычное бронирование
+            if(btnStartSub) btnStartSub.parentElement.style.display = 'block';
+            if (currentScenario === 'room') {
+                if (roomId) {
+                    moduleBookByRoom.style.display = 'block';
+                    setupBookingModule(bookingModuleWrapper1, roomName);
+                    restoreBookingState(savedState);
+                } else { resetAll(true); }
+            } else if (currentScenario === 'time') {
+                if (roomId && roomName) {
+                    moduleFindByTime.style.display = 'block';
+                    if (searchInterfaceContainer) searchInterfaceContainer.style.display = 'none';
+                    setupBookingModule(bookingModuleWrapper2, roomName);
+                    const step1Div = bookingModuleWrapper2.querySelector('#step1');
+                    if (step1Div) { step1Div.style.display = 'none'; }
+                    restoreBookingState(savedState);
+                } else { 
+                    moduleFindByTime.style.display = 'block';
+                    if (searchInterfaceContainer) searchInterfaceContainer.style.display = 'block'; 
+                }
             }
         }
     } else { 
+        // Если ничего нет - главная страница
         showScenario('room'); 
         if (roomSelectionContainer) roomSelectionContainer.style.display = 'block'; 
         if (btnStartSub) btnStartSub.parentElement.style.display = 'block';
@@ -3883,9 +3932,8 @@ function initializePage() {
     }
 }
 
-
-    initializePage();
-
+// ЗАПУСК (БЕЗ setTimeout в конце)
+initializePage();
 
 // === ЛОГИКА МОДАЛКИ ПРОВЕРКИ БАЛАНСА ===
 const btnDoCheck = document.getElementById('btn_do_check_balance');
