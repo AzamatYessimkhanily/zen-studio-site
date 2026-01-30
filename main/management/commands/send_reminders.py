@@ -3,7 +3,7 @@
 from django.core.management.base import BaseCommand
 from django.conf import settings
 from django.utils import timezone
-from django.utils.timezone import make_aware  # <--- ВАЖНО: Добавлен этот импорт
+from django.utils.timezone import make_aware
 import datetime
 import gspread
 from google.oauth2.service_account import Credentials
@@ -73,10 +73,7 @@ class Command(BaseCommand):
 
                 try:
                     booking_start_naive = datetime.datetime.strptime(f"{date_str} {time_str}", "%Y-%m-%d %H:%M")
-                    
-                    # === ИСПРАВЛЕНИЕ: Используем make_aware вместо tz.localize ===
                     booking_start = make_aware(booking_start_naive, tz)
-                    
                 except ValueError:
                     continue 
 
@@ -86,7 +83,8 @@ class Command(BaseCommand):
 
                 # 4. Логика отправки (3-6 часов)
                 if 3 <= hours_diff <= 6:
-                    room_name = row.get("Кабинет", "")
+                    # === ИСПРАВЛЕНИЕ ЗДЕСЬ: Превращаем в строку ===
+                    room_name = str(row.get("Кабинет", "")).strip()
                     client_phone = str(row.get("Телефон", ""))
                     
                     if not client_phone or not room_name: continue
