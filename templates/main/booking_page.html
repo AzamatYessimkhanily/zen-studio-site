@@ -2559,7 +2559,8 @@ async function finalizeSubscriptionPurchase(wrapper, name, phone) {
                     const balance = parseFloat(data.balance);
                     const required = parseFloat(selectedSlot.duration);
                     
-                    if(subBalanceValue) subBalanceValue.textContent = balance;
+                    if(subBalanceValue) subBalanceValue.textContent = formatHoursToText(balance);
+                    // ==================================
                     
                     if (data.is_expired) {
                         subBalanceValue.style.color = 'red';
@@ -3451,7 +3452,7 @@ function handleToReceiptStep() {
             balanceHTML = `
             <div class="w-100 bg-light rounded-4 p-3 mb-4 text-center border border-success border-opacity-25 shadow-sm">
                 <div class="text-muted small text-uppercase fw-bold mb-1" style="font-size: 0.75rem; letter-spacing: 1px;">Остаток абонемента</div>
-                <div class="fw-bold text-success display-6">${data.balance} ч.</div>
+                <div class="fw-bold text-success display-6">${data.balance}</div>
             </div>
             `;
         }
@@ -3980,7 +3981,7 @@ if (btnDoCheck && inpCheckPhone) {
 
             if (data.success && data.found) {
                 const balance = parseFloat(data.balance);
-                displayAmount.textContent = Number.isInteger(balance) ? balance : balance;
+                displayAmount.textContent = formatHoursToText(balance);
                 
                 if (data.is_expired) {
                     displayAmount.classList.replace('text-success', 'text-danger');
@@ -4015,5 +4016,30 @@ if (btnDoCheck && inpCheckPhone) {
 });
 
 
+// === УЛУЧШЕННАЯ ФУНКЦИЯ ДЛЯ КРАСИВОГО ВРЕМЕНИ ===
+function formatHoursToText(hoursFloat) {
+    // 1. Превращаем в строку и меняем запятую на точку (защита от форматов "83,75")
+    let strVal = String(hoursFloat).replace(',', '.');
+    let val = parseFloat(strVal);
+
+    if (isNaN(val)) return "0 мин";
+    
+    let hours = Math.floor(val);
+    // Считаем минуты (округляем, чтобы убрать погрешности типа 44.9999)
+    let minutes = Math.round((val - hours) * 60);
+    
+    // Если 60 минут -> +1 час
+    if (minutes === 60) {
+        hours += 1;
+        minutes = 0;
+    }
+    
+    let parts = [];
+    if (hours > 0) parts.push(hours + " ч");
+    if (minutes > 0) parts.push(minutes + " мин");
+    
+    if (parts.length === 0) return "0 мин";
+    return parts.join(" ");
+}
 </script>
 {% endblock %}

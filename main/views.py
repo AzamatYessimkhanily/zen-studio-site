@@ -44,6 +44,33 @@ ALMATY_TZ = pytz.timezone(settings.TIME_ZONE) # Часовой пояс из н�
 # --- ФУНКЦИЯ ДЛЯ ПОЛУЧЕНИЯ СЛОТОВ (ИСПРАВЛЕННАЯ) ---
 # main/views.py
 
+# === ФУНКЦИЯ ДЛЯ КРАСИВОГО ОТОБРАЖЕНИЯ ЧАСОВ ===
+def format_hours_text(value):
+    """Превращает 1.5 в '1 ч 30 мин', 1.0 в '1 ч'"""
+    try:
+        val = float(str(value).replace(',', '.'))
+    except (ValueError, TypeError):
+        return str(value)
+
+    hours = int(val)
+    minutes = int(round((val - hours) * 60))
+    
+    if minutes == 60:
+        hours += 1
+        minutes = 0
+
+    parts = []
+    if hours > 0:
+        parts.append(f"{hours} ч")
+    if minutes > 0:
+        parts.append(f"{minutes} мин")
+    
+    if not parts:
+        return "0 мин"
+        
+    return " ".join(parts)
+# ===============================================
+
 def send_whatsapp_group(message):
     """Отправляет сообщение только в группу админов."""
     url = getattr(settings, 'BOT_WHATSAPP_API_URL', None)
@@ -233,13 +260,8 @@ def cleanup_expired_holds():
             date_str = start_local.strftime('%Y-%m-%d')
             start_time_str = start_local.strftime('%H:%M')
             duration_hours = (end_local - start_local).total_seconds() / 3600
-            try:
-                if float(duration_hours).is_integer():
-                    duration_display = str(int(duration_hours))
-                else:
-                    duration_display = f"{duration_hours:.1f}"
-            except Exception:
-                duration_display = str(duration_hours)
+            # ИСПОЛЬЗУЕМ НОВУЮ ФУНКЦИЮ
+            duration_display = format_hours_text(duration_hours)
 
             # 1. Сообщение в группу (стилизовано)
             group_message_text = (
@@ -1166,10 +1188,15 @@ def hold_slot(request):
                 gcal_event_id = gcal_event.get('id')
 
                 # === ОТПРАВКА В ГРУППУ (НАЧАЛО) ===
+# === ОТПРАВКА В ГРУППУ (НАЧАЛО) ===
+                # Форматируем длительность, которая пришла строкой (duration_str)
+                dur_display = format_hours_text(duration_str)
+                
                 msg = (
                     f"⏳ Временный резерв (Начало оформления)\n"
                     f"🏠 Кабинет: {room.name}\n"
                     f"🗓 Дата: {date_str} | {start_time_str}\n"
+                    f"⏳ Длительность: {dur_display}\n" 
                     f"👤 Клиент : {client_name} ({client_phone})"
                 )
                 send_whatsapp_group(msg)
@@ -1231,13 +1258,8 @@ def cancel_hold(request):
                     date_str = start_local.strftime('%Y-%m-%d')
                     start_time_str = start_local.strftime('%H:%M')
                     duration_hours = (end_local - start_local).total_seconds() / 3600
-                    try:
-                        if float(duration_hours).is_integer():
-                            duration_display = str(int(duration_hours))
-                        else:
-                            duration_display = f"{duration_hours:.1f}"
-                    except Exception:
-                        duration_display = str(duration_hours)
+                    # ИСПОЛЬЗУЕМ НОВУЮ ФУНКЦИЮ
+                    duration_display = format_hours_text(duration_hours)
 
                     group_message_text = (
                         "〰〰〰〰〰〰〰〰〰〰\n"
@@ -1386,10 +1408,7 @@ def create_booking(request):
             print(f"Subscription deducted: {required_hours}h. New balance: {new_balance}")
             
             # Красивый вывод остатка
-            if float(new_balance).is_integer():
-                current_balance_display = str(int(new_balance))
-            else:
-                current_balance_display = str(new_balance)
+            current_balance_display = format_hours_text(new_balance)
 
         except Exception as e:
             print(f"Error updating balance: {e}")
@@ -1522,6 +1541,9 @@ def create_booking(request):
         admin_phone = settings_obj.phone if settings_obj else "77073910808"
 
         # === ГЕНЕРАЦИЯ СООБЩЕНИЯ КЛИЕНТУ ===
+        duration_display = format_hours_text(duration_hours)
+
+        # === ГЕНЕРАЦИЯ СООБЩЕНИЯ КЛИЕНТУ ===
         client_message_text = (
             f"✅ Ваша бронь кабинета {room.name} подтверждена!\n"
             f"📍 Адрес: {address}\n"
@@ -1638,6 +1660,7 @@ def buy_subscription_api(request):
         name = data.get('client_name')
         phone = data.get('client_phone')
         hours = data.get('hours')
+        hours_display = format_hours_text(hours)
         price = data.get('price')
         
         # Данные чека
@@ -1672,23 +1695,24 @@ def buy_subscription_api(request):
             return JsonResponse({'success': False, 'error': 'Ошибка записи в таблицу'}, status=500)
             
         # 3. Уведомление в WhatsApp (ГРУППА АДМИНОВ)
+# 3. Уведомление в WhatsApp (ГРУППА АДМИНОВ)
         msg_group = (
             "〰〰〰〰〰〰〰〰〰〰\n"
             "🎉 *ПРОДАН АБОНЕМЕНТ* (Сайт)\n\n"
             f"👤 Клиент: {name}\n"
             f"📱 Телефон: {phone}\n"
-            f"📦 Пакет: {hours} часов\n"
+            f"📦 Пакет: {hours_display}\n" # <--- ИСПОЛЬЗУЕМ hours_display
             f"💰 Сумма: {price} ₸\n"
             f"🧾 Чек: {receipt_status_text}\n"
             "〰〰〰〰〰〰〰〰〰〰"
         )
         send_whatsapp_group(msg_group)
 
-        # 4. Уведомление в WhatsApp (КЛИЕНТ) <--- НОВОЕ
+        # 4. Уведомление в WhatsApp (КЛИЕНТ)
         msg_client = (
             f"🎉 Здравствуйте, {name}!\n\n"
             f"Ваша заявка на покупку абонемента принята.\n\n"
-            f"📦 Пакет: *{hours} часов*\n"
+            f"📦 Пакет: *{hours_display}*\n" # <--- ИСПОЛЬЗУЕМ hours_display
             f"💰 Сумма: {price} ₸\n"
             f"📅 Срок действия: 90 дней\n\n"
             "⏳ Мы проверяем вашу оплату. Часы будут зачислены на баланс в ближайшее время.\n\n"
