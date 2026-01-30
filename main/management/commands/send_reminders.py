@@ -39,16 +39,19 @@ class Command(BaseCommand):
             records = ws.get_all_records()
             headers = ws.row_values(1)
             
-            # === ГЛАВНОЕ ИЗМЕНЕНИЕ: АВТО-СОЗДАНИЕ КОЛОНКИ ===
+            # === АВТО-СОЗДАНИЕ КОЛОНКИ (С РАСШИРЕНИЕМ) ===
             if "Напоминание" not in headers:
                 self.stdout.write("⚠️ Колонка 'Напоминание' не найдена. Создаю...")
-                # Добавляем заголовок в первую строку, в следующую свободную колонку
                 new_col_idx = len(headers) + 1
+                
+                # ВАЖНО: Если таблица мала, расширяем её
+                if new_col_idx > ws.col_count:
+                    ws.resize(cols=new_col_idx)
+                    
                 ws.update_cell(1, new_col_idx, "Напоминание")
                 
-                # Запоминаем индекс и обновляем список заголовков
                 remind_col_idx = new_col_idx
-                headers.append("Напоминание") 
+                headers.append("Напоминание")
             else:
                 remind_col_idx = headers.index("Напоминание") + 1
             # ================================================
