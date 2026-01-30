@@ -3,6 +3,7 @@
 from django.core.management.base import BaseCommand
 from django.conf import settings
 from django.utils import timezone
+from django.utils.timezone import make_aware  # <--- ВАЖНО: Добавлен этот импорт
 import datetime
 import gspread
 from google.oauth2.service_account import Credentials
@@ -44,7 +45,7 @@ class Command(BaseCommand):
                 self.stdout.write("⚠️ Колонка 'Напоминание' не найдена. Создаю...")
                 new_col_idx = len(headers) + 1
                 
-                # ВАЖНО: Если таблица мала, расширяем её
+                # Если таблица узкая, расширяем её
                 if new_col_idx > ws.col_count:
                     ws.resize(cols=new_col_idx)
                     
@@ -72,7 +73,10 @@ class Command(BaseCommand):
 
                 try:
                     booking_start_naive = datetime.datetime.strptime(f"{date_str} {time_str}", "%Y-%m-%d %H:%M")
-                    booking_start = tz.localize(booking_start_naive)
+                    
+                    # === ИСПРАВЛЕНИЕ: Используем make_aware вместо tz.localize ===
+                    booking_start = make_aware(booking_start_naive, tz)
+                    
                 except ValueError:
                     continue 
 
