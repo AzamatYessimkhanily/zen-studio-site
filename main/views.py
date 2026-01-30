@@ -866,50 +866,19 @@ def _ensure_unique_booking_id(ws, booking_id: str) -> str:
 # main/views.py
 
 # --- НОВАЯ ФУНКЦИЯ: ЗАПИСЬ В ИСТОРИЮ КЛИЕНТОВ ---
+# --- ИСПРАВЛЕННАЯ ФУНКЦИЯ: ЗАПИСЬ В ИСТОРИЮ КЛИЕНТОВ ---
 def save_booking_to_sheet(booking_data):
     """Записывает данные о бронировании с сайта в 'История клиентов'."""
-    headers = ws.row_values(1)
-    new_headers = []
-    if "ID брони" not in headers:
-        headers.append("ID брони")
-        new_headers.append("ID брони")
-    if "Источник" not in headers:
-        headers.append("Источник")
-        new_headers.append("Источник")
-        
-    # === ДОБАВЛЯЕМ КОЛОНКУ ДЛЯ НАПОМИНАНИЯ ===
-    if "Напоминание" not in headers:
-        headers.append("Напоминание")
-        new_headers.append("Напоминание")
-    # =========================================
-
-    if new_headers:
-        ws.resize(cols=len(headers))
-        range_label = f"R1C1:R1C{len(headers)}"
-        ws.update(range_label, [headers], raw=False)
-        print(f"[HIST] Добавлены колонки: {new_headers}")
-    # --- ИЗМЕНЕНИЕ: Форматируем ID клиента (как для WhatsApp) ---
-    client_phone = booking_data.get("client_phone", "")
     
-    if client_phone:
-        # Форматируем номер, как для Green API (логика из create_booking)
-        user_id = ''.join(filter(str.isdigit, client_phone)) + '@c.us'
-        if user_id.startswith('8'): # Заменяем 8 на 7
-            user_id = '7' + user_id[1:]
-        elif not user_id.startswith('7') and len(user_id.split('@')[0]) == 10:
-            user_id = '7' + user_id # Добавляем 7
-    else:
-        user_id = "website_user_unknown_phone" # Запасной, если телефона нет
-    # --- КОНЕЦ ИЗМЕНЕНИЯ ---
-
+    # 1. СНАЧАЛА ПОДКЛЮЧАЕМСЯ, ЧТОБЫ ПОЛУЧИТЬ ПЕРЕМЕННУЮ ws
     try:
-        # Убедимся, что SCOPES в начале файла views.py включает .../auth/spreadsheets
         creds = Credentials.from_service_account_file(
             SERVICE_ACCOUNT_FILE,
-            scopes=["https://www.googleapis.com/auth/spreadsheets"] # Нужны права на запись
+            scopes=["https://www.googleapis.com/auth/spreadsheets"]
         )
         client = gspread.authorize(creds)
         history_spreadsheet_url = getattr(settings, 'CLIENTS_HISTORY_SPREADSHEET_URL', None)
+        
         if not history_spreadsheet_url:
              print("Error: CLIENTS_HISTORY_SPREADSHEET_URL not configured.")
              return None
@@ -920,35 +889,57 @@ def save_booking_to_sheet(booking_data):
             ws = history_spreadsheet.worksheet("История клиентов")
         except gspread.exceptions.WorksheetNotFound:
             ws = history_spreadsheet.add_worksheet(title="История клиентов", rows=1000, cols=20)
-            # Устанавливаем заголовки, как в боте + "Источник"
+            # Если лист новый, создаем заголовки сразу
             headers = [
                 "ID клиента", "Имя", "Телефон", "Дата", "Время",
                 "Длительность", "Количество человек", "Кабинет",
-                "Цена", "Дата/время бронирования", "Новый клиент", "ID брони", "Источник"
+                "Цена", "Дата/время бронирования", "Новый клиент", 
+                "ID брони", "Источник", "Напоминание"
             ]
             ws.append_row(headers)
             print("Создан новый лист 'История клиентов' с заголовками")
+            # Перезапрашиваем ws, чтобы убедиться
+            ws = history_spreadsheet.worksheet("История клиентов")
 
-        # Проверяем заголовки и добавляем "ID брони" или "Источник", если их нет
+        # 2. ТЕПЕРЬ ws СУЩЕСТВУЕТ, МОЖНО ЧИТАТЬ ЗАГОЛОВКИ
         headers = ws.row_values(1)
-        new_headers = []
+        new_headers_added = False
+
+        # Проверяем и добавляем недостающие колонки
         if "ID брони" not in headers:
             headers.append("ID брони")
-            new_headers.append("ID брони")
+            new_headers_added = True
         if "Источник" not in headers:
             headers.append("Источник")
-            new_headers.append("Источник")
+            new_headers_added = True
+        if "Напоминание" not in headers:
+            headers.append("Напоминание")
+            new_headers_added = True
 
-        if new_headers:
-            ws.resize(cols=len(headers))
-            range_label = f"R1C1:R1C{len(headers)}"
-            ws.update(range_label, [headers], raw=False)
-            print(f"[HIST] Добавлены колонки: {new_headers}")
+        # Если добавили новые заголовки — обновляем первую строку
+        if new_headers_added:
+            if len(headers) > ws.col_count:
+                ws.resize(cols=len(headers))
+            
+            # Обновляем всю первую строку разом
+            range_label = f"A1:{gspread.utils.rowcol_to_a1(1, len(headers))}"
+            ws.update(range_label, [headers])
+            print(f"[HIST] Обновлены заголовки: {headers}")
+
+        # 3. ПОДГОТОВКА ДАННЫХ
+        client_phone = booking_data.get("client_phone", "")
+        if client_phone:
+            user_id = ''.join(filter(str.isdigit, client_phone)) + '@c.us'
+            if user_id.startswith('8'): user_id = '7' + user_id[1:]
+            elif not user_id.startswith('7') and len(user_id.split('@')[0]) == 10:
+                user_id = '7' + user_id
+        else:
+            user_id = "website_user_unknown_phone"
 
         # Генерируем ID брони
         booking_id = _ensure_unique_booking_id(ws, _gen_booking_id(user_id))
-
         booking_timestamp = timezone.now().astimezone(ALMATY_TZ).strftime("%Y-%m-%d %H:%M:%S")
+
         row_dict = {
             "ID клиента": user_id,
             "Имя": booking_data.get("client_name", ""),
@@ -960,23 +951,26 @@ def save_booking_to_sheet(booking_data):
             "Кабинет": booking_data.get("room_name", ""),
             "Цена": booking_data.get("price", ""),
             "Дата/время бронирования": booking_timestamp,
-            "Новый клиент": "Да", # С сайта пока всегда "Да" (или можно добавить проверку)
+            "Новый клиент": "Да",
             "ID брони": booking_id,
-            "Источник": "Сайт", # <-- Твоя пометка
-            "Напоминание": "Нет" # По умолчанию не отправлено
+            "Источник": "Сайт",
+            "Напоминание": "Нет"
         }
 
-        # Собираем строку в правильном порядке заголовков
-        row = [row_dict.get(h, "") for h in headers]
-        ws.append_row(row)
+        # 4. ЗАПИСЬ СТРОКИ
+        # Собираем значения в том порядке, в котором идут заголовки в таблице сейчас
+        # Это важно, если порядок колонок изменится вручную
+        final_row = []
+        for h in headers:
+            final_row.append(row_dict.get(h, ""))
 
-        print(f"[HIST] Записана бронь {booking_id} для {user_id} (Источник: Сайт)")
+        ws.append_row(final_row)
+        print(f"[HIST] Записана бронь {booking_id} для {user_id}")
         return booking_id
 
     except Exception as e:
         print(f"Ошибка при записи данных клиента в историю: {e}")
         return None
-# --- КОНЕЦ НОВОЙ ФУНКЦИИ ---
 
 def get_price(request):
     """API эндпоинт для расчета цены из Google Sheets."""
