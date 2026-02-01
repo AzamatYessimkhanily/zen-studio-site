@@ -1584,6 +1584,7 @@ def create_booking(request):
             f"{group_payment_text}\n"
             "〰〰〰〰〰〰〰〰〰〰"
         )
+        
 
         # Отправка через API
         bot_api_url = getattr(settings, 'BOT_WHATSAPP_API_URL', None)
