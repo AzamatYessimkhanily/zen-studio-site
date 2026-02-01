@@ -1569,7 +1569,7 @@ def create_booking(request):
 
         # === ГЕНЕРАЦИЯ СООБЩЕНИЯ ДЛЯ ГРУППЫ АДМИНОВ ===
         if is_subscription:
-            group_payment_text = f"💳 Абонемент (Списано {duration_hours}ч)\n📉 Остаток: {current_balance_display} ч"
+            group_payment_text = f"💳 Абонемент (Списано {duration_hours}ч)\n📉 Остаток: {current_balance_display}"
         else:
             group_payment_text = f"💰 Оплата: {data.get('price', 0)} ₸\n{payment_info_text}"
 
@@ -1584,7 +1584,7 @@ def create_booking(request):
             f"{group_payment_text}\n"
             "〰〰〰〰〰〰〰〰〰〰"
         )
-        
+
 
         # Отправка через API
         bot_api_url = getattr(settings, 'BOT_WHATSAPP_API_URL', None)

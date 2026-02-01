@@ -3198,10 +3198,12 @@ function updateSummaryText() {
                 </div>`;
 
              // 1. Для ШАГА 2 (Показываем с ценой)
+// 1. Для ШАГА 2 (Без цены)
              if (bookingSummaryText) {
-                 bookingSummaryText.className = 'mb-3 small'; // Сброс стилей
+                 bookingSummaryText.className = 'mb-3 small';
                  bookingSummaryText.style.fontSize = '0.9rem';
-                 bookingSummaryText.innerHTML = commonRows + priceRow;
+                 // УБРАЛИ + priceRow, теперь только общая информация
+                 bookingSummaryText.innerHTML = commonRows;
              }
              
              // 2. Для ШАГА 3 (ОПЛАТА) - БЕЗ ЦЕНЫ
