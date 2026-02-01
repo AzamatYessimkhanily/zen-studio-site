@@ -1027,8 +1027,25 @@ input[type="number"] {
 <div id="room_selection_container" class="info-section mb-4">
     <h4 class="info-title mb-4"><i class="fas fa-door-open"></i> Выберите кабинет (Шаг 1 из 5)</h4>
     
-<div class="room-choice-grid mb-3"> 
+<div class="room-choice-grid mb-3">
+       <button class="room-choice-btn room-card-style any-room-btn" id="btn_any_room">
+     <div class="room-card-img-wrapper">
+         <div class="room-card-placeholder search-placeholder">
+            <i class="fas fa-search-location"></i>
+         </div>
+     </div>
+     <div class="room-card-info">
+         <div class="room-card-header">
+             <span class="room-name">Любой кабинет</span>
+         </div>
+         <div class="room-meta">
+            <i class="fas fa-clock text-success"></i>
+            <span>Поиск по времени</span>
+         </div>
+     </div>
+  </button>
   {% for room in rooms %}
+  
     <button class="room-choice-btn room-card-style" data-room-id="{{ room.pk }}" data-room-name="{{ room.name }}">
       
       <div class="room-card-img-wrapper">
@@ -1059,22 +1076,7 @@ input[type="number"] {
     </button>
   {% endfor %}
 
-  <button class="room-choice-btn room-card-style any-room-btn" id="btn_any_room">
-     <div class="room-card-img-wrapper">
-         <div class="room-card-placeholder search-placeholder">
-            <i class="fas fa-search-location"></i>
-         </div>
-     </div>
-     <div class="room-card-info">
-         <div class="room-card-header">
-             <span class="room-name">Любой кабинет</span>
-         </div>
-         <div class="room-meta">
-            <i class="fas fa-clock text-success"></i>
-            <span>Поиск по времени</span>
-         </div>
-     </div>
-  </button>
+
 </div>
 
 

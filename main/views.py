@@ -1438,7 +1438,7 @@ def create_booking(request):
 
 # Формируем описание для календаря
         if is_subscription:
-            desc_payment = f"Абонемент (списано {duration_hours}ч, остаток {current_balance_display}ч)"
+            desc_payment = f"Абонемент (списано {duration_hours}ч, остаток {current_balance_display})"
         else:
             desc_payment = payment_info_text
 
@@ -1548,7 +1548,7 @@ def create_booking(request):
             f"✅ Ваша бронь кабинета {room.name} подтверждена!\n"
             f"📍 Адрес: {address}\n"
             f"🔑 Код двери: {door_code}\n"
-            f"🗓 {date_str} | {start_time_str} - {end_time_str}\n"
+            f"🗓 {date_str} | с {start_time_str} до {end_time_str}\n"
         )
 
         # Если это абонемент — вставляем остаток СРАЗУ ПОСЛЕ времени
@@ -1577,7 +1577,7 @@ def create_booking(request):
             "〰〰〰〰〰〰〰〰〰〰\n"
             "📅 Новая бронь (Сайт)\n\n"
             f"🏠 Кабинет: {room.name}\n"
-            f"🗓 Дата: {date_str} | {start_time_str} - {end_time_str}\n"
+            f"🗓 Дата: с{date_str} | с {start_time_str} до {end_time_str}\n"
             f"⏳ Длительность: {duration_hours} ч\n"
             f"👥 Гостей: {people_count}\n"
             f"👤 Клиент: {client_name} ({client_phone})\n"
