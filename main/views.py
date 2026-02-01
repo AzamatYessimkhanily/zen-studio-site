@@ -1577,7 +1577,7 @@ def create_booking(request):
             "〰〰〰〰〰〰〰〰〰〰\n"
             "📅 Новая бронь (Сайт)\n\n"
             f"🏠 Кабинет: {room.name}\n"
-            f"🗓 Дата: с{date_str} | с {start_time_str} до {end_time_str}\n"
+            f"🗓 Дата: {date_str} | с {start_time_str} до {end_time_str}\n"
             f"⏳ Длительность: {duration_hours} ч\n"
             f"👥 Гостей: {people_count}\n"
             f"👤 Клиент: {client_name} ({client_phone})\n"
