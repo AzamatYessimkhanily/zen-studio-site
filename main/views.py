@@ -1266,7 +1266,7 @@ def cancel_hold(request):
                         "⏰ Время истекло (Нет оплаты)\n\n"
                         f"🏠 Кабинет: {pending_booking.room.name}\n"
                         f"🗓 Дата: {date_str} | {start_time_str}\n"
-                        f"⏳ Длительность: {duration_display} ч\n"
+                        f"⏳ Длительность: {duration_display}\n"
                         f"👤 Клиент: {pending_booking.client_name} ({pending_booking.client_phone})\n"
                         "〰〰〰〰〰〰〰〰〰〰"
                     )
@@ -1276,7 +1276,7 @@ def cancel_hold(request):
                         "⏰ Ваш резерв истёк\n\n"
                         f"🏠 Кабинет: {pending_booking.room.name}\n"
                         f"🗓 Дата: {date_str} | {start_time_str}\n"
-                        f"⏳ Длительность: {duration_display} ч\n\n"
+                        f"⏳ Длительность: {duration_display}\n\n"
                         "Слот освобождён — оплата не поступила.\n"
                         "Если хотите, выберите другой доступный слот на сайте.\n"
                         "〰〰〰〰〰〰〰〰〰〰"
