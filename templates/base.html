@@ -349,6 +349,57 @@
     margin: 0 0.7rem;
   }
 }
+
+/* === СТИЛИ ХЕДЕРА === */
+
+    /* Убираем нижний отступ у самого хедера на мобилке, чтобы серая полоска прилипла */
+    @media (max-width: 991.98px) {
+        .header {
+            padding-bottom: 0;
+        }
+    }
+
+    /* Логотип */
+    /* Ссылки меню */
+
+    /* === ГЛАВНЫЕ СТИЛИ КНОПОК ЯЗЫКОВ (ЗЕЛЕНЫЕ) === */
+
+
+    /* === НОВАЯ МОБИЛЬНАЯ ПОЛОСКА (Subheader) === */
+    .mobile-subheader {
+      background-color: #f8f9fa;
+      padding: 10px 20px; /* Чуть уменьшил вертикальный паддинг (было 12) */
+      display: flex;
+      justify-content: space-between;
+      align-items: center; /* Строгое выравнивание по центру */
+      border-top: 1px solid #eee;
+      width: 100%;
+      height: 70px; /* Фиксируем высоту, чтобы было ровно */
+    }
+
+    .mobile-location {
+      font-size: 16px;
+      font-weight: 600;
+      color: var(--zen-gray);
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    
+    .mobile-location i {
+        color: var(--zen-green);
+        font-size: 18px;
+        position: relative;
+        top: 1px; /* Иконку чуть вниз, чтобы ровно с текстом стояла */
+    }
+
+    /* Контейнер кнопок внутри мобильной полоски */
+    .mobile-subheader .lang-switch-nav {
+        display: flex;
+        gap: 8px;
+        /* ГЛАВНОЕ: поднимаем блок кнопок чуть вверх */
+        transform: translateY(-2px); 
+    }
   </style>
 
   {% block extra_css %}{% endblock %}
@@ -364,14 +415,13 @@
       {% endif %}
     </a>
 
-    <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#mainMenu" aria-controls="mainMenu" aria-expanded="false" aria-label="Toggle navigation">
+    <button class="navbar-toggler ms-auto" type="button" data-bs-toggle="collapse" data-bs-target="#mainMenu" aria-controls="mainMenu" aria-expanded="false" aria-label="Toggle navigation">
       <span class="navbar-toggler-icon"></span>
     </button>
 
     <div class="collapse navbar-collapse" id="mainMenu">
       
       <ul class="navbar-nav me-auto mb-2 mb-lg-0 ms-lg-4 d-none d-lg-flex">
-        
         <li class="nav-item">
           <a href="/#rooms-section" class="nav-link">Кабинеты</a>
         </li>
@@ -400,7 +450,6 @@
       </ul>
 
       <ul class="navbar-nav me-auto mb-2 mb-lg-0 ms-lg-4 d-lg-none">
-        
         <li class="nav-item">
           <a href="/#rooms-section" class="nav-link">Кабинеты</a>
         </li>
@@ -432,15 +481,22 @@
           {% if settings.instagram_link %}<a href="{{ settings.instagram_link }}" target="_blank" aria-label="Instagram"><i class="fab fa-instagram"></i></a>{% endif %}
           {% if settings.whatsapp_admin %}<a href="{{ settings.whatsapp_admin }}" target="_blank" aria-label="WhatsApp"><i class="fab fa-whatsapp"></i></a>{% endif %}
         </div>
-        <div class="lang-switch-nav notranslate mt-3" translate="no" data-gt-ignore="true">
-          <button class="btn-lang" data-lang="ru" type="button">РУ</button>
-          <button class="btn-lang" data-lang="en" type="button">EN</button>
-          <button class="btn-lang" data-lang="kk" type="button">ҚАЗ</button>
-        </div>
       </div>
     </div>
   </nav>
-</header>
+
+  <div class="mobile-subheader d-lg-none">
+      <div class="mobile-location">
+          <i class="fas fa-map-marker-alt"></i> Алматы
+      </div>
+      
+      <div class="lang-switch-nav notranslate" translate="no" data-gt-ignore="true">
+        <button class="btn-lang" data-lang="kk" type="button">ҚАЗ</button>
+        <button class="btn-lang" data-lang="ru" type="button">РУ</button>
+        <button class="btn-lang" data-lang="en" type="button">EN</button>
+      </div>
+  </div>
+  </header>
 
   <main>
     {% block content %}{% endblock %}
