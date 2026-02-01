@@ -1,5 +1,3 @@
-# main/management/commands/send_reminders.py
-
 from django.core.management.base import BaseCommand
 from django.conf import settings
 from django.utils import timezone
@@ -13,22 +11,22 @@ from main.views import get_door_code_and_instructions
 SERVICE_ACCOUNT_FILE = settings.BASE_DIR / 'sheetsapi-443912-7487420df9cd.json'
 
 class Command(BaseCommand):
-    help = 'Отправляет напоминания о бронировании за 3-6 часов'
+    help = 'Отправляет напоминания (ловит всех: и заранее, и впритык)'
 
     def handle(self, *args, **options):
-        # 1. Проверка времени (08:00 - 23:00)
+        # 1. Настройка времени
         tz = timezone.get_current_timezone()
         now = timezone.now().astimezone(tz)
         
-        # Если нужно тестировать ночью — закомментируйте эти 3 строки
+        # Если хотите тестировать ночью, закомментируйте строки ниже:
         if not (8 <= now.hour < 23):
-            self.stdout.write(f"[{now.strftime('%H:%M')}] Сейчас нерабочее время (не 08:00-23:00). Пропуск.")
-            return
+            self.stdout.write(f"[{now.strftime('%H:%M')}] Нерабочее время. Пропуск.")
+            # return  <-- Раскомментируйте return, когда закончите тесты!
 
-        self.stdout.write(f"Запуск проверки напоминаний: {now}")
+        self.stdout.write(f"⏳ Проверка напоминаний на {now.strftime('%H:%M')}...")
 
         try:
-            # 2. Подключение к Гуглу
+            # 2. Подключение к таблице
             creds = Credentials.from_service_account_file(
                 SERVICE_ACCOUNT_FILE,
                 scopes=["https://www.googleapis.com/auth/spreadsheets"]
@@ -40,35 +38,27 @@ class Command(BaseCommand):
             records = ws.get_all_records()
             headers = ws.row_values(1)
             
-            # === АВТО-СОЗДАНИЕ КОЛОНКИ (С РАСШИРЕНИЕМ) ===
+            # Ищем или создаем колонку "Напоминание"
             if "Напоминание" not in headers:
-                self.stdout.write("⚠️ Колонка 'Напоминание' не найдена. Создаю...")
                 new_col_idx = len(headers) + 1
-                
-                # Если таблица узкая, расширяем её
-                if new_col_idx > ws.col_count:
-                    ws.resize(cols=new_col_idx)
-                    
+                if new_col_idx > ws.col_count: ws.resize(cols=new_col_idx)
                 ws.update_cell(1, new_col_idx, "Напоминание")
-                
                 remind_col_idx = new_col_idx
-                headers.append("Напоминание")
             else:
                 remind_col_idx = headers.index("Напоминание") + 1
-            # ================================================
 
-            # 3. Проход по записям
+            # 3. Перебор броней
+            updates_count = 0
             for i, row in enumerate(records):
                 row_num = i + 2 
                 
-                # Пропускаем, если уже отправлено
+                # Если уже отправлено — пропускаем
                 status = str(row.get("Напоминание", "")).lower()
                 if status in ["да", "yes", "sent", "отправлено"]:
                     continue
 
                 date_str = str(row.get("Дата", "")).strip()
                 time_str = str(row.get("Время", "")).strip()
-                
                 if not date_str or not time_str: continue
 
                 try:
@@ -77,35 +67,44 @@ class Command(BaseCommand):
                 except ValueError:
                     continue 
 
-                # Разница во времени
+                # Считаем разницу
                 time_diff = booking_start - now
                 hours_diff = time_diff.total_seconds() / 3600
 
-                # 4. Логика отправки (3-6 часов)
-                if 3 <= hours_diff <= 6:
-                    # === ИСПРАВЛЕНИЕ ЗДЕСЬ: Превращаем в строку ===
-                    room_name = str(row.get("Кабинет", "")).strip()
-                    client_phone = str(row.get("Телефон", ""))
+                # === ВОТ ТУТ БЫЛА ПРОБЛЕМА ===
+                # Было: if 3 <= hours_diff <= 6:
+                # Стало: от 15 минут (0.25) до 6 часов
+                if 0.25 <= hours_diff <= 6:
                     
-                    if not client_phone or not room_name: continue
+                    client_phone = str(row.get("Телефон", ""))
+                    room_name = str(row.get("Кабинет", "")).strip()
+                    
+                    if not client_phone: continue
 
-                    # Получаем код
+                    # Получаем код доступа
                     door_code, _, _ = get_door_code_and_instructions(room_name)
-                    if not door_code: door_code = "Уточните у администратора"
+                    if not door_code: door_code = "Код уточняется"
 
                     message = (
-                        f"👋 Напоминание о бронировании сегодня!\n\n"
+                        f"👋 Напоминание! Ждем вас сегодня.\n\n"
                         f"🏠 Кабинет: {room_name}\n"
-                        f"🗓 Время: {time_str}\n\n"
-                        f"🔑 Актуальный код для открытия ключницы: *{door_code}*\n\n"
-                        f"Ждем вас! 🌿"
+                        f"🗓 Время: {time_str}\n"
+                        f"🔑 Код от двери: *{door_code}*\n\n"
+                        f"Zen Studio 🌿"
                     )
 
                     self.send_whatsapp(client_phone, message)
                     
-                    # Пишем "Отправлено" в таблицу
+                    # Ставим отметку "Отправлено"
                     ws.update_cell(row_num, remind_col_idx, "Отправлено")
-                    self.stdout.write(self.style.SUCCESS(f"✅ Напоминание отправлено: {client_phone}"))
+                    self.stdout.write(self.style.SUCCESS(f"✅ Отправлено: {client_phone} (осталось {round(hours_diff, 1)} ч.)"))
+                    updates_count += 1
+                
+                # (Для отладки) Раскомментируйте, если хотите видеть, почему пропускает:
+                # else:
+                #    self.stdout.write(f"Пропуск {time_str}: осталось {round(hours_diff, 1)} ч. (не подходит под условие)")
+
+            self.stdout.write(f"Итог: отправлено {updates_count} сообщений.")
 
         except Exception as e:
             self.stdout.write(self.style.ERROR(f"Ошибка: {e}"))
@@ -113,12 +112,9 @@ class Command(BaseCommand):
     def send_whatsapp(self, phone, message):
         url = getattr(settings, 'BOT_WHATSAPP_API_URL', None)
         if not url: return
-        
         clean_phone = ''.join(filter(str.isdigit, str(phone)))
         if clean_phone.startswith('8'): clean_phone = '7' + clean_phone[1:]
-        
         chat_id = f"{clean_phone}@c.us"
         try:
             requests.post(url, json={'chat_id': chat_id, 'message': message}, timeout=5)
-        except Exception as e:
-            print(f"Ошибка отправки WA: {e}")
+        except: pass
