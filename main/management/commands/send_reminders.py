@@ -11,22 +11,20 @@ from main.views import get_door_code_and_instructions
 SERVICE_ACCOUNT_FILE = settings.BASE_DIR / 'sheetsapi-443912-7487420df9cd.json'
 
 class Command(BaseCommand):
-    help = 'Отправляет напоминания (ловит всех: и заранее, и впритык)'
+    help = 'Напоминалка (Умная: утро ловит с вечера, день ловит за 3 часа)'
 
     def handle(self, *args, **options):
-        # 1. Настройка времени
         tz = timezone.get_current_timezone()
         now = timezone.now().astimezone(tz)
         
-        # Если хотите тестировать ночью, закомментируйте строки ниже:
-        if not (8 <= now.hour < 23):
-            self.stdout.write(f"[{now.strftime('%H:%M')}] Нерабочее время. Пропуск.")
-            # return  <-- Раскомментируйте return, когда закончите тесты!
+        # 1. Скрипт работает только с 07:00 до 23:00
+        if not (7 <= now.hour < 23):
+            self.stdout.write(f"[{now.strftime('%H:%M')}] 🌙 Сплю (07-23).")
+            return
 
         self.stdout.write(f"⏳ Проверка напоминаний на {now.strftime('%H:%M')}...")
 
         try:
-            # 2. Подключение к таблице
             creds = Credentials.from_service_account_file(
                 SERVICE_ACCOUNT_FILE,
                 scopes=["https://www.googleapis.com/auth/spreadsheets"]
@@ -38,7 +36,6 @@ class Command(BaseCommand):
             records = ws.get_all_records()
             headers = ws.row_values(1)
             
-            # Ищем или создаем колонку "Напоминание"
             if "Напоминание" not in headers:
                 new_col_idx = len(headers) + 1
                 if new_col_idx > ws.col_count: ws.resize(cols=new_col_idx)
@@ -47,12 +44,9 @@ class Command(BaseCommand):
             else:
                 remind_col_idx = headers.index("Напоминание") + 1
 
-            # 3. Перебор броней
             updates_count = 0
             for i, row in enumerate(records):
                 row_num = i + 2 
-                
-                # Если уже отправлено — пропускаем
                 status = str(row.get("Напоминание", "")).lower()
                 if status in ["да", "yes", "sent", "отправлено"]:
                     continue
@@ -67,26 +61,34 @@ class Command(BaseCommand):
                 except ValueError:
                     continue 
 
-                # Считаем разницу
                 time_diff = booking_start - now
                 hours_diff = time_diff.total_seconds() / 3600
 
-                # === ВОТ ТУТ БЫЛА ПРОБЛЕМА ===
-                # Было: if 3 <= hours_diff <= 6:
-                # Стало: от 15 минут (0.25) до 6 часов
-                if 0.25 <= hours_diff <= 6:
-                    
+                # === УМНОЕ УСЛОВИЕ ===
+                is_morning_booking = (booking_start.hour < 10)  # Если бронь до 10:00 утра
+
+                # 1. Если это утро (до 10:00) — напоминаем заранее (с вечера, за 12 часов)
+                # 2. Если это день/вечер — напоминаем как обычно (за 3 часа)
+                
+                should_remind = False
+                
+                if is_morning_booking:
+                    if 0.25 <= hours_diff <= 14: # Ловим утренних с вечера (до 14 часов заранее)
+                        should_remind = True
+                else:
+                    if 0.25 <= hours_diff <= 3: # Остальных — строго за 3 часа
+                        should_remind = True
+
+                if should_remind:
                     client_phone = str(row.get("Телефон", ""))
                     room_name = str(row.get("Кабинет", "")).strip()
-                    
                     if not client_phone: continue
 
-                    # Получаем код доступа
                     door_code, _, _ = get_door_code_and_instructions(room_name)
                     if not door_code: door_code = "Код уточняется"
 
                     message = (
-                        f"👋 Напоминание! Ждем вас сегодня.\n\n"
+                        f"👋 Напоминание! Ждем вас.\n\n"
                         f"🏠 Кабинет: {room_name}\n"
                         f"🗓 Время: {time_str}\n"
                         f"🔑 Код от двери: *{door_code}*\n\n"
@@ -94,17 +96,11 @@ class Command(BaseCommand):
                     )
 
                     self.send_whatsapp(client_phone, message)
-                    
-                    # Ставим отметку "Отправлено"
                     ws.update_cell(row_num, remind_col_idx, "Отправлено")
-                    self.stdout.write(self.style.SUCCESS(f"✅ Отправлено: {client_phone} (осталось {round(hours_diff, 1)} ч.)"))
+                    self.stdout.write(self.style.SUCCESS(f"✅ Отправлено: {client_phone}"))
                     updates_count += 1
-                
-                # (Для отладки) Раскомментируйте, если хотите видеть, почему пропускает:
-                # else:
-                #    self.stdout.write(f"Пропуск {time_str}: осталось {round(hours_diff, 1)} ч. (не подходит под условие)")
 
-            self.stdout.write(f"Итог: отправлено {updates_count} сообщений.")
+            self.stdout.write(f"Итог: отправлено {updates_count}")
 
         except Exception as e:
             self.stdout.write(self.style.ERROR(f"Ошибка: {e}"))
