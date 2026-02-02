@@ -195,46 +195,6 @@ def get_subscription_client(phone):
         print(f"Error checking subscription: {e}")
         return None
     
-def add_new_subscription_to_sheet(data):
-    """Записывает новый абонемент в таблицу."""
-    try:
-        creds = Credentials.from_service_account_file(
-            SERVICE_ACCOUNT_FILE,
-            scopes=["https://www.googleapis.com/auth/spreadsheets"]
-        )
-        client = gspread.authorize(creds)
-        sh = client.open_by_url(settings.CLIENTS_HISTORY_SPREADSHEET_URL)
-        ws = sh.worksheet("Абонементы")
-        
-        # Рассчитываем даты
-        now = datetime.datetime.now(ALMATY_TZ)
-        valid_until = now + datetime.timedelta(days=90)
-        
-        phone_norm = normalize_phone_for_sheet(data['phone'])
-        
-        # Формируем ID: 7707...@c.us
-        client_id = f"{phone_norm}@c.us"
-        
-        # Строка для записи (A-J)
-        # A: ID, B: Имя, C: Телефон, D: Пакет, E: Макс, F: Цена, G: Дата, H: Новый, I: Остаток, J: До
-        row = [
-            client_id,                  # A
-            data['name'],               # B
-            phone_norm,                 # C
-            data['hours'],              # D (куплено часов)
-            "",                         # E (Макс людей - пусто)
-            data['price'],              # F
-            now.strftime("%Y-%m-%d %H:%M"), # G
-            "Да",                       # H (Новый клиент - всегда Да)
-            data['hours'],              # I (Остаток = Куплено)
-            valid_until.strftime("%Y-%m-%d") # J (Действует до)
-        ]
-        
-        ws.append_row(row)
-        return True
-    except Exception as e:
-        print(f"Error adding subscription: {e}")
-        return False
 
 def cleanup_expired_holds():
     """Удаляет просроченные брони и уведомляет всех."""
@@ -1853,28 +1813,48 @@ class PageDetailView(DetailView):
 
     def get_context_data(self, **kwargs):
         ctx = super().get_context_data(**kwargs)
+        
+        # Получаем настройки и текущую страницу
         settings = SiteSettings.objects.first()
         page = self.object
         request = self.request
 
-        # обязательно положим в шаблон — у тебя есть обращения к {{ settings.* }}
+        # Передаем настройки в шаблон
         ctx["settings"] = settings
 
+        # === SEO БЛОК ===
+        
+        # 1. Текстовые мета-теги (используем методы модели)
         ctx["seo_title"] = page.get_meta_title(settings)
         ctx["seo_description"] = page.get_meta_description(settings)
         ctx["seo_robots"] = page.get_meta_robots(settings)
+        
+        # 2. Каноническая ссылка
+        # Если задана вручную - берем её, если нет - берем текущий URL
         ctx["seo_canonical"] = page.canonical_url or request.build_absolute_uri()
+        
+        # 3. Текущий URL (для og:url)
         ctx["seo_url"] = request.build_absolute_uri()
 
-        # АБСОЛЮТНЫЙ URL для og:image (это критично для WhatsApp/Telegram/Facebook)
+        # 4. OG Image (Картинка для соцсетей) - САМОЕ ВАЖНОЕ
+        # Нам нужна абсолютная ссылка (начинается с https://...)
+        seo_image_url = None
+        
         if page.og_image:
-            ctx["seo_og_image"] = request.build_absolute_uri(page.og_image.url)
+            # Если есть картинка у страницы
+            seo_image_url = page.og_image.url
         elif settings and settings.default_og_image:
-            ctx["seo_og_image"] = request.build_absolute_uri(settings.default_og_image.url)
+            # Если нет, берем дефолтную из настроек
+            seo_image_url = settings.default_og_image.url
+            
+        # Превращаем /media/img.jpg в https://site.kz/media/img.jpg
+        if seo_image_url:
+            ctx["seo_og_image"] = request.build_absolute_uri(seo_image_url)
         else:
             ctx["seo_og_image"] = None
 
         ctx["seo_site_name"] = settings.site_name if settings else "Zen Studio"
+        
         return ctx
 
 class RoomDetailView(DetailView):
