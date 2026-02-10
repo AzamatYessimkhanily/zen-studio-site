@@ -157,39 +157,45 @@
     transform: translateY(-3px);
     box-shadow: 0 5px 15px rgba(var(--zen-green-rgb), 0.3);
   }
-  /* --- Фиксированная кнопка на мобильных --- */
-/* --- Фиксированная кнопка на мобильных --- */
+/* --- Фиксированная кнопка на мобильных (ИСПРАВЛЕННАЯ) --- */
 .mobile-booking-bar {
       position: fixed;
-      bottom: 0;
+      /* ПОДНИМАЕМ ВЫШЕ НАВИГАЦИИ */
+      /* Высота меню (~60px) + отступы */
+      bottom: 70px; 
+      bottom: calc(70px + env(safe-area-inset-bottom)); 
+      
       left: 0;
       width: 100%;
-      background: rgba(255, 255, 255, 0.95);
-      backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px);
-      border-top: 1px solid rgba(0,0,0,0.05);
-      z-index: 1000;
-      box-shadow: 0 -4px 20px rgba(0,0,0,0.05);
-      /* Добавляем больше отступа снизу, чтобы не прилипало к черте iPhone */
-      padding: 12px 16px calc(12px + env(safe-area-inset-bottom)); 
+      /* Делаем фон прозрачным, чтобы не было белой полосы поверх меню */
+      background: transparent; 
+      /* Убираем лишние тени и границы, оставляем только кнопку */
+      border: none;
+      box-shadow: none;
+      
+      z-index: 1030; /* Чуть ниже меню (1040), но выше контента */
+      padding: 0 16px 10px; /* Отступы по бокам */
+      pointer-events: none; /* Чтобы клики сквозь пустое место проходили */
   }
 
-/* Стиль кнопки в мобильном баре (единый с сайтом) */
+/* Сама кнопка */
 .btn-book-mobile {
+      pointer-events: auto; /* Включаем клики обратно для кнопки */
       background: var(--zen-green);
       color: white;
-      padding: 14px 24px; /* Чуть больше кнопка */
+      padding: 14px 24px;
       border-radius: 16px;
       font-weight: 600;
       font-size: 1.1rem;
       text-decoration: none;
-      display: flex; /* Flex для центровки иконки и текста */
+      display: flex;
       justify-content: center;
       align-items: center;
       box-shadow: 0 4px 15px rgba(157, 211, 175, 0.4);
       transition: transform 0.2s;
-      width: 100%; /* На всю ширину */
-      max-width: 500px; /* Ограничение для планшетов */
-      margin: 0 auto; /* Центровка */
+      width: 100%;
+      max-width: 500px;
+      margin: 0 auto;
   }
   .btn-book-mobile:active { transform: scale(0.96); }
 
@@ -231,6 +237,10 @@
     transform: scale(0.98);
 }
 
+/* Скрываем кнопку "Наверх" на странице кабинета */
+  .back-to-top-btn {
+      display: none !important;
+  }
 </style>
 {% endblock %}
 
