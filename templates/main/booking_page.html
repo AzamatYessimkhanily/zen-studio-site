@@ -2650,10 +2650,15 @@ balanceHtml = `<div class="account-balance-badge mt-2">
     }
 
     // 3. Назад в меню из выбора кабинетов
+// 3. Назад в меню из выбора кабинетов
     if (btnBackToMenu) {
         btnBackToMenu.addEventListener('click', () => {
             roomSelectionContainer.style.display = 'none';
             mainMenuContainer.style.display = 'block';
+            
+            // === ВАЖНО: Очищаем память, чтобы при обновлении не было белого экрана ===
+            clearBookingState(); 
+            // =======================================================================
         });
     }
 
@@ -3819,8 +3824,7 @@ balanceHtml = `<div class="account-balance-badge mt-2">
         if (savedState) {
             mainMenuContainer.style.display = 'none';
             
-            currentScenario = savedState.scenario; roomId = savedState.roomId; roomName = savedState.roomName;
-            if (savedState.isSubscriptionMode) {
+            currentScenario = savedState.scenario; roomId = savedState.roomId; roomName = savedState.roomName;            if (savedState.isSubscriptionMode) {
                  isSubscriptionMode = true; subCurrentHours = savedState.subHours || null; subCurrentPrice = savedState.subPrice || 0; if(subPeopleSelect) subPeopleSelect.value = savedState.subPeople || '1';
                  const step = savedState.currentStep || 1;
                  if (step >= 2) {
@@ -3860,7 +3864,13 @@ balanceHtml = `<div class="account-balance-badge mt-2">
                     }
                 }
             }
-        } else { 
+            
+        } 
+        if (!savedState.isSubscriptionMode && !roomId && currentScenario !== 'time') {
+                 console.log("State exists but invalid, resetting to menu");
+                 resetAll(true);
+            }
+        else { 
             mainMenuContainer.style.display = 'block';
             roomSelectionContainer.style.display = 'none';
         }
@@ -3911,3 +3921,9 @@ function formatHoursToText(hoursFloat) {
 }
 </script>
 {% endblock %}
+
+
+
+
+
+
