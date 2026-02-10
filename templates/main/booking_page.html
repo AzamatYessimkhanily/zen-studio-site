@@ -973,11 +973,22 @@ footer, .footer, #footer, .site-footer {
 
 .booking-card {
     background: #fff;
-    border: 1px solid #f0f0f0;
-    border-radius: 16px;
-    padding: 1rem;
-    margin-bottom: 0.6rem;
-    transition: all 0.15s ease;
+    /* Убираем серую рамку, вместо нее будет тень */
+    border: 1px solid #f0f0f0; 
+    /* Если все же хотите рамку, раскомментируйте строку ниже и удалите border: none; */
+    /* border: 1px solid #e5e7eb; */
+    
+    border-radius: 16px;       /* Оставляем скругление */
+    padding: 1.2rem;           /* Чуть больше воздуха внутри карточки */
+    
+    /* Увеличиваем расстояние между карточками (было 0.6rem) */
+    margin-bottom: 1rem;       
+    
+    /* Добавляем красивую, мягкую тень для объема */
+    box-shadow: 0 10px 25px rgba(0, 0, 0, 0.06); 
+    
+    transition: all 0.2s ease;
+    position: relative; /* Нужно для небольшого эффекта при наведении */
 }
 .booking-card:last-child {
     margin-bottom: 0;
@@ -2157,7 +2168,7 @@ balanceHtml = `<div class="account-balance-badge mt-2">
                     const uIdx = window._upcomingBookingsData.length;
                     window._upcomingBookingsData.push(b);
                     statusBadge = '<span class="booking-status-badge badge-upcoming"><i class="fas fa-calendar-check"></i> Предстоящая</span>';
-                    actionBtn = `<button class="booking-card-action mt-2" style="background: rgba(220,53,69,0.08); color: #dc3545;" onclick="window.accountCancelBooking(${uIdx})"><i class="fas fa-times me-1"></i>Отменить бронь</button>`;
+                    actionBtn = `<button class="booking-card-action mt-2" style="background: #f3f4f6;color: #6b7280;" onclick="window.accountCancelBooking(${uIdx})"><i class="fas fa-times me-1"></i>Отменить бронь</button>`;
                 } else if (b.status === 'cancelled') {
                     statusBadge = '<span class="booking-status-badge badge-cancelled"><i class="fas fa-ban"></i> Отменена</span>';
                     actionBtn = '';
