@@ -33,17 +33,317 @@ import tempfile
 import os
 import PyPDF2 # <-- Библиотека, которую мы установили
 from django.core.files.base import ContentFile
+import random
+import time as _time  # для retry
 
 SERVICE_ACCOUNT_FILE = settings.BASE_DIR / 'sheetsapi-443912-7487420df9cd.json'
 SCOPES = ['https://www.googleapis.com/auth/calendar.readonly']
 ALMATY_TZ = pytz.timezone(settings.TIME_ZONE) # Часовой пояс из настроек Django
 
-# --- ФУНКЦИЯ ДЛЯ ПОЛУЧЕНИЯ СЛОТОВ ---
 # main/views.py
 
-# --- ФУНКЦИЯ ДЛЯ ПОЛУЧЕНИЯ СЛОТОВ (ИСПРАВЛЕННАЯ) ---
-# main/views.py
 
+@require_POST
+@csrf_exempt
+def api_send_auth_code(request):
+    """Генерирует код и отправляет в WhatsApp"""
+    try:
+        data = json.loads(request.body)
+        phone_raw = data.get('phone')
+        
+        # 1. Нормализация номера (7707...)
+        phone = ''.join(filter(str.isdigit, str(phone_raw)))
+        if len(phone) == 11 and phone.startswith('8'): 
+            phone = '7' + phone[1:]
+        elif len(phone) == 10: 
+            phone = '7' + phone
+            
+        if len(phone) != 11:
+            return JsonResponse({'success': False, 'error': 'Неверный формат номера'})
+
+        # 2. Генерация кода (4 цифры)
+        code = str(random.randint(1000, 9999))
+        
+        # 3. Сохраняем в сессию (действует пока браузер открыт / куки живы)
+        request.session['auth_phone'] = phone
+        request.session['auth_code'] = code
+        request.session.set_expiry(300) # Код валиден 5 минут
+
+        # 4. Отправка через вашего бота (Green API)
+        message = f"🔒 Ваш код входа в Zen Studio: *{code}*\nНикому не сообщайте."
+        send_whatsapp_client(phone, message)
+        
+        return JsonResponse({'success': True})
+
+    except Exception as e:
+        print(f"Auth Send Error: {e}")
+        return JsonResponse({'success': False, 'error': str(e)})
+
+@require_POST
+@csrf_exempt
+def api_verify_auth_code(request):
+    """Проверяет введенный код"""
+    try:
+        data = json.loads(request.body)
+        code_input = str(data.get('code')).strip()
+        
+        # Получаем сохраненные данные
+        saved_code = request.session.get('auth_code')
+        saved_phone = request.session.get('auth_phone')
+        
+        if not saved_code or not saved_phone:
+             return JsonResponse({'success': False, 'error': 'Код устарел. Запросите новый.'})
+             
+        if code_input == saved_code:
+            # УСПЕХ!
+            request.session['user_logged_in'] = True
+            request.session['user_phone'] = saved_phone
+            
+            # === ДОБАВЛЯЕМ ЭТУ СТРОКУ (Сессия на 1 год) ===
+            request.session.set_expiry(31536000) 
+            # ==============================================
+
+            if 'auth_code' in request.session:
+                del request.session['auth_code']
+                
+            return JsonResponse({'success': True, 'phone': saved_phone})
+        else:
+            return JsonResponse({'success': False, 'error': 'Неверный код'})
+            
+    except Exception as e:
+        return JsonResponse({'success': False, 'error': str(e)})
+
+
+# =====================================================
+# ДОБАВЬ ЭТУ ФУНКЦИЮ В views.py (например, после api_verify_auth_code)
+# =====================================================
+
+
+
+
+def _retry_gsheet(fn, max_retries=2, delay=2):
+    """Обёртка для вызовов Google Sheets с retry при rate limit (429/RESOURCE_EXHAUSTED)."""
+    last_err = None
+    for attempt in range(max_retries + 1):
+        try:
+            return fn()
+        except Exception as e:
+            last_err = e
+            err_str = str(e).lower()
+            is_rate_limit = any(k in err_str for k in ['quota', 'rate', '429', 'resource_exhausted', 'too many'])
+            if is_rate_limit and attempt < max_retries:
+                _time.sleep(delay * (attempt + 1))
+                continue
+            raise
+    raise last_err
+
+@require_GET
+def get_my_bookings(request):
+    """Возвращает данные клиента + его брони из Google Sheets."""
+    phone = request.session.get('user_phone')
+    if not phone:
+        return JsonResponse({'success': False, 'error': 'Не авторизован'}, status=401)
+
+    phone_norm = normalize_phone_for_sheet(phone)
+
+    try:
+        def _open_sheet():
+            creds = Credentials.from_service_account_file(
+                SERVICE_ACCOUNT_FILE,
+                scopes=["https://www.googleapis.com/auth/spreadsheets.readonly"]
+            )
+            gc = gspread.authorize(creds)
+            return gc.open_by_url(settings.CLIENTS_HISTORY_SPREADSHEET_URL)
+
+        sh = _retry_gsheet(_open_sheet)
+
+        # --- 1. Абонемент ---
+        sub_data = None
+        try:
+            sub_data = _retry_gsheet(lambda: get_subscription_client(phone))
+        except Exception as e:
+            print(f"get_my_bookings subscription lookup error (non-fatal): {e}")
+
+        balance_display = ""
+        expires = ""
+        client_name = ""
+        if sub_data:
+            balance_display = format_hours_text(sub_data['balance'])
+            expires = sub_data.get('expires', '')
+
+        # --- 2. Имя клиента из листа Абонементы ---
+        try:
+            def _lookup_name():
+                ws_sub = sh.worksheet("Абонементы")
+                headers_sub = ws_sub.row_values(1)
+                headers_sub_lower = [h.lower().strip() for h in headers_sub]
+                phone_col = headers_sub_lower.index("телефон") + 1
+                name_col_idx = None
+                if "имя" in headers_sub_lower:
+                    name_col_idx = headers_sub_lower.index("имя") + 1
+                phones = ws_sub.col_values(phone_col)
+                if phone_norm in phones:
+                    row_idx = phones.index(phone_norm) + 1
+                    if name_col_idx:
+                        return ws_sub.cell(row_idx, name_col_idx).value or ""
+                return ""
+            client_name = _retry_gsheet(_lookup_name)
+        except Exception as e:
+            print(f"get_my_bookings name lookup error: {e}")
+
+        # --- 3. Брони из "История клиентов" ---
+        bookings = []
+        try:
+            def _read_history():
+                ws_hist = sh.worksheet("История клиентов")
+                headers = ws_hist.row_values(1)
+                all_rows = ws_hist.get_all_values()[1:]
+                return headers, all_rows
+            
+            headers, all_rows = _retry_gsheet(_read_history)
+
+            headers_lower = [h.lower().strip() for h in headers]
+            idx = {h: i for i, h in enumerate(headers_lower)}
+
+            phone_col_i = idx.get('телефон')
+            date_col_i = idx.get('дата')
+            time_col_i = idx.get('время')
+            dur_col_i = idx.get('длительность')
+            room_col_i = idx.get('кабинет')
+            price_col_i = idx.get('цена') or idx.get('стоимость') or idx.get('оплата')
+            people_col_i = idx.get('количество человек')
+            booking_id_col_i = idx.get('id брони')
+
+            now = datetime.datetime.now(ALMATY_TZ)
+
+            for row in all_rows:
+                if phone_col_i is None or phone_col_i >= len(row):
+                    continue
+                row_phone = normalize_phone_for_sheet(row[phone_col_i])
+                if row_phone != phone_norm:
+                    continue
+
+                def safe_get(col_i):
+                    if col_i is not None and col_i < len(row):
+                        return row[col_i]
+                    return ""
+
+                date_val = safe_get(date_col_i)
+                time_val = safe_get(time_col_i)
+                dur_val = safe_get(dur_col_i)
+                room_val = safe_get(room_col_i)
+                price_val = safe_get(price_col_i)
+                people_val = safe_get(people_col_i)
+                bid = safe_get(booking_id_col_i)
+
+                # Определяем статус
+                status = "completed"
+                
+                # Проверяем отмену (в цене или в колонке статус)
+                is_cancelled = False
+                price_lower = str(price_val).lower().strip() if price_val else ''
+                if 'отменен' in price_lower or 'отмена' in price_lower:
+                    is_cancelled = True
+                # Проверяем колонку статус/примечание (ищем по частичному совпадению)
+                for hdr_name, col_i in idx.items():
+                    if ('статус' in hdr_name or 'примечан' in hdr_name) and col_i < len(row):
+                        cell_lower = str(row[col_i]).lower().strip()
+                        if 'отменен' in cell_lower or 'отмена' in cell_lower:
+                            is_cancelled = True
+                            break
+                
+                if is_cancelled:
+                    status = "cancelled"
+                else:
+                    try:
+                        if date_val and time_val:
+                            dt = datetime.datetime.strptime(f"{date_val} {time_val}", "%Y-%m-%d %H:%M")
+                            dt = ALMATY_TZ.localize(dt)
+                            dur_hours = float(str(dur_val).replace(',', '.')) if dur_val else 1
+                            end_dt = dt + datetime.timedelta(hours=dur_hours)
+                            if end_dt > now:
+                                status = "upcoming"
+                    except Exception:
+                        pass
+
+                # Имя клиента из истории (если не нашли в абонементах)
+                if not client_name:
+                    name_col_hist = idx.get('имя')
+                    if name_col_hist is not None and name_col_hist < len(row):
+                        client_name = row[name_col_hist]
+
+                # Вычисляем end_time
+                end_time_str = ""
+                try:
+                    if date_val and time_val and dur_val:
+                        dt_start = datetime.datetime.strptime(f"{date_val} {time_val}", "%Y-%m-%d %H:%M")
+                        dur_h = float(str(dur_val).replace(',', '.'))
+                        dt_end = dt_start + datetime.timedelta(hours=dur_h)
+                        end_time_str = dt_end.strftime("%H:%M")
+                except Exception:
+                    pass
+
+                bookings.append({
+                    'date': date_val,
+                    'time': time_val,
+                    'end_time': end_time_str,
+                    'duration': format_hours_text(dur_val) if dur_val else "",
+                    'duration_raw': float(str(dur_val).replace(',', '.')) if dur_val else 1,
+                    'room': room_val,
+                    'price': price_val,
+                    'people': people_val,
+                    'booking_id': bid,
+                    'status': status,
+                })
+        except Exception as e:
+            print(f"Error reading history: {e}")
+
+        # --- 4. Pending bookings (ожидают оплаты) из Django модели ---
+        try:
+            pending = PendingBooking.objects.filter(
+                client_phone__icontains=phone_norm[-10:],
+                expires_at__gt=timezone.now()
+            ).select_related('room')
+            for p in pending:
+                start_local = timezone.localtime(p.start_time)
+                end_local = timezone.localtime(p.end_time)
+                expires_local = timezone.localtime(p.expires_at)
+                dur_h = (end_local - start_local).total_seconds() / 3600
+                bookings.append({
+                    'date': start_local.strftime('%Y-%m-%d'),
+                    'time': start_local.strftime('%H:%M'),
+                    'end_time': end_local.strftime('%H:%M'),
+                    'duration': format_hours_text(dur_h),
+                    'duration_raw': dur_h,
+                    'room': p.room.name,
+                    'room_id': p.room.pk,
+                    'price': '',
+                    'people': '',
+                    'booking_id': str(p.hold_id),
+                    'status': 'pending_payment',
+                    'hold_id': str(p.hold_id),
+                    'expires_at': expires_local.isoformat(),
+                })
+        except Exception as e:
+            print(f"Error reading pending bookings: {e}")
+
+        # Сортировка: ожидающие → будущие → отменённые → завершенные (внутри — по дате DESC)
+        order_map = {'pending_payment': 0, 'upcoming': 1, 'cancelled': 2, 'completed': 3}
+        bookings.sort(key=lambda x: (order_map.get(x['status'], 9), x.get('date', '')))
+
+        return JsonResponse({
+            'success': True,
+            'client_name': client_name,
+            'phone': phone_norm,
+            'balance': balance_display,
+            'expires': expires,
+            'bookings': bookings,
+        })
+
+    except Exception as e:
+        print(f"get_my_bookings error: {e}")
+        return JsonResponse({'success': False, 'error': str(e)}, status=500)
+    
 # === ФУНКЦИЯ ДЛЯ КРАСИВОГО ОТОБРАЖЕНИЯ ЧАСОВ ===
 def format_hours_text(value):
     """Превращает 1.5 в '1 ч 30 мин', 1.0 в '1 ч'"""
@@ -1782,6 +2082,7 @@ class BookingPageView(TemplateView):
         # ФИЛЬТРУЕМ: только активные И те, у которых стоит галочка show_in_booking
         context['rooms'] = Room.objects.filter(is_active=True, show_in_booking=True).order_by('order')
         context['settings'] = SiteSettings.objects.first()
+        context['user_is_logged_in'] = self.request.session.get('user_logged_in', False)
         return context
 
 class IndexView(TemplateView):
@@ -1870,3 +2171,356 @@ class RoomDetailView(DetailView):
         context['settings'] = SiteSettings.objects.first()
         return context
     
+"""
+Добавить в views.py — Логика отмены подтверждённых бронирований.
+
+Добавить в urls.py:
+    path('api/cancel_booking_init/', views.cancel_booking_init, name='cancel_booking_init'),
+    path('api/cancel_booking_confirm/', views.cancel_booking_confirm, name='cancel_booking_confirm'),
+"""
+
+# ========================================
+# cancel_booking_init — Проверка возможности отмены + расчёт штрафа
+# ========================================
+@require_POST
+@csrf_exempt
+def cancel_booking_init(request):
+    """
+    Принимает данные брони, определяет штрафной тариф:
+    < 3ч  → отмена невозможна
+    3-12ч → штраф 25%
+    > 12ч → бесплатная отмена
+    """
+    try:
+        data = json.loads(request.body.decode("utf-8") or "{}")
+        date_str = data.get('date')       # "2025-02-15"
+        time_str = data.get('time')       # "14:00"
+        duration = data.get('duration')   # 2 (часы, float)
+        room_name = data.get('room')      # "Зелёный кабинет"
+        price_str = data.get('price', '') # "15000" или "Абонемент"
+        people = data.get('people', 1)
+
+        if not date_str or not time_str:
+            return JsonResponse({'success': False, 'error': 'Неполные данные'}, status=400)
+
+        # Парсим дату+время брони
+        try:
+            booking_dt = datetime.datetime.strptime(f"{date_str} {time_str}", "%Y-%m-%d %H:%M")
+            booking_dt_aware = ALMATY_TZ.localize(booking_dt)
+        except Exception:
+            return JsonResponse({'success': False, 'error': 'Некорректная дата/время'}, status=400)
+
+        now = timezone.now()
+        hours_until = (booking_dt_aware - now).total_seconds() / 3600
+
+        # --- ОПРЕДЕЛЯЕМ ТАРИФ ---
+        if hours_until < 3:
+            return JsonResponse({
+                'success': True,
+                'can_cancel': False,
+                'reason': 'too_late',
+                'hours_until': round(hours_until, 1),
+                'message': 'Отмена невозможна менее чем за 3 часа до начала.'
+            })
+
+        # Определяем цену для штрафа
+        is_subscription_booking = False
+        base_price = 0
+
+        try:
+            # Если цена — число, берём её
+            base_price = float(str(price_str).replace(' ', '').replace(',', '.'))
+        except (ValueError, TypeError):
+            # "Абонемент" или пустая — нужно рассчитать цену
+            is_subscription_booking = True
+            try:
+                dur_hours = float(duration) if duration else 1
+                ppl = int(people) if people else 1
+                calculated = get_price_from_sheet(Decimal(str(dur_hours)), ppl)
+                if calculated:
+                    base_price = float(calculated)
+                else:
+                    base_price = 0
+            except Exception as e:
+                print(f"Price calculation error: {e}")
+                base_price = 0
+
+        penalty_amount = 0
+        has_penalty = False
+
+        if hours_until < 12:
+            has_penalty = True
+            penalty_amount = round(base_price * 0.25)
+
+        dur_h = float(duration) if duration else 1
+
+        return JsonResponse({
+            'success': True,
+            'can_cancel': True,
+            'has_penalty': has_penalty,
+            'penalty_amount': penalty_amount,
+            'base_price': base_price,
+            'is_subscription_booking': is_subscription_booking,
+            'hours_until': round(hours_until, 1),
+            'refund_hours': dur_h,
+            'duration_display': format_hours_text(dur_h),
+        })
+
+    except Exception as e:
+        return JsonResponse({'success': False, 'error': str(e)}, status=500)
+
+
+# ========================================
+# cancel_booking_confirm — Выполнение отмены
+# ========================================
+@require_POST
+@csrf_exempt
+def cancel_booking_confirm(request):
+    """
+    Подтверждение отмены:
+    - Проверка чека (если штраф)
+    - Удаление из Google Calendar
+    - Возврат часов в абонемент (или создание нового)
+    - Сообщения в группу + клиенту
+    - Пометка в Google Sheets
+    """
+    try:
+        data = json.loads(request.body.decode("utf-8") or "{}")
+
+        date_str = data.get('date')
+        time_str = data.get('time')
+        duration = float(data.get('duration', 1))
+        room_name = data.get('room')
+        phone = data.get('phone')
+        client_name = data.get('client_name', '')
+        has_penalty = data.get('has_penalty', False)
+        penalty_amount = data.get('penalty_amount', 0)
+        base_price = data.get('base_price', 0)
+
+        # Данные чека (если штраф)
+        receipt_file_data = data.get('receipt_file_data')
+        receipt_file_name = data.get('receipt_file_name')
+        receipt_number = data.get('receipt_number')
+        payment_method = data.get('payment_method', 'single')  # 'single' или 'subscription'
+
+        if not all([date_str, time_str, room_name, phone]):
+            return JsonResponse({'success': False, 'error': 'Неполные данные'}, status=400)
+
+        # --- 1. ВАЛИДАЦИЯ ЧЕКА (если штраф) ---
+        receipt_info = ""
+        if has_penalty:
+            is_subscription_penalty = (payment_method == 'subscription')
+
+            if is_subscription_penalty:
+                # Оплата штрафа абонементом — проверяем баланс
+                sub_data = get_subscription_client(phone)
+                if not sub_data:
+                    return JsonResponse({'success': False, 'error': 'Абонемент не найден'}, status=400)
+
+                # Штраф абонементом: 25% от стоимости в часах (по пропорции base_price)
+                # Переводим penalty_amount ₸ в часы: (penalty_amount / base_price) * duration
+                if base_price > 0:
+                    penalty_hours = round((penalty_amount / base_price) * duration, 2)
+                else:
+                    penalty_hours = round(duration * 0.25, 2)
+
+                if sub_data['balance'] < penalty_hours:
+                    return JsonResponse({
+                        'success': False,
+                        'error': f'Недостаточно часов. Нужно: {format_hours_text(penalty_hours)}, баланс: {format_hours_text(sub_data["balance"])}'
+                    }, status=400)
+
+                # Списываем штраф с абонемента
+                try:
+                    new_balance = sub_data['balance'] - penalty_hours
+                    ws = sub_data['sheet_instance']
+                    ws.update_cell(sub_data['row'], sub_data['balance_col_idx'], new_balance)
+                    receipt_info = f"Штраф абонементом: {format_hours_text(penalty_hours)}"
+                except Exception as e:
+                    return JsonResponse({'success': False, 'error': f'Ошибка списания: {e}'}, status=500)
+            else:
+                # Оплата штрафа деньгами — проверяем чек
+                if not receipt_file_data and not receipt_number:
+                    return JsonResponse({'success': False, 'error': 'Прикрепите чек или номер квитанции'}, status=400)
+
+                if receipt_file_data:
+                    is_valid, message = _validate_receipt(receipt_file_name, receipt_file_data)
+                    if not is_valid:
+                        return JsonResponse({'success': False, 'error': message}, status=400)
+                    receipt_info = f"Чек: {receipt_file_name}"
+                else:
+                    receipt_info = f"Номер чека: {receipt_number}"
+
+        # --- 2. ПАРСИМ ДАТУ БРОНИРОВАНИЯ ---
+        booking_dt = datetime.datetime.strptime(f"{date_str} {time_str}", "%Y-%m-%d %H:%M")
+        booking_dt_aware = ALMATY_TZ.localize(booking_dt)
+        end_dt_aware = booking_dt_aware + datetime.timedelta(hours=duration)
+
+        # --- 3. НАХОДИМ И УДАЛЯЕМ СОБЫТИЕ ИЗ GOOGLE CALENDAR ---
+        gcal_deleted = False
+        try:
+            room = Room.objects.filter(name__icontains=room_name.split()[0]).first()
+            if room and room.google_calendar_id:
+                service = get_calendar_service()
+                calendar_id = str(room.google_calendar_id).strip().replace('"', '').replace("'", "").replace(' ', '')
+
+                # Ищем событие в диапазоне ±5 минут от времени бронирования
+                time_min = (booking_dt_aware - datetime.timedelta(minutes=5)).isoformat()
+                time_max = (booking_dt_aware + datetime.timedelta(minutes=5)).isoformat()
+
+                events_result = service.events().list(
+                    calendarId=calendar_id,
+                    timeMin=time_min,
+                    timeMax=time_max,
+                    singleEvents=True,
+                    orderBy='startTime'
+                ).execute()
+
+                events = events_result.get('items', [])
+                for event in events:
+                    event_start = event.get('start', {}).get('dateTime', '')
+                    # Проверяем что это наше событие (по времени)
+                    if event_start:
+                        try:
+                            ev_dt = datetime.datetime.fromisoformat(event_start)
+                            diff = abs((ev_dt - booking_dt_aware).total_seconds())
+                            if diff < 300:  # ±5 минут
+                                service.events().delete(
+                                    calendarId=calendar_id,
+                                    eventId=event['id']
+                                ).execute()
+                                gcal_deleted = True
+                                print(f"Calendar event deleted: {event['id']}")
+                                break
+                        except Exception:
+                            continue
+        except Exception as e:
+            print(f"Error deleting calendar event: {e}")
+
+        # --- 4. ВОЗВРАТ ЧАСОВ В АБОНЕМЕНТ ---
+        refund_hours = duration  # Возвращаем полную длительность
+        refund_display = format_hours_text(refund_hours)
+        new_balance_display = ""
+
+        try:
+            phone_norm = normalize_phone_for_sheet(phone)
+            sub_data = get_subscription_client(phone)
+
+            if sub_data:
+                # Абонемент есть — добавляем часы
+                new_balance = sub_data['balance'] + refund_hours
+                ws = sub_data['sheet_instance']
+                ws.update_cell(sub_data['row'], sub_data['balance_col_idx'], new_balance)
+                new_balance_display = format_hours_text(new_balance)
+            else:
+                # Абонемента нет — создаём новый
+                success = add_new_subscription_to_sheet({
+                    'name': client_name or 'Клиент',
+                    'phone': phone,
+                    'hours': refund_hours,
+                    'price': 0  # Возврат, не покупка
+                })
+                if success:
+                    new_balance_display = format_hours_text(refund_hours)
+                else:
+                    new_balance_display = "ошибка записи"
+        except Exception as e:
+            print(f"Error refunding hours: {e}")
+            new_balance_display = "ошибка"
+
+        # --- 5. ПОМЕЧАЕМ В GOOGLE SHEETS (История клиентов) ---
+        try:
+            creds = Credentials.from_service_account_file(
+                SERVICE_ACCOUNT_FILE,
+                scopes=["https://www.googleapis.com/auth/spreadsheets"]
+            )
+            gc = gspread.authorize(creds)
+            sh = gc.open_by_url(settings.CLIENTS_HISTORY_SPREADSHEET_URL)
+            ws = sh.worksheet("История клиентов")
+
+            all_data = ws.get_all_values()
+            headers = all_data[0] if all_data else []
+            headers_lower = [h.lower().strip() for h in headers]
+
+            idx = {}
+            for i, h in enumerate(headers_lower):
+                if 'дата' in h: idx['date'] = i
+                elif 'врем' in h: idx['time'] = i
+                elif 'кабинет' in h or 'комнат' in h: idx['room'] = i
+                elif 'телеф' in h or 'phone' in h: idx['phone'] = i
+                elif 'стоимость' in h or 'цен' in h or 'оплат' in h: idx['price'] = i
+                elif 'статус' in h or 'примечан' in h: idx['status'] = i
+
+            # Ищем строку с этой бронью
+            for row_i, row in enumerate(all_data[1:], start=2):
+                row_date = row[idx['date']] if 'date' in idx and idx['date'] < len(row) else ''
+                row_time = row[idx['time']] if 'time' in idx and idx['time'] < len(row) else ''
+                row_phone = row[idx.get('phone', -1)] if 'phone' in idx and idx['phone'] < len(row) else ''
+
+                phone_match = phone_norm in normalize_phone_for_sheet(row_phone)
+                date_match = date_str in row_date
+                time_match = time_str in row_time
+
+                if date_match and time_match and phone_match:
+                    # Нашли — помечаем как отменённую
+                    if 'price' in idx:
+                        old_price = row[idx['price']] if idx['price'] < len(row) else ''
+                        ws.update_cell(row_i, idx['price'] + 1, f"ОТМЕНЕНА ({old_price})")
+
+                    # Если есть колонка статус/примечание
+                    if 'status' in idx:
+                        penalty_note = f"Штраф: {penalty_amount}₸" if has_penalty else "Без штрафа"
+                        ws.update_cell(row_i, idx['status'] + 1, f"Отменена. {penalty_note}. Возврат: {refund_display}")
+
+                    print(f"Booking marked as cancelled in sheet, row {row_i}")
+                    break
+
+        except Exception as e:
+            print(f"Error updating history sheet: {e}")
+
+        # --- 6. WHATSAPP УВЕДОМЛЕНИЯ ---
+        duration_display = format_hours_text(duration)
+        penalty_text = f"💸 Штраф: {penalty_amount} ₸ ({receipt_info})" if has_penalty else "✅ Без штрафа"
+
+        try:
+            group_msg = (
+                "〰〰〰〰〰〰〰〰〰〰\n"
+                "🔄 ОТМЕНА БРОНИ (Сайт)\n\n"
+                f"🏠 Кабинет: {room_name}\n"
+                f"🗓 Дата: {date_str} | {time_str}\n"
+                f"⏳ Длительность: {duration_display}\n"
+                f"👤 Клиент: {client_name} ({phone})\n\n"
+                f"{penalty_text}\n"
+                f"🔁 Возврат в абонемент: {refund_display}\n"
+                f"💰 Новый баланс: {new_balance_display}\n"
+                "〰〰〰〰〰〰〰〰〰〰"
+            )
+            send_whatsapp_group(group_msg)
+
+            client_msg = (
+                "〰〰〰〰〰〰〰〰〰〰\n"
+                "🔄 Ваша бронь отменена\n\n"
+                f"🏠 Кабинет: {room_name}\n"
+                f"🗓 Дата: {date_str} | {time_str}\n"
+                f"⏳ Длительность: {duration_display}\n\n"
+                f"{penalty_text}\n"
+                f"🔁 Возвращено в абонемент: {refund_display}\n"
+                f"💰 Ваш баланс: {new_balance_display}\n\n"
+                "Если хотите забронировать другое время — выберите слот на сайте.\n"
+                "〰〰〰〰〰〰〰〰〰〰"
+            )
+            send_whatsapp_client(phone, client_msg)
+        except Exception as e:
+            print(f"Error sending cancel notifications: {e}")
+
+        return JsonResponse({
+            'success': True,
+            'gcal_deleted': gcal_deleted,
+            'refund_hours': refund_display,
+            'new_balance': new_balance_display,
+            'had_penalty': has_penalty,
+            'penalty_amount': penalty_amount,
+        })
+
+    except Exception as e:
+        return JsonResponse({'success': False, 'error': str(e)}, status=500)

@@ -29,4 +29,11 @@ urlpatterns = [
     path('api/calculate_sub_benefit/', views.calculate_subscription_benefit, name='calculate_sub_benefit'),
     path('api/check_wa_exists/', views.check_whatsapp_existence, name='check_wa_exists'),
     
+    path('api/send_auth_code/', views.api_send_auth_code, name='api_send_auth_code'),
+    path('api/verify_auth_code/', views.api_verify_auth_code, name='api_verify_auth_code'),
+    path('api/get_my_bookings/', views.get_my_bookings, name='get_my_bookings'),
+    path('api/cancel_booking_init/', views.cancel_booking_init, name='cancel_booking_init'),
+    path('api/cancel_booking_confirm/', views.cancel_booking_confirm, name='cancel_booking_confirm'),
+
+    
 ]
