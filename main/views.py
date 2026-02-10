@@ -2171,6 +2171,7 @@ class RoomDetailView(DetailView):
         context['settings'] = SiteSettings.objects.first()
         return context
     
+
 """
 Добавить в views.py — Логика отмены подтверждённых бронирований.
 
@@ -2228,10 +2229,8 @@ def cancel_booking_init(request):
         base_price = 0
 
         try:
-            # Если цена — число, берём её
             base_price = float(str(price_str).replace(' ', '').replace(',', '.'))
         except (ValueError, TypeError):
-            # "Абонемент" или пустая — нужно рассчитать цену
             is_subscription_booking = True
             try:
                 dur_hours = float(duration) if duration else 1
@@ -2271,100 +2270,321 @@ def cancel_booking_init(request):
 
 
 # ========================================
+# Вспомогательные функции для отмены
+# ========================================
+
+def _cancel_dates_match(date_a, date_b):
+    """Гибкое сравнение дат — учитывает разные форматы Google Sheets."""
+    if not date_a or not date_b:
+        return False
+    a = str(date_a).strip()
+    b = str(date_b).strip()
+    if a == b:
+        return True
+    def _parse(s):
+        s = s.split()[0] if ' ' in s else s
+        for fmt in ('%Y-%m-%d', '%d.%m.%Y', '%d/%m/%Y', '%m/%d/%Y'):
+            try:
+                return datetime.datetime.strptime(s, fmt).date()
+            except:
+                continue
+        return None
+    pa, pb = _parse(a), _parse(b)
+    if pa and pb:
+        return pa == pb
+    return a in b or b in a
+
+
+def _cancel_times_match(time_a, time_b):
+    """Гибкое сравнение времени: '14:00' == '14:00:00'."""
+    if not time_a or not time_b:
+        return False
+    a = str(time_a).strip()
+    b = str(time_b).strip()
+    if a == b:
+        return True
+    if a.startswith(b) or b.startswith(a):
+        return True
+    return False
+
+
+def _find_sub_columns(ws_sub):
+    """Находит колонки телефона и баланса в листе Абонементы."""
+    try:
+        headers = ws_sub.row_values(1)
+        headers_lower = [h.lower().strip() for h in headers]
+        phone_col = None
+        balance_col = None
+        if 'телефон' in headers_lower:
+            phone_col = headers_lower.index('телефон') + 1
+        if 'остаток' in headers_lower:
+            balance_col = headers_lower.index('остаток') + 1
+        elif 'баланс' in headers_lower:
+            balance_col = headers_lower.index('баланс') + 1
+        return phone_col, balance_col
+    except:
+        return None, None
+
+
+# ========================================
 # cancel_booking_confirm — Выполнение отмены
 # ========================================
 @require_POST
 @csrf_exempt
 def cancel_booking_confirm(request):
     """
-    Подтверждение отмены:
-    - Проверка чека (если штраф)
-    - Удаление из Google Calendar
-    - Возврат часов в абонемент (или создание нового)
-    - Сообщения в группу + клиенту
-    - Пометка в Google Sheets
+    Подтверждение отмены (ОДНО подключение к Google Sheets):
+    1. Пометка в Google Sheets (ПЕРВЫМ ДЕЛОМ)
+    2. Штраф абонементом (если нужно)
+    3. Возврат часов в абонемент
+    4. Удаление из Google Calendar
+    5. WhatsApp уведомления
     """
+    import time as _time
+
     try:
         data = json.loads(request.body.decode("utf-8") or "{}")
 
-        date_str = data.get('date')
-        time_str = data.get('time')
+        date_str = str(data.get('date', '')).strip()
+        time_str = str(data.get('time', '')).strip()
         duration = float(data.get('duration', 1))
-        room_name = data.get('room')
-        phone = data.get('phone')
-        client_name = data.get('client_name', '')
+        room_name = str(data.get('room', '')).strip()
+        phone = str(data.get('phone', '')).strip()
+        client_name = str(data.get('client_name', '')).strip()
         has_penalty = data.get('has_penalty', False)
         penalty_amount = data.get('penalty_amount', 0)
         base_price = data.get('base_price', 0)
 
-        # Данные чека (если штраф)
         receipt_file_data = data.get('receipt_file_data')
         receipt_file_name = data.get('receipt_file_name')
         receipt_number = data.get('receipt_number')
-        payment_method = data.get('payment_method', 'single')  # 'single' или 'subscription'
+        payment_method = data.get('payment_method', 'single')
 
         if not all([date_str, time_str, room_name, phone]):
             return JsonResponse({'success': False, 'error': 'Неполные данные'}, status=400)
 
-        # --- 1. ВАЛИДАЦИЯ ЧЕКА (если штраф) ---
+        phone_norm = normalize_phone_for_sheet(phone)
+        refund_hours = duration
+        refund_display = format_hours_text(refund_hours)
+
+        print(f"[CANCEL] === Начало отмены ===")
+        print(f"[CANCEL] phone={phone_norm}, date={date_str}, time={time_str}, room={room_name}")
+        print(f"[CANCEL] has_penalty={has_penalty}, penalty={penalty_amount}, duration={duration}")
+
+        # --- 0. ВАЛИДАЦИЯ ЧЕКА (если штраф переводом) ---
         receipt_info = ""
-        if has_penalty:
-            is_subscription_penalty = (payment_method == 'subscription')
-
-            if is_subscription_penalty:
-                # Оплата штрафа абонементом — проверяем баланс
-                sub_data = get_subscription_client(phone)
-                if not sub_data:
-                    return JsonResponse({'success': False, 'error': 'Абонемент не найден'}, status=400)
-
-                # Штраф абонементом: 25% от стоимости в часах (по пропорции base_price)
-                # Переводим penalty_amount ₸ в часы: (penalty_amount / base_price) * duration
-                if base_price > 0:
-                    penalty_hours = round((penalty_amount / base_price) * duration, 2)
-                else:
-                    penalty_hours = round(duration * 0.25, 2)
-
-                if sub_data['balance'] < penalty_hours:
-                    return JsonResponse({
-                        'success': False,
-                        'error': f'Недостаточно часов. Нужно: {format_hours_text(penalty_hours)}, баланс: {format_hours_text(sub_data["balance"])}'
-                    }, status=400)
-
-                # Списываем штраф с абонемента
-                try:
-                    new_balance = sub_data['balance'] - penalty_hours
-                    ws = sub_data['sheet_instance']
-                    ws.update_cell(sub_data['row'], sub_data['balance_col_idx'], new_balance)
-                    receipt_info = f"Штраф абонементом: {format_hours_text(penalty_hours)}"
-                except Exception as e:
-                    return JsonResponse({'success': False, 'error': f'Ошибка списания: {e}'}, status=500)
+        if has_penalty and payment_method != 'subscription':
+            if not receipt_file_data and not receipt_number:
+                return JsonResponse({'success': False, 'error': 'Прикрепите чек или номер квитанции'}, status=400)
+            if receipt_file_data:
+                is_valid, message = _validate_receipt(receipt_file_name, receipt_file_data)
+                if not is_valid:
+                    return JsonResponse({'success': False, 'error': message}, status=400)
+                receipt_info = f"Чек: {receipt_file_name}"
             else:
-                # Оплата штрафа деньгами — проверяем чек
-                if not receipt_file_data and not receipt_number:
-                    return JsonResponse({'success': False, 'error': 'Прикрепите чек или номер квитанции'}, status=400)
+                receipt_info = f"Номер чека: {receipt_number}"
 
-                if receipt_file_data:
-                    is_valid, message = _validate_receipt(receipt_file_name, receipt_file_data)
-                    if not is_valid:
-                        return JsonResponse({'success': False, 'error': message}, status=400)
-                    receipt_info = f"Чек: {receipt_file_name}"
+        # === ОДНО ПОДКЛЮЧЕНИЕ К GOOGLE SHEETS (с retry) ===
+        sh = None
+        for attempt in range(3):
+            try:
+                creds = Credentials.from_service_account_file(
+                    SERVICE_ACCOUNT_FILE,
+                    scopes=["https://www.googleapis.com/auth/spreadsheets"]
+                )
+                gc = gspread.authorize(creds)
+                sh = gc.open_by_url(settings.CLIENTS_HISTORY_SPREADSHEET_URL)
+                print(f"[CANCEL] Подключение OK (попытка {attempt+1})")
+                break
+            except Exception as e:
+                print(f"[CANCEL] Подключение failed ({attempt+1}/3): {e}")
+                if attempt < 2:
+                    _time.sleep(2 * (attempt + 1))
                 else:
-                    receipt_info = f"Номер чека: {receipt_number}"
+                    return JsonResponse({'success': False, 'error': 'Ошибка подключения к таблице. Попробуйте через минуту.'}, status=500)
 
-        # --- 2. ПАРСИМ ДАТУ БРОНИРОВАНИЯ ---
-        booking_dt = datetime.datetime.strptime(f"{date_str} {time_str}", "%Y-%m-%d %H:%M")
-        booking_dt_aware = ALMATY_TZ.localize(booking_dt)
-        end_dt_aware = booking_dt_aware + datetime.timedelta(hours=duration)
+        # ============================================================
+        # --- 1. ПОМЕЧАЕМ БРОНЬ КАК ОТМЕНЁННУЮ (самый важный шаг) ---
+        # ============================================================
+        sheet_updated = False
+        try:
+            ws_hist = sh.worksheet("История клиентов")
+            all_data = ws_hist.get_all_values()
+            headers = all_data[0] if all_data else []
+            headers_lower = [h.lower().strip() for h in headers]
 
-        # --- 3. НАХОДИМ И УДАЛЯЕМ СОБЫТИЕ ИЗ GOOGLE CALENDAR ---
+            hdr_map = {h: i for i, h in enumerate(headers_lower)}
+
+            phone_col = hdr_map.get('телефон')
+            date_col = hdr_map.get('дата')
+            time_col = hdr_map.get('время')
+
+            # Цена — безопасный поиск (None вместо 0 при отсутствии)
+            price_col = None
+            for pname in ['цена', 'стоимость', 'оплата']:
+                if pname in hdr_map:
+                    price_col = hdr_map[pname]
+                    break
+
+            # Статус / примечание
+            status_col = None
+            for h_name, h_i in hdr_map.items():
+                if 'статус' in h_name or 'примечан' in h_name:
+                    status_col = h_i
+                    break
+
+            print(f"[CANCEL] Колонки: phone={phone_col}, date={date_col}, time={time_col}, price={price_col}, status={status_col}")
+
+            if phone_col is not None and date_col is not None:
+                for row_i, row in enumerate(all_data[1:], start=2):
+                    if date_col >= len(row) or phone_col >= len(row):
+                        continue
+
+                    row_phone_raw = row[phone_col]
+                    row_date_raw = str(row[date_col]).strip()
+                    row_time_raw = str(row[time_col]).strip() if time_col is not None and time_col < len(row) else ''
+
+                    row_phone_norm = normalize_phone_for_sheet(row_phone_raw)
+
+                    phone_ok = (phone_norm == row_phone_norm)
+                    date_ok = _cancel_dates_match(date_str, row_date_raw)
+                    time_ok = _cancel_times_match(time_str, row_time_raw)
+
+                    if phone_ok and date_ok and time_ok:
+                        print(f"[CANCEL] ✅ Найдена бронь в строке {row_i}")
+
+                        if price_col is not None and price_col < len(row):
+                            old_price = row[price_col]
+                            if 'отменен' not in str(old_price).lower():
+                                ws_hist.update_cell(row_i, price_col + 1, f"ОТМЕНЕНА ({old_price})")
+                                sheet_updated = True
+                                print(f"[CANCEL] Цена: ОТМЕНЕНА ({old_price})")
+                            else:
+                                sheet_updated = True
+                                print(f"[CANCEL] Уже отменена ранее")
+
+                        if status_col is not None:
+                            penalty_note = f"Штраф: {penalty_amount}₸" if has_penalty else "Без штрафа"
+                            ws_hist.update_cell(row_i, status_col + 1, f"Отменена. {penalty_note}. Возврат: {refund_display}")
+                            sheet_updated = True
+
+                        if not sheet_updated and price_col is not None:
+                            ws_hist.update_cell(row_i, price_col + 1, "ОТМЕНЕНА")
+                            sheet_updated = True
+
+                        break
+
+                if not sheet_updated:
+                    print(f"[CANCEL] ⚠ Строка НЕ найдена! Строк: {len(all_data)-1}")
+                    found = 0
+                    for ri, r in enumerate(all_data[1:], start=2):
+                        if phone_col < len(r) and normalize_phone_for_sheet(r[phone_col]) == phone_norm:
+                            found += 1
+                            rd = r[date_col] if date_col < len(r) else '?'
+                            rt = r[time_col] if time_col is not None and time_col < len(r) else '?'
+                            if found <= 5:
+                                print(f"[CANCEL]   row {ri}: date='{rd}' (match={_cancel_dates_match(date_str, rd)}), time='{rt}' (match={_cancel_times_match(time_str, rt)})")
+                    print(f"[CANCEL]   Всего строк с телефоном: {found}")
+            else:
+                print(f"[CANCEL] ❌ Колонки не найдены! headers={headers_lower}")
+
+        except Exception as e:
+            print(f"[CANCEL] ❌ Ошибка обновления: {e}")
+            import traceback
+            traceback.print_exc()
+
+        # ============================================================
+        # --- 2. ШТРАФ АБОНЕМЕНТОМ (если нужно) ---
+        # ============================================================
+        if has_penalty and payment_method == 'subscription':
+            try:
+                _time.sleep(1)
+                ws_sub = sh.worksheet("Абонементы")
+                sub_phone_col, sub_balance_col = _find_sub_columns(ws_sub)
+
+                if sub_phone_col and sub_balance_col:
+                    phones_list = ws_sub.col_values(sub_phone_col)
+                    if phone_norm in phones_list:
+                        sub_row = phones_list.index(phone_norm) + 1
+                        balance_str = str(ws_sub.cell(sub_row, sub_balance_col).value or '0').replace(',', '.')
+                        try:
+                            current_balance = float(balance_str)
+                        except:
+                            current_balance = 0
+
+                        if base_price > 0:
+                            penalty_hours = round((penalty_amount / base_price) * duration, 2)
+                        else:
+                            penalty_hours = round(duration * 0.25, 2)
+
+                        if current_balance < penalty_hours:
+                            return JsonResponse({
+                                'success': False,
+                                'error': f'Недостаточно часов. Нужно: {format_hours_text(penalty_hours)}, баланс: {format_hours_text(current_balance)}'
+                            }, status=400)
+
+                        new_balance = current_balance - penalty_hours
+                        ws_sub.update_cell(sub_row, sub_balance_col, new_balance)
+                        receipt_info = f"Штраф абонементом: {format_hours_text(penalty_hours)}"
+                        print(f"[CANCEL] Штраф списан: {penalty_hours}ч")
+                    else:
+                        return JsonResponse({'success': False, 'error': 'Абонемент не найден'}, status=400)
+                else:
+                    return JsonResponse({'success': False, 'error': 'Ошибка структуры таблицы абонементов'}, status=500)
+            except Exception as e:
+                print(f"[CANCEL] Ошибка штрафа: {e}")
+                return JsonResponse({'success': False, 'error': f'Ошибка списания штрафа: {e}'}, status=500)
+
+        # ============================================================
+        # --- 3. ВОЗВРАТ ЧАСОВ В АБОНЕМЕНТ ---
+        # ============================================================
+        new_balance_display = ""
+        try:
+            _time.sleep(1)
+            ws_sub = sh.worksheet("Абонементы")
+            sub_phone_col, sub_balance_col = _find_sub_columns(ws_sub)
+
+            if sub_phone_col and sub_balance_col:
+                phones_list = ws_sub.col_values(sub_phone_col)
+                if phone_norm in phones_list:
+                    sub_row = phones_list.index(phone_norm) + 1
+                    balance_str = str(ws_sub.cell(sub_row, sub_balance_col).value or '0').replace(',', '.')
+                    try:
+                        current_balance = float(balance_str)
+                    except:
+                        current_balance = 0
+
+                    new_balance = current_balance + refund_hours
+                    ws_sub.update_cell(sub_row, sub_balance_col, new_balance)
+                    new_balance_display = format_hours_text(new_balance)
+                    print(f"[CANCEL] Возврат: +{refund_hours}ч, баланс: {new_balance}")
+                else:
+                    success = add_new_subscription_to_sheet({
+                        'name': client_name or 'Клиент',
+                        'phone': phone,
+                        'hours': refund_hours,
+                        'price': 0
+                    })
+                    new_balance_display = format_hours_text(refund_hours) if success else "ошибка записи"
+            else:
+                new_balance_display = "ошибка"
+        except Exception as e:
+            print(f"[CANCEL] Ошибка возврата: {e}")
+            new_balance_display = "ошибка"
+
+        # ============================================================
+        # --- 4. УДАЛЯЕМ ИЗ GOOGLE CALENDAR ---
+        # ============================================================
         gcal_deleted = False
         try:
+            booking_dt = datetime.datetime.strptime(f"{date_str} {time_str}", "%Y-%m-%d %H:%M")
+            booking_dt_aware = ALMATY_TZ.localize(booking_dt)
+
             room = Room.objects.filter(name__icontains=room_name.split()[0]).first()
             if room and room.google_calendar_id:
                 service = get_calendar_service()
                 calendar_id = str(room.google_calendar_id).strip().replace('"', '').replace("'", "").replace(' ', '')
 
-                # Ищем событие в диапазоне ±5 минут от времени бронирования
                 time_min = (booking_dt_aware - datetime.timedelta(minutes=5)).isoformat()
                 time_max = (booking_dt_aware + datetime.timedelta(minutes=5)).isoformat()
 
@@ -2376,109 +2596,25 @@ def cancel_booking_confirm(request):
                     orderBy='startTime'
                 ).execute()
 
-                events = events_result.get('items', [])
-                for event in events:
-                    event_start = event.get('start', {}).get('dateTime', '')
-                    # Проверяем что это наше событие (по времени)
-                    if event_start:
-                        try:
-                            ev_dt = datetime.datetime.fromisoformat(event_start)
-                            diff = abs((ev_dt - booking_dt_aware).total_seconds())
-                            if diff < 300:  # ±5 минут
-                                service.events().delete(
-                                    calendarId=calendar_id,
-                                    eventId=event['id']
-                                ).execute()
+                for event in events_result.get('items', []):
+                    try:
+                        event_start = event.get('start', {}).get('dateTime', '')
+                        if event_start:
+                            event_dt = datetime.datetime.fromisoformat(event_start.replace('Z', '+00:00'))
+                            diff = abs((event_dt - booking_dt_aware).total_seconds())
+                            if diff < 300:
+                                service.events().delete(calendarId=calendar_id, eventId=event['id']).execute()
                                 gcal_deleted = True
-                                print(f"Calendar event deleted: {event['id']}")
+                                print(f"[CANCEL] Событие удалено: {event['id']}")
                                 break
-                        except Exception:
-                            continue
+                    except Exception:
+                        continue
         except Exception as e:
-            print(f"Error deleting calendar event: {e}")
+            print(f"[CANCEL] Ошибка календаря: {e}")
 
-        # --- 4. ВОЗВРАТ ЧАСОВ В АБОНЕМЕНТ ---
-        refund_hours = duration  # Возвращаем полную длительность
-        refund_display = format_hours_text(refund_hours)
-        new_balance_display = ""
-
-        try:
-            phone_norm = normalize_phone_for_sheet(phone)
-            sub_data = get_subscription_client(phone)
-
-            if sub_data:
-                # Абонемент есть — добавляем часы
-                new_balance = sub_data['balance'] + refund_hours
-                ws = sub_data['sheet_instance']
-                ws.update_cell(sub_data['row'], sub_data['balance_col_idx'], new_balance)
-                new_balance_display = format_hours_text(new_balance)
-            else:
-                # Абонемента нет — создаём новый
-                success = add_new_subscription_to_sheet({
-                    'name': client_name or 'Клиент',
-                    'phone': phone,
-                    'hours': refund_hours,
-                    'price': 0  # Возврат, не покупка
-                })
-                if success:
-                    new_balance_display = format_hours_text(refund_hours)
-                else:
-                    new_balance_display = "ошибка записи"
-        except Exception as e:
-            print(f"Error refunding hours: {e}")
-            new_balance_display = "ошибка"
-
-        # --- 5. ПОМЕЧАЕМ В GOOGLE SHEETS (История клиентов) ---
-        try:
-            creds = Credentials.from_service_account_file(
-                SERVICE_ACCOUNT_FILE,
-                scopes=["https://www.googleapis.com/auth/spreadsheets"]
-            )
-            gc = gspread.authorize(creds)
-            sh = gc.open_by_url(settings.CLIENTS_HISTORY_SPREADSHEET_URL)
-            ws = sh.worksheet("История клиентов")
-
-            all_data = ws.get_all_values()
-            headers = all_data[0] if all_data else []
-            headers_lower = [h.lower().strip() for h in headers]
-
-            idx = {}
-            for i, h in enumerate(headers_lower):
-                if 'дата' in h: idx['date'] = i
-                elif 'врем' in h: idx['time'] = i
-                elif 'кабинет' in h or 'комнат' in h: idx['room'] = i
-                elif 'телеф' in h or 'phone' in h: idx['phone'] = i
-                elif 'стоимость' in h or 'цен' in h or 'оплат' in h: idx['price'] = i
-                elif 'статус' in h or 'примечан' in h: idx['status'] = i
-
-            # Ищем строку с этой бронью
-            for row_i, row in enumerate(all_data[1:], start=2):
-                row_date = row[idx['date']] if 'date' in idx and idx['date'] < len(row) else ''
-                row_time = row[idx['time']] if 'time' in idx and idx['time'] < len(row) else ''
-                row_phone = row[idx.get('phone', -1)] if 'phone' in idx and idx['phone'] < len(row) else ''
-
-                phone_match = phone_norm in normalize_phone_for_sheet(row_phone)
-                date_match = date_str in row_date
-                time_match = time_str in row_time
-
-                if date_match and time_match and phone_match:
-                    # Нашли — помечаем как отменённую
-                    if 'price' in idx:
-                        old_price = row[idx['price']] if idx['price'] < len(row) else ''
-                        ws.update_cell(row_i, idx['price'] + 1, f"ОТМЕНЕНА ({old_price})")
-
-                    # Если есть колонка статус/примечание
-                    if 'status' in idx:
-                        penalty_note = f"Штраф: {penalty_amount}₸" if has_penalty else "Без штрафа"
-                        ws.update_cell(row_i, idx['status'] + 1, f"Отменена. {penalty_note}. Возврат: {refund_display}")
-
-                    print(f"Booking marked as cancelled in sheet, row {row_i}")
-                    break
-
-        except Exception as e:
-            print(f"Error updating history sheet: {e}")
-
-        # --- 6. WHATSAPP УВЕДОМЛЕНИЯ ---
+        # ============================================================
+        # --- 5. WHATSAPP УВЕДОМЛЕНИЯ ---
+        # ============================================================
         duration_display = format_hours_text(duration)
         penalty_text = f"💸 Штраф: {penalty_amount} ₸ ({receipt_info})" if has_penalty else "✅ Без штрафа"
 
@@ -2511,11 +2647,14 @@ def cancel_booking_confirm(request):
             )
             send_whatsapp_client(phone, client_msg)
         except Exception as e:
-            print(f"Error sending cancel notifications: {e}")
+            print(f"[CANCEL] Ошибка WhatsApp: {e}")
+
+        print(f"[CANCEL] === Завершено. sheet={sheet_updated}, gcal={gcal_deleted} ===")
 
         return JsonResponse({
             'success': True,
             'gcal_deleted': gcal_deleted,
+            'sheet_updated': sheet_updated,
             'refund_hours': refund_display,
             'new_balance': new_balance_display,
             'had_penalty': has_penalty,
@@ -2523,4 +2662,8 @@ def cancel_booking_confirm(request):
         })
 
     except Exception as e:
+        print(f"[CANCEL] Критическая ошибка: {e}")
+        import traceback
+        traceback.print_exc()
         return JsonResponse({'success': False, 'error': str(e)}, status=500)
+
