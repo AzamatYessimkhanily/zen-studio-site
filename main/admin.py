@@ -278,15 +278,15 @@ class RoomVideoInline(admin.TabularInline):
 
 @admin.register(Room)
 class RoomAdmin(admin.ModelAdmin):
-    list_display = ['name', 'area_sq_m', 'google_calendar_id', 'order', 'is_active', 'show_in_booking', 'image_preview']
+    list_display = ['name', 'branch', 'area_sq_m', 'google_calendar_id', 'order', 'is_active', 'show_in_booking', 'image_preview']   
     list_editable = ['order', 'is_active', 'show_in_booking'] # Добавил возможность менять галочку прямо из списка
-    list_filter = ['is_active', 'show_in_booking']
+    list_filter = ['branch', 'is_active', 'show_in_booking']
     search_fields = ['name', 'google_calendar_id','description']
 
     fieldsets = (
                 (None, {
                     'fields': (
-                        'name', 'google_calendar_id',
+                        'name', 'branch', 'google_calendar_id',
                         ('work_time_start', 'work_time_end'),
                         
                         # === ДОБАВИЛ НОВЫЕ ГАЛОЧКИ СЮДА ===
@@ -398,3 +398,29 @@ class PendingBookingAdmin(admin.ModelAdmin):
         count = expired.count()
         expired.delete()
         self.message_user(request, f"Удалено {count} истекших резервов.")
+
+
+@admin.register(Branch)
+class BranchAdmin(admin.ModelAdmin):
+    list_display = ['name', 'short_name', 'address', 'order', 'is_active', 'rooms_count']
+    list_editable = ['order', 'is_active']
+    list_filter = ['is_active']
+    search_fields = ['name', 'address']
+    ordering = ['order', 'name']
+
+    fieldsets = (
+        ('Основное', {
+            'fields': ('name', 'short_name', 'photo', 'address', 'description')
+        }),
+        ('Ссылки', {
+            'fields': ('twogis_link',),
+            'classes': ('collapse',),
+        }),
+        ('Настройки', {
+            'fields': ('order', 'is_active'),
+        }),
+    )
+
+    def rooms_count(self, obj):
+        return obj.rooms.filter(is_active=True).count()
+    rooms_count.short_description = 'Кабинетов'

@@ -123,6 +123,17 @@ class HeroSlider(models.Model):
 class Room(models.Model):
     # ... твои существующие поля ...
     name = models.CharField(max_length=255, verbose_name="Название")
+    # Внутри class Room(models.Model):
+
+    branch = models.ForeignKey(
+        'Branch',
+        on_delete=models.SET_NULL,
+        null=True, blank=True,
+        verbose_name="Филиал",
+        related_name='rooms',
+        help_text="К какому филиалу относится этот кабинет."
+    )
+
     description = models.TextField(blank=True, verbose_name="Описание (старое)")
     short_description = models.TextField(blank=True, verbose_name="Короткое описание")
     area_sq_m = models.DecimalField(
@@ -260,7 +271,42 @@ class RoomInfoBlock(models.Model):
     def __str__(self):
         return f"{self.get_category_display()}: {self.title}"
 
+# main/models.py
 
+class Branch(models.Model):
+    """Филиал (Локация/Бренд)"""
+    name = models.CharField(
+        "Название филиала", max_length=200,
+        help_text="Например: «Zen Алмалы» или «Zen на Абая»"
+    )
+    short_name = models.CharField(
+        "Короткое название", max_length=50, blank=True,
+        help_text="Для кнопок фильтров. Если пусто — берется полное название."
+    )
+    photo = models.ImageField(
+        "Фото филиала", upload_to='branches/', blank=True, null=True,
+        help_text="Общее фото здания или входа. Рекомендуемый размер: 600×400 px."
+    )
+    address = models.CharField(
+        "Общий адрес", max_length=300, blank=True,
+        help_text="Улица, дом (для отображения в списке филиалов)."
+    )
+    description = models.TextField("Описание филиала", blank=True)
+    twogis_link = models.URLField("Ссылка 2GIS (общая)", blank=True)
+    order = models.PositiveIntegerField("Порядок", default=0)
+    is_active = models.BooleanField("Активен", default=True)
+
+    class Meta:
+        verbose_name = 'Локация'
+        verbose_name_plural = 'Локации'
+        ordering = ['order', 'name']
+
+    def __str__(self):
+        return self.name
+
+    @property
+    def display_name(self):
+        return self.short_name or self.name
 
 class RoomLocation(models.Model):
     room = models.OneToOneField('Room', related_name='location', on_delete=models.CASCADE, verbose_name="Кабинет")

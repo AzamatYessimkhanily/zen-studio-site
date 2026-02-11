@@ -1253,6 +1253,138 @@ footer, .footer, #footer, .site-footer {
  .back-to-top-btn {
       display: none !important;
   }
+
+  /* === ПОПАПЫ === */
+.info-popup-body {
+    padding: 24px 20px;
+    max-height: 75vh;
+    overflow-y: auto;
+}
+.info-popup-body h6 {
+    font-weight: 800;
+    margin-bottom: 14px;
+    font-size: 1rem;
+}
+.info-popup-rule {
+    font-size: 0.85rem;
+    line-height: 1.65;
+    margin-bottom: 6px;
+    color: #333;
+}
+.info-popup-divider {
+    border: none;
+    border-top: 1px solid #eee;
+    margin: 14px 0;
+}
+.info-popup-footer-rules {
+    background: rgba(157,211,175,0.08);
+    border-radius: 12px;
+    padding: 12px 14px;
+    margin-top: 14px;
+    font-size: 0.82rem;
+    line-height: 1.6;
+    color: #555;
+}
+
+/* === ЛОКАЦИИ (ФИЛИАЛЫ) === */
+.location-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+}
+.location-card {
+    background: #fff;
+    border: 1px solid #f0f0f0;
+    border-radius: 16px;
+    overflow: hidden;
+    cursor: pointer;
+    transition: all 0.2s;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.03);
+    display: flex;
+    flex-direction: column;
+}
+.location-card:active {
+    transform: scale(0.97);
+}
+.location-card-img {
+    width: 100%;
+    height: 110px;
+    object-fit: cover;
+}
+.location-card-placeholder {
+    width: 100%;
+    height: 110px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: linear-gradient(135deg, #f8f9fa, #e9ecef);
+    color: #cbd3da;
+    font-size: 2rem;
+}
+.location-card-body {
+    padding: 10px 12px 12px;
+}
+.location-card-name {
+    font-weight: 800;
+    font-size: 0.95rem;
+    color: var(--zen-dark);
+    line-height: 1.2;
+    margin-bottom: 3px;
+}
+.location-card-address {
+    font-size: 0.72rem;
+    color: #8e8e93;
+    line-height: 1.3;
+    display: flex;
+    align-items: flex-start;
+    gap: 4px;
+}
+.location-card-address i {
+    margin-top: 2px;
+    flex-shrink: 0;
+}
+
+/* Кнопка "Все кабинеты" */
+.location-card.all-locations {
+    background: linear-gradient(135deg, rgba(157,211,175,0.05), rgba(157,211,175,0.15));
+    border: 1.5px dashed var(--zen-green);
+}
+.location-card.all-locations .location-card-placeholder {
+    background: linear-gradient(135deg, rgba(157,211,175,0.08), rgba(157,211,175,0.2));
+    color: var(--zen-green);
+}
+
+/* === ПОПАПЫ === */
+.info-popup-body {
+    padding: 24px 20px;
+    max-height: 75vh;
+    overflow-y: auto;
+}
+.info-popup-body h6 {
+    font-weight: 800;
+    margin-bottom: 14px;
+    font-size: 1rem;
+}
+.info-popup-rule {
+    font-size: 0.85rem;
+    line-height: 1.65;
+    margin-bottom: 6px;
+    color: #333;
+}
+.info-popup-divider {
+    border: none;
+    border-top: 1px solid #eee;
+    margin: 14px 0;
+}
+.info-popup-footer-rules {
+    background: rgba(157,211,175,0.08);
+    border-radius: 12px;
+    padding: 12px 14px;
+    margin-top: 14px;
+    font-size: 0.82rem;
+    line-height: 1.6;
+    color: #555;
+}
 </style>
 {% endblock %}
 
@@ -1450,21 +1582,71 @@ footer, .footer, #footer, .site-footer {
                 </button>
             </div>
         </div>
-
+{# ======================================================= #}
+        {# === ВЫБОР ЛОКАЦИИ / ФИЛИАЛА (НОВЫЙ ЭКРАН) === #}
         {# ======================================================= #}
-        {# === 2. ВЫБОР КАБИНЕТА (ТЕПЕРЬ СКРЫТ ПО УМОЛЧАНИЮ) === #}
+        <div id="location_selection_container" class="info-section mb-4" style="display: none;">
+            <div class="d-flex align-items-center mb-3">
+                <button id="btn_back_from_locations" class="btn btn-link text-decoration-none p-0 me-3 text-secondary" style="font-size: 1.2rem; border: none;">
+                    <i class="fas fa-arrow-left"></i>
+                </button>
+                <h4 class="info-title mb-0"><i class="fas fa-map-marker-alt"></i> Выберите локацию</h4>
+            </div>
+
+            <div class="location-grid mb-3" id="location_grid">
+                {# Кнопка "Все кабинеты" #}
+                <div class="location-card all-locations" data-branch-id="all">
+                    <div class="location-card-placeholder">
+                        <i class="fas fa-th-large"></i>
+                    </div>
+                    <div class="location-card-body">
+                        <div class="location-card-name">Любая локация</div>
+                        <div class="location-card-address">
+                            <i class="fas fa-layer-group text-success"></i>
+                            <span>Показать все</span>
+                        </div>
+                    </div>
+                </div>
+
+                {# Цикл по ФИЛИАЛАМ (Branch) #}
+                {% for branch in branches %}
+                <div class="location-card" data-branch-id="{{ branch.pk }}">
+                    {% if branch.photo %}
+                        <img src="{{ branch.photo.url }}" alt="{{ branch.name }}" class="location-card-img" loading="lazy">
+                    {% else %}
+                        <div class="location-card-placeholder">
+                            <i class="fas fa-building"></i>
+                        </div>
+                    {% endif %}
+                    <div class="location-card-body">
+                        <div class="location-card-name">{{ branch.display_name }}</div>
+                        {% if branch.address %}
+                        <div class="location-card-address">
+                            <i class="fas fa-map-marker-alt text-danger opacity-75"></i>
+                            <span>{{ branch.address }}</span>
+                        </div>
+                        {% endif %}
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+{# ======================================================= #}
+        {# === ВЫБОР КАБИНЕТА (с фильтрацией по филиалу) === #}
         {# ======================================================= #}
         <div id="room_selection_container" class="info-section mb-4" style="display: none;">
             
-            {# Кнопка Назад в меню #}
+            {# Кнопка Назад — возвращает к списку локаций #}
             <div class="d-flex align-items-center mb-3">
                 <button id="btn_back_to_menu" class="btn btn-link text-decoration-none p-0 me-3 text-secondary" style="font-size: 1.2rem; border: none;">
                     <i class="fas fa-arrow-left"></i>
                 </button>
-                <h4 class="info-title mb-0"><i class="fas fa-door-open"></i> Выберите кабинет</h4>
+                <h4 class="info-title mb-0" id="room_select_title"><i class="fas fa-door-open"></i> Выберите кабинет</h4>
             </div>
             
-            <div class="room-choice-grid mb-3">
+            <div class="room-choice-grid mb-3" id="room_choice_grid">
+                
+                {# Кнопка "Любой кабинет" #}
                 <button class="room-choice-btn room-card-style any-room-btn" id="btn_any_room">
                      <div class="room-card-img-wrapper">
                          <div class="room-card-placeholder search-placeholder">
@@ -1481,8 +1663,15 @@ footer, .footer, #footer, .site-footer {
                          </div>
                      </div>
                 </button>
+
+                {# Список кабинетов #}
                 {% for room in rooms %}
-                <button class="room-choice-btn room-card-style" data-room-id="{{ room.pk }}" data-room-name="{{ room.name }}">
+                <button class="room-choice-btn room-card-style" 
+                        data-room-id="{{ room.pk }}" 
+                        data-room-name="{{ room.name }}"
+                        {# ВАЖНО: Добавляем ID филиала для фильтрации #}
+                        data-branch-id="{{ room.branch.id|default:'all' }}">
+                  
                   <div class="room-card-img-wrapper">
                       {% if room.main_image %}
                         <img src="{{ room.main_image.url }}" alt="{{ room.name }}" class="room-card-img">
@@ -1492,10 +1681,13 @@ footer, .footer, #footer, .site-footer {
                         </div>
                       {% endif %}
                   </div>
+                  
                   <div class="room-card-info">
                       <div class="room-card-header">
                           <span class="room-name">Кабинет {{ room.name }}</span>
                       </div>
+
+                      {# ВАЖНО: Оставляем старый адрес (RoomLocation) как вы просили #}
                       {% if room.location and room.location.address %}
                         <div class="room-meta">
                             <i class="fas fa-map-marker-alt text-danger opacity-75"></i>
@@ -1940,6 +2132,67 @@ footer, .footer, #footer, .site-footer {
         </div>
     </div>
 </div>
+
+
+
+{# === ПОПАП ШТРАФОВ (после выбора времени) === #}
+<div class="modal fade" id="penaltyInfoModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable">
+    <div class="modal-content border-0 shadow" style="border-radius: 24px; overflow: hidden;">
+      <div class="info-popup-body">
+        <div class="text-center mb-3">
+            <div style="background: rgba(255,193,7,0.15); width: 50px; height: 50px; border-radius: 14px; display: inline-flex; align-items: center; justify-content: center;">
+                <i class="fas fa-exclamation-triangle text-warning fs-4"></i>
+            </div>
+        </div>
+        <h6 class="text-center">Правила и штрафы</h6>
+        
+        <div class="info-popup-rule">🔐 Не закрыли дверь или унесли ключ — <strong>5 000 тг (для кабинета с ключницами)</strong></div>
+        <div class="info-popup-rule">🚬 Курение электронных и других сигарет — <strong>10 000 тг</strong></div>
+        <div class="info-popup-rule">🧐 Использование не для деловой встречи/обучения — <strong>50 000 тг</strong></div>
+        <div class="info-popup-rule">⏰ Посещение или продление без записи — <strong>5 000 тг</strong> + оплата</div>
+        <div class="info-popup-rule">📽 Ведется видеонаблюдение без записи звука (только в кабинетах на Гоголя и Байтурсынова)</div>
+        
+        <hr class="info-popup-divider">
+        <div class="info-popup-footer-rules">
+            <div>👣 В кабинете необходимо надеть бахилы/тапочки или разуться</div>
+            <div class="mt-1">🕒 Просим заходить и выходить ровно в своё время</div>
+        </div>
+
+        <button class="btn-zen-primary w-100 py-2 mt-3" style="border-radius: 12px;" id="btn_penalty_understood">
+            <i class="fas fa-check me-1"></i> Всё понятно
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+{# === ПОПАП УСЛОВИЙ ОТМЕНЫ (после шага имя/тел) === #}
+<div class="modal fade" id="cancelTermsModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable">
+    <div class="modal-content border-0 shadow" style="border-radius: 24px; overflow: hidden;">
+      <div class="info-popup-body">
+        <div class="text-center mb-3">
+            <div style="background: rgba(220,53,69,0.1); width: 50px; height: 50px; border-radius: 14px; display: inline-flex; align-items: center; justify-content: center;">
+                <i class="fas fa-file-contract text-danger fs-4"></i>
+            </div>
+        </div>
+        <h6 class="text-center">Условия по переносам и отменам</h6>
+        
+        <div class="info-popup-rule">1. После бронирования  <strong>оплата возврату не подлежит</strong>, так как мы отказываем другим клиентам на занятое вами время.</div>
+        <div class="info-popup-rule">2. При уведомлении об отмене <strong>менее чем за 3 часа</strong> до начала или неявке — бронь сгорает, часы не сохраняются.</div>
+        <div class="info-popup-rule">3. Бесплатный перенос — при уведомлении <strong>за 12 часов и более</strong>.</div>
+        <div class="info-popup-rule">4. Отмена/перенос <strong>менее чем за 12 ч</strong>, но более 3 ч — штраф <strong>500 тг за каждый час</strong>.</div>
+        <div class="info-popup-rule">5. По абонементам перенос возможен <strong>не более 2 раз в месяц</strong>.</div>
+        <div class="info-popup-rule">6. На полдня / полный день / несколько дней — перенос невозможен (требует согласования).</div>
+
+        <button class="btn-zen-primary w-100 py-2 mt-3" style="border-radius: 12px;" id="btn_cancel_terms_understood">
+            <i class="fas fa-check me-1"></i> Всё понятно, продолжить
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
 {% endblock %}
 
 
@@ -1987,10 +2240,13 @@ document.addEventListener("DOMContentLoaded", function () {
     const mainMenuContainer = document.getElementById('main_menu_container');
     const btnMyBookings = document.getElementById('btn_my_bookings');
     const btnOpenNewBooking = document.getElementById('btn_open_new_booking');
+    const locationSelectionContainer = document.getElementById('location_selection_container');
     const roomSelectionContainer = document.getElementById('room_selection_container');
     const btnBackToMenu = document.getElementById('btn_back_to_menu');
+    const btnBackFromLocations = document.getElementById('btn_back_from_locations');
     const myAccountContainer = document.getElementById('my_account_container');
     const accountStickyBar = document.getElementById('account_sticky_bar');
+    let selectedBranchId = null; // Выбранная локация ('all' или pk)
 
     // --- ЛОГИКА МЕНЮ ---
     const isUserLoggedIn = "{{ user_is_logged_in|yesno:'true,false' }}" === "true";
@@ -2026,7 +2282,11 @@ document.addEventListener("DOMContentLoaded", function () {
 
     function showAccountPage() {
         mainMenuContainer.style.display = 'none';
+        if (locationSelectionContainer) locationSelectionContainer.style.display = 'none';
         if (roomSelectionContainer) roomSelectionContainer.style.display = 'none';
+        if (moduleBookByRoom) moduleBookByRoom.style.display = 'none';
+        if (moduleFindByTime) moduleFindByTime.style.display = 'none';
+        if (moduleSubCalc) moduleSubCalc.style.display = 'none';
         myAccountContainer.style.display = 'block';
         saveCurrentView('account');
         loadMyAccount();
@@ -2035,8 +2295,28 @@ document.addEventListener("DOMContentLoaded", function () {
     function hideAccountPage() {
         myAccountContainer.style.display = 'none';
         if (_accountTimerInterval) { clearInterval(_accountTimerInterval); _accountTimerInterval = null; }
-        mainMenuContainer.style.display = 'block';
-        saveCurrentView('main_menu');
+        // Если есть активная бронь с таймером — возвращаемся к ней
+        const savedState = loadBookingState();
+        if (savedState && savedState.holdId && savedState.timerEndTime && savedState.timerEndTime > Date.now() && !savedState._timerExpired) {
+            currentScenario = savedState.scenario;
+            roomId = savedState.roomId;
+            roomName = savedState.roomName;
+            selectedBranchId = savedState.selectedBranchId || null;
+            _penaltySeen = true; _cancelTermsSeen = true;
+            if (currentScenario === 'room' && roomId) {
+                moduleBookByRoom.style.display = 'block'; setupBookingModule(bookingModuleWrapper1, roomName); restoreBookingState(savedState);
+                saveCurrentView('booking');
+            } else if (currentScenario === 'time' && roomId) {
+                moduleFindByTime.style.display = 'block'; if (searchInterfaceContainer) searchInterfaceContainer.style.display = 'none'; setupBookingModule(bookingModuleWrapper2, roomName); const step1Div = bookingModuleWrapper2.querySelector('#step1'); if (step1Div) step1Div.style.display = 'none'; restoreBookingState(savedState);
+                saveCurrentView('booking');
+            } else {
+                mainMenuContainer.style.display = 'block';
+                saveCurrentView('main_menu');
+            }
+        } else {
+            mainMenuContainer.style.display = 'block';
+            saveCurrentView('main_menu');
+        }
     }
 
     // Кнопка «Назад» из ЛК
@@ -2061,10 +2341,16 @@ document.addEventListener("DOMContentLoaded", function () {
         accountBtnBook.addEventListener('click', () => {
             myAccountContainer.style.display = 'none';
             mainMenuContainer.style.display = 'none';
-            roomSelectionContainer.style.display = 'block';
-            roomSelectionContainer.classList.add('visible');
+            if (locationSelectionContainer) {
+                locationSelectionContainer.style.display = 'block';
+                saveCurrentView('location_select');
+            } else {
+                roomSelectionContainer.style.display = 'block';
+                roomSelectionContainer.classList.add('visible');
+                filterRoomsByLocation('all');
+                saveCurrentView('room_select');
+            }
             clearBookingState();
-            saveCurrentView('room_select');
         });
     }
 
@@ -2664,23 +2950,79 @@ balanceHtml = `<div class="account-balance-badge mt-2">
         });
     }
 
-    // 2. Новая бронь -> Показать кабинеты
+    // 2. Новая бронь -> Показать локации
     if (btnOpenNewBooking) {
         btnOpenNewBooking.addEventListener('click', () => {
             mainMenuContainer.style.display = 'none';
-            roomSelectionContainer.style.display = 'block';
-            roomSelectionContainer.classList.add('visible');
-            saveCurrentView('room_select');
+            if (locationSelectionContainer) {
+                locationSelectionContainer.style.display = 'block';
+                saveCurrentView('location_select');
+            } else {
+                // Fallback если нет локаций — сразу кабинеты
+                roomSelectionContainer.style.display = 'block';
+                roomSelectionContainer.classList.add('visible');
+                filterRoomsByLocation('all');
+                saveCurrentView('room_select');
+            }
         });
     }
 
-    // 3. Назад в меню из выбора кабинетов
-    if (btnBackToMenu) {
-        btnBackToMenu.addEventListener('click', () => {
-            roomSelectionContainer.style.display = 'none';
+    // 2.1 Назад из локаций -> Меню
+    if (btnBackFromLocations) {
+        btnBackFromLocations.addEventListener('click', () => {
+            locationSelectionContainer.style.display = 'none';
             mainMenuContainer.style.display = 'block';
             clearBookingState();
             saveCurrentView('main_menu');
+        });
+    }
+
+    // 2.2 Клик по карточке локации
+    if (locationSelectionContainer) {
+        locationSelectionContainer.querySelectorAll('.location-card').forEach(card => {
+            card.addEventListener('click', () => {
+                selectedBranchId = card.dataset.branchId;
+                locationSelectionContainer.style.display = 'none';
+                roomSelectionContainer.style.display = 'block';
+                roomSelectionContainer.classList.add('visible');
+                filterRoomsByLocation(selectedBranchId);
+                saveCurrentView('room_select');
+                saveBookingState();
+            });
+        });
+    }
+
+    // 2.3 Фильтрация кабинетов по локации
+    function filterRoomsByLocation(branchId) {
+        const grid = document.getElementById('room_choice_grid');
+        if (!grid) return;
+        grid.querySelectorAll('.room-choice-btn:not(.any-room-btn)').forEach(btn => {
+            if (branchId === 'all' || !branchId) {
+                btn.style.display = '';
+            } else {
+                const roomBranchId = btn.dataset.branchId || '';
+                btn.style.display = (roomBranchId === branchId) ? '' : 'none';
+            }
+        });
+        // Обновить заголовок
+        const title = document.getElementById('room_select_title');
+        if (title) {
+            title.innerHTML = '<i class="fas fa-door-open"></i> Выберите кабинет';
+        }
+    }
+
+    // 3. Назад из кабинетов -> к локациям
+    if (btnBackToMenu) {
+        btnBackToMenu.addEventListener('click', () => {
+            roomSelectionContainer.style.display = 'none';
+            if (locationSelectionContainer) {
+                locationSelectionContainer.style.display = 'block';
+                saveCurrentView('location_select');
+            } else {
+                mainMenuContainer.style.display = 'block';
+                saveCurrentView('main_menu');
+            }
+            clearBookingState();
         });
     }
 
@@ -2711,12 +3053,14 @@ balanceHtml = `<div class="account-balance-badge mt-2">
     function startSubscriptionFlow() {
         isSubscriptionMode = true;
         mainMenuContainer.style.display = 'none';
+        if (locationSelectionContainer) locationSelectionContainer.style.display = 'none';
         roomSelectionContainer.style.display = 'none';
         
         moduleSubCalc.style.display = 'block';
         bookingModuleWrapper1.innerHTML = ''; 
         resetSubscriptionSelection();
         saveCurrentView('subscription_calc');
+        saveBookingState();
     }
     
     function resetSubscriptionSelection() {
@@ -3537,7 +3881,7 @@ balanceHtml = `<div class="account-balance-badge mt-2">
             const payCheck = document.getElementById('payment_agreement_checkbox');
             const activeSegSub = document.querySelector('.payment-segment#seg_subscription');
             const state = { 
-                currentView: currentView,
+                currentView: currentView, selectedBranchId: selectedBranchId,
                 scenario: currentScenario, roomId: roomId, roomName: roomName, selectedSlot: selectedSlot, holdId: holdId, timerEndTime: timerEndTime, 
                 currentStep: getCurrentStep(), isTimerRefreshed: isTimerRefreshed, 
                 agreement1: document.getElementById('agreement_checkbox')?.checked || false, paymentAgreement: payCheck ? payCheck.checked : false, 
@@ -3559,7 +3903,10 @@ balanceHtml = `<div class="account-balance-badge mt-2">
                 const state = JSON.parse(saved); 
                 const now = Date.now();
                 if (now - (state.timestamp || 0) > 30 * 60 * 1000) { clearBookingState(); return null; }
-                if (state.timerEndTime && state.timerEndTime <= now) { if (state.holdId) cancelHold(false, state.holdId); clearBookingState(); return null; } 
+                // Если таймер истёк — помечаем, но НЕ вызываем cancelHold (это делает initializePage)
+                if (state.timerEndTime && state.timerEndTime <= now) { 
+                    state._timerExpired = true; 
+                } 
                 return state; 
             } 
         } catch (e) { console.error(e); } 
@@ -3578,7 +3925,18 @@ balanceHtml = `<div class="account-balance-badge mt-2">
         if (state.agreement1) { setTimeout(() => { const chk = document.getElementById('agreement_checkbox'); const btn = document.getElementById('show_payment_button'); if (chk) chk.checked = true; if (btn) btn.disabled = false; }, 50); }
         if (state.paymentAgreement) { setTimeout(() => { const payCheck = document.getElementById('payment_agreement_checkbox'); if (payCheck) payCheck.checked = true; }, 50); }
         const currentStep = state.currentStep || 1; showStep(currentStep); 
-        if (timerEndTime && timerEndTime > Date.now()) { startTimer(timerEndTime); } else if (timerEndTime) { stopTimer(); showMessage('error', 'Время истекло', true); resetAll(true); return; }
+        if (timerEndTime && timerEndTime > Date.now()) { startTimer(timerEndTime); } else if (timerEndTime) { 
+            // Таймер истёк между загрузкой и восстановлением
+            stopTimer(); holdId = null; selectedSlot = null; clearBookingState();
+            if (roomSelectionContainer) { 
+                if (moduleBookByRoom) moduleBookByRoom.style.display = 'none'; 
+                if (moduleFindByTime) moduleFindByTime.style.display = 'none'; 
+                roomSelectionContainer.style.display = 'block'; 
+                if (selectedBranchId) filterRoomsByLocation(selectedBranchId);
+            } else { mainMenuContainer.style.display = 'block'; }
+            saveCurrentView('room_select');
+            return; 
+        }
         if (selectedSlot && selectedSlot.price) updateSummaryText(); 
         if (bookingPriceSpan && selectedSlot && selectedSlot.price) bookingPriceSpan.textContent = selectedSlot.price + ' ₸'; 
         if (currentStep >= 3) updateStep3ClientInfo(); 
@@ -3635,7 +3993,10 @@ balanceHtml = `<div class="account-balance-badge mt-2">
         isFetching = true; hideMessages(); 
         const clickedButton = event.target.closest('.slot-button'); 
         if (!clickedButton) { isFetching = false; return; } 
-        if (holdId) { await cancelHold(false, holdId); } 
+        if (holdId) { 
+            const oldHoldId = holdId; holdId = null; selectedSlot = null; stopTimer(); isTimerRefreshed = false;
+            fetch('/api/cancel_hold/', { method: 'POST', headers: { 'Content-Type': 'application/json', 'X-CSRFToken': getCookie('csrftoken') }, body: JSON.stringify({ hold_id: oldHoldId }) }).catch(e => console.error(e));
+        }
         if(slotsContainer) slotsContainer.querySelectorAll('.slot-button').forEach(btn => { btn.classList.remove('active'); btn.disabled = false; }); 
         clickedButton.classList.add('active'); clickedButton.disabled = true; clickedButton.innerHTML = `<span class="loading-spinner1"></span>`; 
         const tempSelected = { start: clickedButton.dataset.start, end: clickedButton.dataset.end, date: bookingDateInput.value, duration: bookingDurationSelect.value, people: bookingPeopleInput.value || '1' }; 
@@ -3647,12 +4008,13 @@ balanceHtml = `<div class="account-balance-badge mt-2">
             const priceResponse = await fetch(`/api/get_price/?room_id=${roomId}&duration=${selectedSlot.duration}&people_count=${selectedSlot.people}`, { headers: { "ngrok-skip-browser-warning": "true" } }); 
             const priceData = await priceResponse.json(); 
             selectedSlot.price = priceData.price; 
-            updateSummaryText(); showStep(2); 
+            updateSummaryText();
+            // Показываем попап штрафов перед переходом к шагу 2
+            _showPenaltyPopupThenStep2();
             setTimeout(() => { if (bookingSectionTitle) { const yOffset = -100; const y = bookingSectionTitle.getBoundingClientRect().top + window.pageYOffset + yOffset; window.scrollTo({top: y, behavior: 'smooth'}); } }, 100);
             timerEndTime = Date.now() + 15 * 60 * 1000; startTimer(timerEndTime); 
             if (roomSelectionContainer) roomSelectionContainer.style.display = 'none';
-            saveBookingState(); 
-        } catch (error) { showMessage('error', error.message, true); holdId = null; selectedSlot = null; stopTimer(); fetchSlots(false); } finally { isFetching = false; } 
+        } catch (error) { showMessage('error', error.message, true); holdId = null; selectedSlot = null; stopTimer(); fetchSlots(false); } finally { isFetching = false; }
     }
     
     function updateSummaryText() {
@@ -3672,7 +4034,7 @@ balanceHtml = `<div class="account-balance-badge mt-2">
     
     async function handleBackToSlots() {
         if (holdId) { try { await fetch('/api/cancel_hold/', { method: 'POST', headers: { 'Content-Type': 'application/json', 'X-CSRFToken': getCookie('csrftoken') }, body: JSON.stringify({ hold_id: holdId }) }); } catch (e) { console.error(e); } }
-        holdId = null; selectedSlot = null; isTimerRefreshed = false; stopTimer(); showStep(1); hideMessages();
+        holdId = null; selectedSlot = null; isTimerRefreshed = false; _penaltySeen = false; stopTimer(); showStep(1); hideMessages();
         if (bookingDateInput) bookingDateInput.disabled = false; if (bookingDurationSelect) bookingDurationSelect.disabled = false; if (bookingPeopleInput) bookingPeopleInput.disabled = false;
         fetchSlots(false); saveBookingState();
     }
@@ -3745,9 +4107,45 @@ balanceHtml = `<div class="account-balance-badge mt-2">
                 holdId = holdData.hold_id; timerEndTime = Date.now() + 15 * 60 * 1000; startTimer(timerEndTime); isTimerRefreshed = true; 
             } catch (error) { showMessage('error', error.message, true); handleBackToSlots(); return; } finally { if(btn) { btn.classList.remove('is-loading'); btn.disabled = false; btn.innerHTML = 'Далее <i class="fas fa-arrow-right ms-1"></i>'; } }
         }
-        updateSummaryText(); updateStep3ClientInfo(); showStep(3); saveBookingState(); 
+        updateSummaryText(); updateStep3ClientInfo();
+        // Показываем попап условий отмены перед шагом 3 (оплата)
+        _showCancelTermsPopupThenStep3();
     }
     
+    // === ПОПАПЫ ШТРАФОВ И УСЛОВИЙ ===
+    let _penaltySeen = false; // Видели попап штрафов в этой сессии бронирования
+    let _cancelTermsSeen = false; // Видели попап условий отмены
+
+    function _showPenaltyPopupThenStep2() {
+        showStep(2);
+        saveBookingState();
+        if (_penaltySeen) return;
+        const modalEl = document.getElementById('penaltyInfoModal');
+        if (!modalEl || typeof bootstrap === 'undefined') return;
+        const modal = new bootstrap.Modal(modalEl, { backdrop: 'static', keyboard: false });
+        const btn = document.getElementById('btn_penalty_understood');
+        if (btn) {
+            const handler = () => { _penaltySeen = true; modal.hide(); btn.removeEventListener('click', handler); };
+            btn.addEventListener('click', handler);
+        }
+        modal.show();
+    }
+
+    function _showCancelTermsPopupThenStep3() {
+        showStep(3);
+        saveBookingState();
+        if (_cancelTermsSeen) return;
+        const modalEl = document.getElementById('cancelTermsModal');
+        if (!modalEl || typeof bootstrap === 'undefined') return;
+        const modal = new bootstrap.Modal(modalEl, { backdrop: 'static', keyboard: false });
+        const btn = document.getElementById('btn_cancel_terms_understood');
+        if (btn) {
+            const handler = () => { _cancelTermsSeen = true; modal.hide(); btn.removeEventListener('click', handler); };
+            btn.addEventListener('click', handler);
+        }
+        modal.show();
+    }
+
     function handleBackToStep2() { hideMessages(); step3.classList.remove('visible'); step3.classList.add('hidden'); step2.classList.remove('hidden'); step2.classList.add('visible'); saveBookingState(); }
     function handleToReceiptStep() {
         if (timerEndTime && Date.now() >= timerEndTime) { showMessage('error', 'Время истекло.', true); cancelHold(false); return; }
@@ -3804,7 +4202,8 @@ balanceHtml = `<div class="account-balance-badge mt-2">
     
     // === 3. RESETALL (ИСПРАВЛЕН — скрываем ЛК) ===
     function resetAll(goToList = true) {
-        if (holdId) cancelHold(false, holdId); roomId = null; currentScenario = null; roomName = null; stopTimer();
+        if (holdId) cancelHold(false, holdId); roomId = null; currentScenario = null; roomName = null; selectedBranchId = null; stopTimer();
+        _penaltySeen = false; _cancelTermsSeen = false;
         if (bookingModuleWrapper1) bookingModuleWrapper1.innerHTML = ''; if (bookingModuleWrapper2) bookingModuleWrapper2.innerHTML = '';
         if (findResultsContainer) findResultsContainer.style.display = 'none'; if (findResultsList) findResultsList.innerHTML = '';
         document.querySelectorAll('.room-choice-btn.active').forEach(b => b.classList.remove('active'));
@@ -3814,6 +4213,7 @@ balanceHtml = `<div class="account-balance-badge mt-2">
         if (moduleBookByRoom) moduleBookByRoom.style.display = 'none';
         if (moduleFindByTime) moduleFindByTime.style.display = 'none';
         if (moduleSubCalc) moduleSubCalc.style.display = 'none';
+        if (locationSelectionContainer) locationSelectionContainer.style.display = 'none';
         if (roomSelectionContainer) roomSelectionContainer.style.display = 'none';
         if (myAccountContainer) myAccountContainer.style.display = 'none';
         
@@ -3830,7 +4230,7 @@ balanceHtml = `<div class="account-balance-badge mt-2">
             const modalEl = document.getElementById('checkBalanceModal');
             if (modalEl && typeof bootstrap !== 'undefined') { const modal = new bootstrap.Modal(modalEl); modal.show(); } return true;
         }
-        else if (hash === '#search') { resetAll(false); showScenario('time'); mainMenuContainer.style.display = 'none'; roomSelectionContainer.style.display = 'none'; saveBookingState(); return true; }
+        else if (hash === '#search') { resetAll(false); showScenario('time'); mainMenuContainer.style.display = 'none'; roomSelectionContainer.style.display = 'none'; if(locationSelectionContainer) locationSelectionContainer.style.display = 'none'; saveBookingState(); return true; }
         else if (hash === '#account') { 
             if (isUserLoggedIn) { showAccountPage(); return true; }
         }
@@ -3844,18 +4244,82 @@ balanceHtml = `<div class="account-balance-badge mt-2">
         const savedState = loadBookingState();
         const savedView = (function() { try { return localStorage.getItem('zenCurrentView'); } catch(e) { return null; } })();
         
-        // Скрываем всё
-        mainMenuContainer.style.display = 'none';
-        if (roomSelectionContainer) roomSelectionContainer.style.display = 'none';
-        if (myAccountContainer) myAccountContainer.style.display = 'none';
-        if (moduleBookByRoom) moduleBookByRoom.style.display = 'none';
-        if (moduleFindByTime) moduleFindByTime.style.display = 'none';
-        if (moduleSubCalc) moduleSubCalc.style.display = 'none';
+        // === СКРЫВАЕМ ВСЁ ===
+        function hideAll() {
+            mainMenuContainer.style.display = 'none';
+            if (locationSelectionContainer) locationSelectionContainer.style.display = 'none';
+            if (roomSelectionContainer) roomSelectionContainer.style.display = 'none';
+            if (myAccountContainer) myAccountContainer.style.display = 'none';
+            if (moduleBookByRoom) moduleBookByRoom.style.display = 'none';
+            if (moduleFindByTime) moduleFindByTime.style.display = 'none';
+            if (moduleSubCalc) moduleSubCalc.style.display = 'none';
+        }
+        hideAll();
 
+        // === Показать простой экран по имени (без восстановления бронирования) ===
+        function showSimpleView(view) {
+            switch (view) {
+                case 'location_select':
+                    if (locationSelectionContainer) { locationSelectionContainer.style.display = 'block'; return true; }
+                    return false;
+                case 'room_select':
+                    if (roomSelectionContainer) { 
+                        roomSelectionContainer.style.display = 'block'; 
+                        if (selectedBranchId) filterRoomsByLocation(selectedBranchId);
+                        return true; 
+                    }
+                    return false;
+                case 'account':
+                    if (isUserLoggedIn && myAccountContainer) { myAccountContainer.style.display = 'block'; loadMyAccount(); return true; }
+                    return false;
+                case 'subscription_calc':
+                    if (moduleSubCalc) { isSubscriptionMode = true; moduleSubCalc.style.display = 'block'; return true; }
+                    return false;
+                case 'search':
+                    if (moduleFindByTime) { moduleFindByTime.style.display = 'block'; if (searchInterfaceContainer) searchInterfaceContainer.style.display = 'block'; return true; }
+                    return false;
+                case 'main_menu':
+                    mainMenuContainer.style.display = 'block'; return true;
+            }
+            return false;
+        }
+
+        // === zenCurrentView — ГЛАВНЫЙ ИСТОЧНИК: он обновляется при каждой навигации ===
+        const effectiveView = savedView || (savedState ? savedState.currentView : null) || 'main_menu';
+        
+        // === ЕСТЬ СОХРАНЁННЫЙ СТЕЙТ ===
         if (savedState) {
-            currentScenario = savedState.scenario; roomId = savedState.roomId; roomName = savedState.roomName;
-            const effectiveView = savedState.currentView || savedView || 'main_menu';
+            currentScenario = savedState.scenario; 
+            roomId = savedState.roomId; 
+            roomName = savedState.roomName;
+            selectedBranchId = savedState.selectedBranchId || null;
+            _penaltySeen = !!savedState.roomId;
+            _cancelTermsSeen = !!savedState.roomId;
 
+            // --- Таймер истёк? Чистим бронь ---
+            if (savedState._timerExpired) {
+                const expiredHoldId = savedState.holdId;
+                clearBookingState();
+                saveCurrentView('room_select');
+                if (expiredHoldId) {
+                    fetch('/api/cancel_hold/', { method: 'POST', headers: { 'Content-Type': 'application/json', 'X-CSRFToken': getCookie('csrftoken') }, body: JSON.stringify({ hold_id: expiredHoldId }) }).catch(e => console.error(e));
+                }
+                if (roomSelectionContainer) { 
+                    roomSelectionContainer.style.display = 'block'; 
+                    if (selectedBranchId) filterRoomsByLocation(selectedBranchId);
+                } else { mainMenuContainer.style.display = 'block'; }
+                return;
+            }
+
+// --- ПРОСТЫЕ ЭКРАНЫ: аккаунт, локации, главное меню ---
+            // Но ТОЛЬКО если нет активной брони с таймером — её нужно восстановить
+            const hasActiveHold = savedState.holdId && savedState.timerEndTime && savedState.timerEndTime > Date.now();
+            const simpleScreens = ['account', 'location_select', 'main_menu'];
+            if (!hasActiveHold && simpleScreens.includes(effectiveView)) {
+                if (showSimpleView(effectiveView)) return;
+            }
+
+            // --- Абонемент ---
             if (savedState.isSubscriptionMode) {
                  isSubscriptionMode = true; subCurrentHours = savedState.subHours || null; subCurrentPrice = savedState.subPrice || 0; if(subPeopleSelect) subPeopleSelect.value = savedState.subPeople || '1';
                  const step = savedState.currentStep || 1;
@@ -3879,56 +4343,53 @@ balanceHtml = `<div class="account-balance-badge mt-2">
                     if (subDisplayPrice) subDisplayPrice.textContent = subCurrentPrice + ' ₸';
                     const summaryStep2 = bookingModuleWrapper1.querySelector('#booking_summary_text'); if(summaryStep2) { summaryStep2.innerHTML = `<div class="d-flex justify-content-between border-bottom py-2"><span class="text-secondary">Пакет часов:</span> <span class="fw-bold text-dark">${subCurrentHours} ч.</span></div><div class="d-flex justify-content-between pt-2"><span class="text-secondary">К оплате:</span> <span class="fw-bold text-success fs-6">${subCurrentPrice} ₸</span></div>`; }
                 } else {
-                    moduleSubCalc.style.display = 'block'; if (subCurrentHours) { updateVisualSelection(subCurrentHours); updateSubCalculation(); } else { resetSubscriptionSelection(); }
+                    moduleSubCalc.style.display = 'block'; 
+                    if (subCurrentHours) { updateVisualSelection(subCurrentHours); updateSubCalculation(); } else { resetSubscriptionSelection(); }
                 }
-            } else if (currentScenario === 'room' && roomId) {
+            }
+            // --- Бронь по кабинету ---
+            else if (currentScenario === 'room' && roomId) {
                 moduleBookByRoom.style.display = 'block'; setupBookingModule(bookingModuleWrapper1, roomName); restoreBookingState(savedState);
-            } else if (currentScenario === 'room' && !roomId) {
+            }
+            // --- Выбор кабинета (сценарий room, но кабинет ещё не выбран) ---
+            else if (currentScenario === 'room' && !roomId) {
                 roomSelectionContainer.style.display = 'block';
-            } else if (currentScenario === 'time' && roomId && roomName) {
+                if (selectedBranchId) filterRoomsByLocation(selectedBranchId);
+            }
+            // --- Бронь по поиску ---
+            else if (currentScenario === 'time' && roomId && roomName) {
                 moduleFindByTime.style.display = 'block'; if (searchInterfaceContainer) searchInterfaceContainer.style.display = 'none'; setupBookingModule(bookingModuleWrapper2, roomName); const step1Div = bookingModuleWrapper2.querySelector('#step1'); if (step1Div) { step1Div.style.display = 'none'; } restoreBookingState(savedState);
-            } else if (currentScenario === 'time') {
+            }
+            // --- Поиск без выбранного кабинета ---
+            else if (currentScenario === 'time') {
                 moduleFindByTime.style.display = 'block'; if (searchInterfaceContainer) searchInterfaceContainer.style.display = 'block';
-            } else {
-                // scenario is null or unknown — используем effectiveView
-                if (effectiveView === 'room_select') {
-                    roomSelectionContainer.style.display = 'block';
-                } else if (effectiveView === 'account' && isUserLoggedIn) {
-                    myAccountContainer.style.display = 'block';
-                    loadMyAccount();
-                } else if (effectiveView === 'search') {
-                    moduleFindByTime.style.display = 'block'; if (searchInterfaceContainer) searchInterfaceContainer.style.display = 'block';
-                } else if (effectiveView === 'subscription_calc') {
-                    isSubscriptionMode = true;
-                    moduleSubCalc.style.display = 'block'; resetSubscriptionSelection();
-                } else {
-                    // Fallback — главное меню
+            }
+            // --- Нет сценария → показываем по effectiveView ---
+            else {
+                if (!showSimpleView(effectiveView)) {
                     mainMenuContainer.style.display = 'block';
                 }
             }
-        } else {
-            // Нет сохранённого стейта бронирования — проверяем простой view
-            if (savedView === 'room_select') {
-                roomSelectionContainer.style.display = 'block';
-            } else if (savedView === 'account' && isUserLoggedIn) {
-                myAccountContainer.style.display = 'block';
-                loadMyAccount();
-            } else {
+        }
+        // === НЕТ СОХРАНЁННОГО СТЕЙТА ===
+        else {
+            if (!showSimpleView(effectiveView)) {
                 mainMenuContainer.style.display = 'block';
             }
         }
 
         // === SAFETY NET: гарантируем, что хоть что-то видно ===
         setTimeout(() => {
-            const containers = [mainMenuContainer, roomSelectionContainer, myAccountContainer, moduleBookByRoom, moduleFindByTime, moduleSubCalc];
+            const containers = [mainMenuContainer, locationSelectionContainer, roomSelectionContainer, myAccountContainer, moduleBookByRoom, moduleFindByTime, moduleSubCalc];
             const anyVisible = containers.some(c => c && c.style.display !== 'none' && c.style.display !== '');
             if (!anyVisible) {
-                console.warn('[SAFETY NET] Nothing visible — showing main menu');
+                console.warn('[SAFETY NET] Nothing visible — forcing main menu');
                 mainMenuContainer.style.display = 'block';
                 clearBookingState();
+                try { localStorage.removeItem('zenCurrentView'); } catch(e) {}
                 saveCurrentView('main_menu');
             }
-        }, 200);
+        }, 300);
     }
 
     // ЗАПУСК

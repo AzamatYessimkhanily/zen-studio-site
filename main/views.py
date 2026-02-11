@@ -2074,13 +2074,29 @@ def add_new_subscription_to_sheet(data):
         print(f"Error adding/updating subscription: {e}")
         return False
 
+# main/views.py
+from django.db.models import Count, Q # Убедитесь, что это импортировано
+
 class BookingPageView(TemplateView):
     template_name = 'main/booking_page.html'
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
-        # ФИЛЬТРУЕМ: только активные И те, у которых стоит галочка show_in_booking
-        context['rooms'] = Room.objects.filter(is_active=True, show_in_booking=True).order_by('order')
+        
+        # Загружаем кабинеты с оптимизацией (select_related для филиала и старой локации)
+        context['rooms'] = Room.objects.filter(
+            is_active=True, show_in_booking=True
+        ).select_related('branch', 'location').order_by('order')
+        
+        # Загружаем филиалы, в которых есть хотя бы один активный кабинет для брони
+        context['branches'] = Branch.objects.filter(
+            is_active=True
+        ).annotate(
+            active_rooms_count=Count('rooms', filter=Q(
+                rooms__is_active=True, rooms__show_in_booking=True
+            ))
+        ).filter(active_rooms_count__gt=0).order_by('order')
+        
         context['settings'] = SiteSettings.objects.first()
         context['user_is_logged_in'] = self.request.session.get('user_logged_in', False)
         return context
