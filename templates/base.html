@@ -92,14 +92,14 @@
 
     /* Language switch in navbar */
     .lang-switch-nav{display:flex;gap:.5rem;align-items:center;}
-    .btn-lang{
-      background:var(--zen-green);color:#fff;border:none;border-radius:15px;
-      padding:6px 10px;cursor:pointer;font-weight:600;line-height:1;
-      box-shadow:0 4px 16px rgba(0,0,0,.15);
-      transition:transform .2s ease, box-shadow .2s ease, background .2s ease;
+  .btn-lang{
+      background:#e0e0e0;color:#333;border:none;padding:4px 10px;
+      border-radius:8px;font-size:.75rem;font-weight:700;cursor:pointer;
+      transition:all .15s ease;text-transform:uppercase;
+      line-height:1.2;box-shadow:0 2px 8px rgba(0,0,0,.08);
     }
-    .btn-lang:hover{background:#7cbf92;transform:translateY(-2px);box-shadow:0 8px 24px rgba(0,0,0,.2);}
-    .btn-lang.active{outline:2px solid rgba(var(--zen-green-rgb),.6);}
+    .btn-lang:hover{background:#bdbdbd;color:#111;transform:translateY(-2px);box-shadow:0 8px 24px rgba(0,0,0,.15);}
+    .btn-lang.active{background:#333;color:#fff;outline:none;}
     /* запрет авто-перевода для блока переключателя */
     .lang-switch-nav.notranslate{unicode-bidi:plaintext;}
 
@@ -387,7 +387,7 @@
     }
     
     .mobile-location i {
-        color: var(--zen-green);
+        color: var(--zen-gray);
         font-size: 18px;
         position: relative;
         top: 1px; /* Иконку чуть вниз, чтобы ровно с текстом стояла */
@@ -672,8 +672,9 @@
   
   <a href="/booking/" class="bottom-nav-item {% if '/booking/' in request.path %}active{% endif %}">
     <i class="fas fa-calendar-plus"></i> 
-    <span>Забронировать</span>
+    <span>Новая бронь</span>
   </a>
+
 </nav>
 
   <!-- Hidden container for Google Translate -->
