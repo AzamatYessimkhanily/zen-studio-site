@@ -2596,7 +2596,11 @@ def cancel_booking_confirm(request):
             booking_dt = datetime.datetime.strptime(f"{date_str} {time_str}", "%Y-%m-%d %H:%M")
             booking_dt_aware = ALMATY_TZ.localize(booking_dt)
 
-            room = Room.objects.filter(name__icontains=room_name.split()[0]).first()
+            room = Room.objects.filter(name=room_name).first()
+            if not room:
+                room = Room.objects.filter(name__icontains=room_name).first()
+            if not room:
+                room = Room.objects.filter(name__icontains=room_name.split()[0]).first()
             if room and room.google_calendar_id:
                 service = get_calendar_service()
                 calendar_id = str(room.google_calendar_id).strip().replace('"', '').replace("'", "").replace(' ', '')
