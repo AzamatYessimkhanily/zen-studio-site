@@ -963,7 +963,7 @@ footer, .footer, #footer, .site-footer {
     display: inline-flex;
     align-items: center;
     gap: 6px;
-    background: rgba(157, 211, 175, 0.15);
+    background: var(--zen-grey);
     color: var(--zen-green-dark);
     border-radius: 10px;
     padding: 6px 12px;
@@ -1027,7 +1027,7 @@ footer, .footer, #footer, .site-footer {
     left: 0;
     width: 100%;
     background: #fff;       /* Белый фон */
-    border-top: 1px solid #f0f0f0;
+    border-top: 1px solid #000000;
     padding: 12px 16px;     /* Отступы внутри панели */
     display: flex;
     gap: 10px;
@@ -1036,6 +1036,10 @@ footer, .footer, #footer, .site-footer {
     
     /* ПО УМОЛЧАНИЮ (для ПК, где нет нижней навигации) */
     bottom: 0;
+}
+.account-sticky-bar .sticky-btn.sticky-btn-sub{
+  border: 1px solid #000 !important;
+  box-sizing: border-box;
 }
 /* 3. Стили самих кнопок внутри панели (делаем их крупнее, как на фото) */
 /* 3. АДАПТАЦИЯ ДЛЯ МОБИЛЬНЫХ (Где есть нижнее меню) */
@@ -1075,8 +1079,9 @@ footer, .footer, #footer, .site-footer {
 
 /* Цвета кнопок */
 .sticky-btn-sub {
-    background: #fff9e6;    /* Светло-желтый фон */
-    color: #bfa01d;         /* Золотистый текст */
+    background: #ffffff;    /* Светло-желтый фон */
+    color: #000000;         /* Золотистый текст */
+    border:1px solid #000
 }
 
 .sticky-btn-book {
@@ -1150,7 +1155,7 @@ footer, .footer, #footer, .site-footer {
     flex-shrink: 0;
     border: none;
     background: #f3f4f6;
-    color: #6b7280;
+    color: #000000;
     border-radius: 10px;
     padding: 7px 14px;
     font-size: 0.78rem;
@@ -1164,7 +1169,6 @@ footer, .footer, #footer, .site-footer {
 }
 .account-tab.active {
     background: var(--zen-green);
-    color: #fff;
 }
 .account-tab:active { transform: scale(0.96); }
 
@@ -1466,7 +1470,7 @@ footer, .footer, #footer, .site-footer {
         <button id="btn_back_from_account" class="btn btn-link text-decoration-none p-0 me-3 text-secondary" style="font-size: 1.2rem; border: none;">
             <i class="fas fa-arrow-left"></i>
         </button>
-        <h4 class="info-title mb-0"><i class="fas fa-user-circle"></i> Личный кабинет</h4>
+        <h4 class="info-title mb-0"> Личный кабинет</h4>
     </div>
 
     {# Профиль #}
@@ -2133,7 +2137,16 @@ footer, .footer, #footer, .site-footer {
     </div>
 </div>
 
-
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const cancelModal = document.getElementById('cancelBookingModal');
+    if (cancelModal) {
+        cancelModal.addEventListener('hidden.bs.modal', function() {
+            if (typeof loadMyAccount === 'function') loadMyAccount();
+        });
+    }
+});
+</script>
 
 {# === ПОПАП ШТРАФОВ (после выбора времени) === #}
 <div class="modal fade" id="penaltyInfoModal" tabindex="-1" aria-hidden="true">
@@ -2395,18 +2408,24 @@ document.addEventListener("DOMContentLoaded", function () {
             const phoneFormatted = data.phone ? ('+' + data.phone) : '';
             _saveAccountData(data.phone, data.client_name);
 
-            let balanceHtml = '';
-            if (data.balance) {
-balanceHtml = `<div class="account-balance-badge mt-2">
-    <i class="fas fa-clock"></i>
-    <span style="opacity:0.75;">Остаток:</span>
-    <span>${data.balance}</span>
-    ${data.expires ? `<span style="opacity:0.6; font-weight:500;">· до ${data.expires}</span>` : ''}
-</div>`;            } else {
+let balanceHtml = '';
+if (data.balance) {
+  balanceHtml = `
+    <div class="account-balance-badge mt-2"
+         style="font-size: 1rem; color:#000;">
+      <i class="fas fa-clock" style="color:#000;"></i>
+      <span style="opacity:0.85; color:#000;">Остаток:</span>
+      <span style="font-size:1.25rem; font-weight:800; color:#000; line-height:1;">
+  ${data.balance}
+</span>
+      ${data.expires ? `<span style="opacity:0.75; font-weight:500; color:#000;">· до ${data.expires}</span>` : ''}
+    </div>
+  `;
+ } else {
                 balanceHtml = `<div class="mt-2"><small class="text-muted" style="font-size: 0.78rem;"><i class="fas fa-info-circle me-1"></i>Абонемент не подключён</small></div>`;
             }
 
-            profileEl.innerHTML = `<div class="d-flex align-items-center gap-3"><div class="account-avatar">${initials}</div><div style="min-width: 0;"><div class="fw-bold" style="font-size: 1.05rem;">${data.client_name || 'Клиент'}</div><div class="text-muted" style="font-size: 0.82rem;">${phoneFormatted}</div>${balanceHtml}</div></div>`;
+            profileEl.innerHTML = `<div class="d-flex align-items-center gap-3"><div style="min-width: 0;"><div class="fw-bold" style="font-size: 1.05rem;">${data.client_name || 'Клиент'}</div><div class="text-muted" style="font-size: 0.82rem;">${phoneFormatted}</div>${balanceHtml}</div></div>`;
 
             if (!data.bookings || data.bookings.length === 0) {
                 bookingsEl.innerHTML = `<div class="account-empty-state"><i class="far fa-calendar-check d-block"></i><div class="fw-bold text-muted" style="font-size: 0.9rem;">Нет бронирований</div><div class="text-muted small mt-1">Создайте первую бронь прямо сейчас</div></div>`;
@@ -2453,8 +2472,8 @@ balanceHtml = `<div class="account-balance-badge mt-2">
                 } else if (b.status === 'upcoming') {
                     const uIdx = window._upcomingBookingsData.length;
                     window._upcomingBookingsData.push(b);
-                    statusBadge = '<span class="booking-status-badge badge-upcoming"><i class="fas fa-calendar-check"></i> Предстоящая</span>';
-                    actionBtn = `<button class="booking-card-action mt-2" style="background: #f3f4f6;color: #6b7280;" onclick="window.accountCancelBooking(${uIdx})"><i class="fas fa-times me-1"></i>Отменить бронь</button>`;
+                    statusBadge = '<span class="booking-status-badge badge-upcoming" style="color:#000;">Предстоящая</span>';
+                    actionBtn = `<button class="booking-card-action mt-2" style="background:#fff; color:#000; border:1px solid #000; font-weight:300;" onclick="window.accountCancelBooking(${uIdx})"><i class="fas fa-times me-1"></i>Отменить бронь</button>`;
                 } else if (b.status === 'cancelled') {
                     statusBadge = '<span class="booking-status-badge badge-cancelled"><i class="fas fa-ban"></i> Отменена</span>';
                     actionBtn = '';
@@ -2463,7 +2482,7 @@ balanceHtml = `<div class="account-balance-badge mt-2">
                     actionBtn = `<a href="https://2gis.kz/almaty/geo/70000001081186139" target="_blank" class="booking-card-action mt-2 d-block text-center text-decoration-none" style="background: rgba(157,211,175,0.15); color: var(--zen-green-dark);"><i class="fas fa-star me-1"></i>Оставить отзыв</a>`;
                 }
 
-                cardsHtml += `<div class="booking-card" data-status="${b.status}"><div class="d-flex justify-content-between align-items-start mb-1"><div class="fw-bold" style="font-size: 0.92rem;">${b.room || 'Кабинет'}</div>${statusBadge}</div><div class="text-muted" style="font-size: 0.8rem; line-height: 1.5;"><div><i class="far fa-calendar me-1"></i>${dateFormatted}</div><div><i class="far fa-clock me-1"></i>${timeRange}</div></div>${b.price ? `<div class="text-muted mt-1" style="font-size: 0.78rem;"><i class="fas fa-tag me-1"></i>${b.price}</div>` : ''}${timerHtml}${actionBtn}</div>`;
+                cardsHtml += `<div class="booking-card" data-status="${b.status}"><div class="d-flex justify-content-between align-items-start mb-1"><div class="fw-bold" style="font-size: 0.92rem;">${b.room || 'Кабинет'}</div>${statusBadge}</div><div style="font-size: 0.8rem; line-height: 1.5; color: #1a1a1a;"><div><i class="far fa-calendar me-1"></i>${dateFormatted}</div><div><i class="far fa-clock me-1"></i>${timeRange}</div></div>${b.price ? `<div class="mt-1" style="font-size: 0.78rem; color: #1a1a1a;"><i class="fas fa-tag me-1"></i>${b.price}</div>` : ''}${timerHtml}${actionBtn}</div>`;
             }
 
             bookingsEl.innerHTML = tabsHtml + `<div id="account_cards_container">${cardsHtml}</div>`;
@@ -2681,72 +2700,43 @@ balanceHtml = `<div class="account-balance-badge mt-2">
             // ---- ОТМЕНА СО ШТРАФОМ (3-12ч) ----
             cancelBody.innerHTML = `
                 ${bookingInfoHtml}
-                <div class="cancel-block-icon cancel-penalty"><i class="fas fa-exclamation-circle"></i></div>
-                <h6 class="fw-bold text-center mb-2">Отмена со штрафом</h6>
-                <p class="text-center text-muted small mb-3">До начала менее 12 часов. Штраф 25% — <strong>${info.penalty_amount} ₸</strong>.<br>Отменённые часы (${info.duration_display}) вернутся на абонемент.</p>
-                
-                <div class="cancel-payment-tabs mb-3">
-                    <button class="cancel-pay-tab active" data-cmethod="single"><i class="fas fa-credit-card me-1"></i>Перевод</button>
-                    <button class="cancel-pay-tab" data-cmethod="subscription"><i class="fas fa-wallet me-1"></i>Абонемент</button>
+                <p class="small text-muted mb-2">Оплатите штраф <strong>${info.penalty_amount} ₸</strong> переводом и прикрепите чек:</p>
+                <div class="mb-2">
+                    <label class="form-label small mb-1">Файл чека (PDF/фото)</label>
+                    <input type="file" class="form-control form-control-sm" id="cancel_receipt_file" accept=".pdf,.jpg,.jpeg,.png">
                 </div>
-
-                <div id="cancel_pane_single">
-                    <p class="small text-muted mb-2">Оплатите штраф <strong>${info.penalty_amount} ₸</strong> переводом и прикрепите чек:</p>
-                    <div class="mb-2">
-                        <label class="form-label small mb-1">Файл чека (PDF/фото)</label>
-                        <input type="file" class="form-control form-control-sm" id="cancel_receipt_file" accept=".pdf,.jpg,.jpeg,.png">
-                    </div>
-                    <div class="mb-3">
-                        <label class="form-label small mb-1">Или номер чека</label>
-                        <input type="text" class="form-control form-control-sm" id="cancel_receipt_number" placeholder="Номер квитанции">
-                    </div>
-                </div>
-                <div id="cancel_pane_sub" style="display:none;">
-                    <p class="small text-muted mb-2">Штраф будет списан с абонемента в эквиваленте часов.</p>
+                <div class="mb-3">
+                    <label class="form-label small mb-1">Или номер чека</label>
+                    <input type="text" class="form-control form-control-sm" id="cancel_receipt_number" placeholder="Номер квитанции">
                 </div>
 
                 <button class="btn-zen-primary w-100 py-2" id="btn_confirm_penalty_cancel" style="border-radius: 12px; background: #dc3545;">
                     <i class="fas fa-times me-1"></i>Оплатить штраф и отменить
                 </button>`;
 
-            // Переключение табов оплаты штрафа
-            cancelBody.querySelectorAll('.cancel-pay-tab').forEach(tab => {
-                tab.addEventListener('click', () => {
-                    cancelBody.querySelectorAll('.cancel-pay-tab').forEach(t => t.classList.remove('active'));
-                    tab.classList.add('active');
-                    const m = tab.dataset.cmethod;
-                    document.getElementById('cancel_pane_single').style.display = m === 'single' ? 'block' : 'none';
-                    document.getElementById('cancel_pane_sub').style.display = m === 'subscription' ? 'block' : 'none';
-                });
-            });
-
             document.getElementById('btn_confirm_penalty_cancel').addEventListener('click', async function() {
-                const activeMethod = cancelBody.querySelector('.cancel-pay-tab.active').dataset.cmethod;
                 let fileData = null, fileName = null, receiptNum = null;
+                const fileInput = document.getElementById('cancel_receipt_file');
+                const numInput = document.getElementById('cancel_receipt_number');
 
-                if (activeMethod === 'single') {
-                    const fileInput = document.getElementById('cancel_receipt_file');
-                    const numInput = document.getElementById('cancel_receipt_number');
-
-                    if (fileInput.files.length > 0) {
-                        const file = fileInput.files[0];
-                        fileName = file.name;
-                        fileData = await new Promise((resolve) => {
-                            const reader = new FileReader();
-                            reader.onload = (e) => resolve(e.target.result);
-                            reader.readAsDataURL(file);
-                        });
-                    } else if (numInput.value.trim()) {
-                        receiptNum = numInput.value.trim();
-                    } else {
-                        alert('Прикрепите чек или введите номер квитанции');
-                        return;
-                    }
+                if (fileInput.files.length > 0) {
+                    const file = fileInput.files[0];
+                    fileName = file.name;
+                    fileData = await new Promise((resolve) => {
+                        const reader = new FileReader();
+                        reader.onload = (e) => resolve(e.target.result);
+                        reader.readAsDataURL(file);
+                    });
+                } else if (numInput.value.trim()) {
+                    receiptNum = numInput.value.trim();
+                } else {
+                    alert('Прикрепите чек или введите номер квитанции');
+                    return;
                 }
 
                 this.disabled = true;
                 this.innerHTML = '<span class="spinner-border spinner-border-sm"></span> Обработка...';
-                await _executeCancellation(bData, info, fileData, fileName, receiptNum, activeMethod);
+                await _executeCancellation(bData, info, fileData, fileName, receiptNum, 'single');
             });
 
         } catch (e) {

@@ -328,8 +328,15 @@ def get_my_bookings(request):
             print(f"Error reading pending bookings: {e}")
 
         # Сортировка: ожидающие → будущие → отменённые → завершенные (внутри — по дате DESC)
+# Сортировка: сначала по статусу, потом по дате+время DESC (новые первыми)
         order_map = {'pending_payment': 0, 'upcoming': 1, 'cancelled': 2, 'completed': 3}
-        bookings.sort(key=lambda x: (order_map.get(x['status'], 9), x.get('date', '')))
+        bookings.sort(
+            key=lambda x: x.get('date', '') + ' ' + x.get('time', ''),
+            reverse=True
+        )
+        bookings.sort(
+            key=lambda x: order_map.get(x['status'], 9)
+        )
 
         return JsonResponse({
             'success': True,
