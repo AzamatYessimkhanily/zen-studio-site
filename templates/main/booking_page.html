@@ -945,19 +945,6 @@ footer, .footer, #footer, .site-footer {
     margin-bottom: 1rem;
 }
 
-.account-avatar {
-    width: 52px;
-    height: 52px;
-    border-radius: 16px;
-    background: linear-gradient(135deg, var(--zen-green) 0%, var(--zen-green-dark) 100%);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    color: #fff;
-    font-size: 1.3rem;
-    font-weight: 700;
-    flex-shrink: 0;
-}
 
 .account-balance-badge {
     display: inline-flex;
@@ -1027,7 +1014,7 @@ footer, .footer, #footer, .site-footer {
     left: 0;
     width: 100%;
     background: #fff;       /* Белый фон */
-    border-top: 1px solid #000000;
+    border-top: 1px solid #f0f0f0;
     padding: 12px 16px;     /* Отступы внутри панели */
     display: flex;
     gap: 10px;
@@ -1081,7 +1068,6 @@ footer, .footer, #footer, .site-footer {
 .sticky-btn-sub {
     background: #ffffff;    /* Светло-желтый фон */
     color: #000000;         /* Золотистый текст */
-    border:1px solid #000
 }
 
 .sticky-btn-book {
@@ -1388,6 +1374,62 @@ footer, .footer, #footer, .site-footer {
     font-size: 0.82rem;
     line-height: 1.6;
     color: #555;
+}
+/* === НОВЫЙ СТИЛЬ ТЕЛЕФОНА (Compact & Match Name Field) === */
+#phone_mask_wrapper {
+    background-color: #f2f2f7 !important;
+    border-radius: 16px !important;
+    height: 56px !important; /* Высота один в один как у поля Имя */
+    display: flex;
+    align-items: center;
+    padding-left: 16px !important; /* Чуть меньше отступ слева */
+    
+    /* Шрифт точно как в других полях */
+    font-size: 1.1rem !important; 
+    font-weight: 600 !important;
+    color: #1c1c1e !important;
+    cursor: text;
+}
+
+/* Поле ввода цифр */
+.phone-part-input {
+    border: none !important;
+    background: transparent !important;
+    font-family: inherit !important;
+    font-size: inherit !important;
+    font-weight: inherit !important;
+    color: inherit !important;
+    padding: 0 !important;
+    text-align: center;
+    outline: none !important;
+    
+    /* Убрали лишние отступы, чтобы цифры были ближе */
+    margin: 0; 
+}
+
+/* Сделали ширину полей меньше, чтобы цифры стояли плотнее */
+.phone-part-input.w-3 { width: 32px; } /* Было 38px */
+.phone-part-input.w-2 { width: 22px; } /* Было 28px */
+
+/* Разделители (скобки, тире) */
+.phone-sep {
+    color: #aeaeb2; /* Светло-серый, чтобы не отвлекал */
+    font-weight: 500;
+    font-size: 1.1rem;
+    margin: 0 1px; /* Минимальный зазор */
+    user-select: none;
+}
+
+/* Префикс +7 */
+.phone-prefix {
+    color: #1c1c1e;
+    font-weight: 600;
+    margin-right: 4px;
+}
+
+/* Иконка галочки */
+#phone_status_icon i {
+    font-size: 1.3rem;
 }
 </style>
 {% endblock %}
@@ -1885,7 +1927,24 @@ footer, .footer, #footer, .site-footer {
                     <div class="mb-3">
                         <label for="client_phone" class="form-label">Номер WhatsApp</label>
                         <div class="position-relative">
-                            <input type="tel" class="form-control" id="client_phone" name="client_phone" required placeholder="7707..." style="padding-right: 50px;">
+                            <div id="phone_mask_wrapper">
+                                <span class="phone-prefix">+7</span>
+                                
+                                <span class="phone-sep">(</span>
+                                <input type="tel" id="phone_part1" class="phone-part-input w-3" maxlength="3" placeholder="___">
+                                <span class="phone-sep">)</span>
+                                
+                                <input type="tel" id="phone_part2" class="phone-part-input w-3" maxlength="3" placeholder="___">
+                                <span class="phone-sep">-</span>
+                                
+                                <input type="tel" id="phone_part3" class="phone-part-input w-2" maxlength="2" placeholder="__">
+                                <span class="phone-sep">-</span>
+                                
+                                <input type="tel" id="phone_part4" class="phone-part-input w-2" maxlength="2" placeholder="__">
+                            </div>
+
+                            <input type="hidden" id="client_phone" name="client_phone">
+                            
                             <div id="phone_status_icon" class="position-absolute top-50 end-0 translate-middle-y me-3" style="pointer-events: none;"></div>
                         </div>
                         <div id="phone_error_msg" class="form-text text-danger small" style="display: none;">На этом номере не найден WhatsApp</div>
@@ -2211,6 +2270,16 @@ document.addEventListener('DOMContentLoaded', function() {
 
 {% block extra_js %}
 <script>
+    // === 0. КАРТА ПРИНАДЛЕЖНОСТИ КОМНАТ К ФИЛИАЛАМ ===
+    // Это нужно, чтобы поиск знал, какая комната откуда, без лишних запросов к API
+    window.roomBranchMap = {};
+    {% for room in rooms %}
+        // Записываем: ID комнаты -> ID филиала
+        window.roomBranchMap["{{ room.id }}"] = "{{ room.branch.id|default:'all' }}";
+    {% endfor %}
+</script>
+
+<script>
 // === 1. ГЛОБАЛЬНАЯ ФУНКЦИЯ КОПИРОВАНИЯ ===
 window.copyToClipboard = function(text, btnElement) {
     if (navigator.clipboard && window.isSecureContext) {
@@ -2411,14 +2480,20 @@ document.addEventListener("DOMContentLoaded", function () {
 let balanceHtml = '';
 if (data.balance) {
   balanceHtml = `
-    <div class="account-balance-badge mt-2"
-         style="font-size: 1rem; color:#000;">
-      <i class="fas fa-clock" style="color:#000;"></i>
-      <span style="opacity:0.85; color:#000;">Остаток:</span>
-      <span style="font-size:1.25rem; font-weight:800; color:#000; line-height:1;">
-  ${data.balance}
-</span>
-      ${data.expires ? `<span style="opacity:0.75; font-weight:500; color:#000;">· до ${data.expires}</span>` : ''}
+                <div class="account-balance-badge mt-2" style="display: inline-flex; align-items: center; text-align: left; padding: 10px 15px;">
+                  
+                  <div class="me-3">
+                      <i class="fas fa-clock" style="font-size: 1.5rem; color:#000; opacity: 0.8;"></i>
+                  </div>
+
+                  <div class="d-flex flex-column">
+                      <div style="line-height: 1.1;">
+                          <span style="opacity:0.6; font-size: 0.85rem; color:#000; margin-right: 4px;">Остаток:</span>
+                          <span style="font-size:1.25rem; font-weight:800; color:#000;">${data.balance}</span>
+                      </div>
+                      ${data.expires ? `<div style="font-size: 0.8rem; opacity: 0.5; font-weight:600; color:#000; margin-top: 2px;">до ${data.expires}</div>` : ''}
+                  </div>
+
     </div>
   `;
  } else {
@@ -3210,23 +3285,57 @@ if (data.balance) {
         nextBtn.parentNode.replaceChild(newNext, nextBtn);
         newNext.disabled = true;
 
-        const phoneInput = w.querySelector('#client_phone');
+        const phoneHiddenSub = w.querySelector('#client_phone');
+        const phonePartsSub = [
+            w.querySelector('#phone_part1'),
+            w.querySelector('#phone_part2'),
+            w.querySelector('#phone_part3'),
+            w.querySelector('#phone_part4')
+        ];
+        const phoneWrapperSub = w.querySelector('#phone_mask_wrapper');
         const nameInput = w.querySelector('#client_name');
         const chk = w.querySelector('#agreement_checkbox');
         const statusIcon = w.querySelector('#phone_status_icon');
         let isPhoneCheckedSuccess = false;
+        let _lastCheckedSubPhone = '';
+
+        function getFullSubPhone() {
+            return '7' + phonePartsSub.map(p => p ? p.value : '').join('');
+        }
+        function syncHiddenSubPhone() {
+            if (phoneHiddenSub) phoneHiddenSub.value = getFullSubPhone();
+        }
 
         function checkBtnState() {
             if (isPhoneCheckedSuccess && chk && chk.checked) newNext.disabled = false;
             else newNext.disabled = true;
         }
 
+        // Клик по обёртке фокусирует первый пустой input
+        if (phoneWrapperSub) {
+            phoneWrapperSub.addEventListener('click', () => {
+                for (const p of phonePartsSub) {
+                    if (p && p.value.length < parseInt(p.maxLength)) { p.focus(); return; }
+                }
+                if (phonePartsSub[3]) phonePartsSub[3].focus();
+            });
+        }
+
         // === АВТОЗАПОЛНЕНИЕ ДЛЯ ЗАЛОГИНЕННЫХ (абонемент) ===
         if (isUserLoggedIn && window._accountPhone) {
-            if (phoneInput) phoneInput.value = window._accountPhone;
+            const ph = (window._accountPhone || '').replace(/\D/g, '');
+            const digits = ph.startsWith('7') ? ph.substring(1) : (ph.startsWith('8') ? ph.substring(1) : ph);
+            if (digits.length === 10) {
+                if (phonePartsSub[0]) phonePartsSub[0].value = digits.substring(0, 3);
+                if (phonePartsSub[1]) phonePartsSub[1].value = digits.substring(3, 6);
+                if (phonePartsSub[2]) phonePartsSub[2].value = digits.substring(6, 8);
+                if (phonePartsSub[3]) phonePartsSub[3].value = digits.substring(8, 10);
+                syncHiddenSubPhone();
+            }
             if (nameInput && window._accountName) nameInput.value = window._accountName;
             if (statusIcon) statusIcon.innerHTML = '<i class="fas fa-check-circle text-success fs-5"></i>';
             isPhoneCheckedSuccess = true;
+            _lastCheckedSubPhone = getFullSubPhone();
             if (chk) chk.checked = true;
             newNext.disabled = false;
         } else {
@@ -3235,28 +3344,39 @@ if (data.balance) {
 
         if(chk) { chk.addEventListener('change', checkBtnState); }
 
-        if(phoneInput) {
-            phoneInput.addEventListener('input', () => { 
-                // Если залогинен и номер не изменился — не сбрасываем
-                const currentPhone = phoneInput.value.replace(/\D/g, '');
-                const savedPhone = (window._accountPhone || '').replace(/\D/g, '');
-                if (isUserLoggedIn && currentPhone === savedPhone && isPhoneCheckedSuccess) return;
+        phonePartsSub.forEach((part, idx) => {
+            if (!part) return;
+            part.addEventListener('input', () => {
+                part.value = part.value.replace(/\D/g, '');
+                syncHiddenSubPhone();
+                if (part.value.length >= parseInt(part.maxLength) && idx < phonePartsSub.length - 1) {
+                    phonePartsSub[idx + 1].focus();
+                }
+                const full = getFullSubPhone();
+                if (full !== _lastCheckedSubPhone && isPhoneCheckedSuccess) {
                 isPhoneCheckedSuccess = false; checkBtnState(); if(statusIcon) statusIcon.innerHTML = ''; 
-            });
-            phoneInput.addEventListener('blur', async () => {
-                if (isPhoneCheckedSuccess) return; // Уже проверен (автозаполнение или предыдущая проверка)
-                const phone = phoneInput.value.replace(/\D/g, '');
-                if (phone.length < 10) return;
+                }
+                if (full.length === 11 && full !== _lastCheckedSubPhone) {
+                    _lastCheckedSubPhone = full;
+                    (async () => {
                 if(statusIcon) statusIcon.innerHTML = '<div class="spinner-border spinner-border-sm text-secondary" role="status"></div>';
                 try {
-                    const res = await fetch(`/api/check_wa_exists/?phone=${phone}`);
+                            const res = await fetch(`/api/check_wa_exists/?phone=${full}`);
                     const data = await res.json();
+                            if (getFullSubPhone() !== full) return;
                     if (data.exists) { if(statusIcon) statusIcon.innerHTML = '<i class="fas fa-check-circle text-success fs-5"></i>'; isPhoneCheckedSuccess = true; } 
                     else { if(statusIcon) statusIcon.innerHTML = '<i class="fas fa-times-circle text-danger fs-5"></i>'; isPhoneCheckedSuccess = false; }
                 } catch (e) { if(statusIcon) statusIcon.innerHTML = '<i class="fas fa-check-circle text-warning fs-5"></i>'; isPhoneCheckedSuccess = true; }
                 checkBtnState();
+                    })();
+                }
             });
+            part.addEventListener('keydown', (e) => {
+                if (e.key === 'Backspace' && part.value === '' && idx > 0) {
+                    e.preventDefault(); phonePartsSub[idx - 1].focus();
         }
+            });
+        });
 
         newNext.addEventListener('click', () => {
             const nameVal = w.querySelector('#client_name').value;
@@ -3649,48 +3769,101 @@ if (data.balance) {
             });
         }
 
-        const phoneInput = wrapperElement.querySelector('#client_phone');
+        const phoneHidden = wrapperElement.querySelector('#client_phone');
+        const phoneParts = [
+            wrapperElement.querySelector('#phone_part1'),
+            wrapperElement.querySelector('#phone_part2'),
+            wrapperElement.querySelector('#phone_part3'),
+            wrapperElement.querySelector('#phone_part4')
+        ];
+        const phoneWrapper = wrapperElement.querySelector('#phone_mask_wrapper');
         const statusIcon = wrapperElement.querySelector('#phone_status_icon');
         const errorMsg = wrapperElement.querySelector('#phone_error_msg');
         const nextBtn = wrapperElement.querySelector('#show_payment_button');
         let isPhoneVerified = false;
+        let _lastCheckedPhone = '';
+
+        // Клик по обёртке фокусирует первый пустой input
+        if (phoneWrapper) {
+            phoneWrapper.addEventListener('click', () => {
+                for (const p of phoneParts) {
+                    if (p && p.value.length < parseInt(p.maxLength)) { p.focus(); return; }
+                }
+                if (phoneParts[3]) phoneParts[3].focus();
+            });
+        }
+
+        function getFullPhone() {
+            return '7' + phoneParts.map(p => p ? p.value : '').join('');
+        }
+        function syncHiddenPhone() {
+            if (phoneHidden) phoneHidden.value = getFullPhone();
+        }
+
+        // Авто-переход + авто-проверка
+        phoneParts.forEach((part, idx) => {
+            if (!part) return;
+            part.addEventListener('input', (e) => {
+                // Только цифры
+                part.value = part.value.replace(/\D/g, '');
+                syncHiddenPhone();
+                // Авто-переход к следующему полю
+                if (part.value.length >= parseInt(part.maxLength) && idx < phoneParts.length - 1) {
+                    phoneParts[idx + 1].focus();
+                }
+                // Сброс верификации при изменении
+                const full = getFullPhone();
+                if (full !== _lastCheckedPhone && isPhoneVerified) {
+                    isPhoneVerified = false; setStatus('none'); if (nextBtn) nextBtn.disabled = true;
+                }
+                // Авто-проверка когда все 11 цифр введены
+                if (full.length === 11 && full !== _lastCheckedPhone) {
+                    _lastCheckedPhone = full;
+                    _autoCheckWhatsApp(full);
+                }
+            });
+            part.addEventListener('keydown', (e) => {
+                // Backspace в пустом поле → переход к предыдущему
+                if (e.key === 'Backspace' && part.value === '' && idx > 0) {
+                    e.preventDefault();
+                    phoneParts[idx - 1].focus();
+                }
+            });
+        });
+
+        async function _autoCheckWhatsApp(phone) {
+            if (isUserLoggedIn && isPhoneVerified) return;
+            setStatus('loading'); if (nextBtn) nextBtn.disabled = true;
+            try {
+                const res = await fetch(`/api/check_wa_exists/?phone=${phone}`);
+                const data = await res.json();
+                if (getFullPhone().replace(/\D/g, '') !== phone.replace(/\D/g, '')) return; // номер изменился пока ждали
+                if (data.exists) { setStatus('success'); isPhoneVerified = true; checkNextButtonState(); }
+                else { setStatus('error'); isPhoneVerified = false; }
+            } catch (e) { setStatus('success'); isPhoneVerified = true; checkNextButtonState(); }
+        }
 
         // === АВТОЗАПОЛНЕНИЕ ДЛЯ АВТОРИЗОВАННЫХ ===
         if (isUserLoggedIn && window._accountPhone) {
-            // Телефон и имя уже известны → заполняем и пропускаем проверку
-            if (phoneInput) phoneInput.value = window._accountPhone;
+            const ph = (window._accountPhone || '').replace(/\D/g, '');
+            const digits = ph.startsWith('7') ? ph.substring(1) : (ph.startsWith('8') ? ph.substring(1) : ph);
+            if (digits.length === 10) {
+                if (phoneParts[0]) phoneParts[0].value = digits.substring(0, 3);
+                if (phoneParts[1]) phoneParts[1].value = digits.substring(3, 6);
+                if (phoneParts[2]) phoneParts[2].value = digits.substring(6, 8);
+                if (phoneParts[3]) phoneParts[3].value = digits.substring(8, 10);
+                syncHiddenPhone();
+            }
             const nameInpAuto = wrapperElement.querySelector('#client_name');
             if (nameInpAuto && window._accountName) nameInpAuto.value = window._accountName;
             isPhoneVerified = true;
+            _lastCheckedPhone = getFullPhone();
             if (statusIcon) statusIcon.innerHTML = '<i class="fas fa-check-circle text-success fs-5"></i>';
-            // Автоматически ставим галочку и активируем кнопку
             setTimeout(() => {
                 const chk = wrapperElement.querySelector('#agreement_checkbox');
                 if (chk) chk.checked = true;
                 if (nextBtn) nextBtn.disabled = false;
             }, 50);
-        }
-
-        if (phoneInput) {
-            phoneInput.addEventListener('blur', async () => {
-                // Если авторизован и телефон не менялся — не проверяем
-                if (isUserLoggedIn && isPhoneVerified) return;
-                const phone = phoneInput.value.replace(/\D/g, '');
-                if (phone.length < 10) { setStatus('none'); return; }
-                setStatus('loading'); nextBtn.disabled = true;
-                try {
-                    const res = await fetch(`/api/check_wa_exists/?phone=${phone}`);
-                    const data = await res.json();
-                    if (data.exists) { setStatus('success'); isPhoneVerified = true; checkNextButtonState(); } 
-                    else { setStatus('error'); isPhoneVerified = false; }
-                } catch (e) { setStatus('success'); isPhoneVerified = true; checkNextButtonState(); }
-            });
-            phoneInput.addEventListener('input', () => { 
-                // Если пользователь меняет предзаполненный телефон — сбрасываем
-                if (isPhoneVerified && !(isUserLoggedIn && phoneInput.value.replace(/\D/g, '') === (window._accountPhone || '').replace(/\D/g, ''))) { 
-                    isPhoneVerified = false; setStatus('none'); nextBtn.disabled = true; 
-                } 
-            });
         }
 
         function setStatus(state) {
@@ -3772,32 +3945,136 @@ if (data.balance) {
     }
     
     setDefaultDate(findDateInput);
+// === ЛОГИКА ПОИСКА (ОБНОВЛЕННАЯ С ГАРМОШКОЙ) ===
     if (findRoomsSubmitBtn) {
         findRoomsSubmitBtn.addEventListener('click', async () => {
-             const date = findDateInput.value; const time = findTimeInput.value; const duration = findDurationSelect.value; const people = findPeopleInput.value;
-             if (!date || !time || !duration) { showMessage('error', 'Заполните поля', true); return; }
-             findRoomsSubmitBtn.disabled = true; findRoomsSubmitBtn.innerHTML = '<span class="loading-spinner"></span>';
-             findResultsContainer.style.display = 'none'; hideMessages();
+             const date = findDateInput.value; 
+             const time = findTimeInput.value; 
+             const duration = findDurationSelect.value; 
+             const people = findPeopleInput.value;
+
+             if (!date || !time || !duration) { 
+                 showMessage('error', 'Заполните поля', true); 
+                 return; 
+             }
+
+             findRoomsSubmitBtn.disabled = true; 
+             findRoomsSubmitBtn.innerHTML = '<span class="loading-spinner"></span>';
+             findResultsContainer.style.display = 'none'; 
+             hideMessages();
+
              try {
                  const apiUrl = `/api/find_available_rooms/?date=${date}&start_time=${time}&duration=${duration}&people=${people}`;
                  const response = await fetch(apiUrl, { headers: { "ngrok-skip-browser-warning": "true", "Content-Type": "application/json" } });
                  const data = await response.json();
-                 findResultsContainer.style.display = 'block'; findResultsList.innerHTML = ''; 
+                 
+                 findResultsContainer.style.display = 'block'; 
+                 findResultsList.innerHTML = ''; 
+
                  if (data.available_rooms && data.available_rooms.length > 0) {
+                     
+                     // 1. РАЗДЕЛЯЕМ КАБИНЕТЫ НА "СВОИ" И "ЧУЖИЕ"
+                     let currentLocRooms = [];
+                     let otherLocRooms = [];
+                     
+                     // Проверяем, выбрана ли конкретная локация (не "all" и не пусто)
+                     const hasSelectedBranch = (selectedBranchId && selectedBranchId !== 'all');
+
                      data.available_rooms.forEach(room => {
-                         const card = document.createElement('div'); card.className = 'room-result-card';
-                         card.dataset.roomId = room.id; card.dataset.roomName = 'Кабинет ' + room.name; card.dataset.date = date; card.dataset.time = time; card.dataset.duration = duration; card.dataset.people = people; card.dataset.price = room.price;
-                         card.innerHTML = `<img src="${room.main_image_url || '{% static "img/favicon-32x32.png" %}'}" alt="${room.name}" class="room-result-img"><div class="room-result-info"><h5>Кабинет ${room.name}</h5><p>${room.short_description || ''}</p>${room.area ? `<p><strong>${room.area} м²</strong></p>` : ''}</div><div class="room-result-price">${room.price} ₸</div>`;
-                         card.addEventListener('click', handleFoundRoomClick); findResultsList.appendChild(card);
+                         // Получаем ID филиала этой комнаты из нашей карты (которую создали в Шаге 1)
+                         // Если карты нет, считаем room.branch_id (вдруг бэк отдаст)
+                         const roomBranchId = window.roomBranchMap[room.id] || room.branch_id; 
+
+                         // Сравниваем строки (на всякий случай toString)
+                         if (hasSelectedBranch && String(roomBranchId) === String(selectedBranchId)) {
+                             currentLocRooms.push(room);
+                         } else {
+                             otherLocRooms.push(room);
+                         }
                      });
+
+                     // Если локация не была выбрана (клиент нажал "Все локации"), 
+                     // то все кабинеты считаем "Своими" и показываем списком.
+                     if (!hasSelectedBranch) {
+                         currentLocRooms = data.available_rooms;
+                         otherLocRooms = [];
+                     }
+
+                     // === ФУНКЦИЯ ОТРИСОВКИ КАРТОЧКИ (чтобы не дублировать код) ===
+                     const createRoomCard = (room) => {
+                         const card = document.createElement('div'); 
+                         card.className = 'room-result-card';
+                         card.dataset.roomId = room.id; 
+                         card.dataset.roomName = 'Кабинет ' + room.name; 
+                         card.dataset.date = date; 
+                         card.dataset.time = time; 
+                         card.dataset.duration = duration; 
+                         card.dataset.people = people; 
+                         card.dataset.price = room.price;
+                         
+                         card.innerHTML = `
+                            <img src="${room.main_image_url || '{% static "img/favicon-32x32.png" %}'}" alt="${room.name}" class="room-result-img">
+                            <div class="room-result-info">
+                                <h5>Кабинет ${room.name}</h5>
+                                <p>${room.short_description || ''}</p>
+                                ${room.area ? `<p><strong>${room.area} м²</strong></p>` : ''}
+                            </div>
+                            <div class="room-result-price">${room.price} ₸</div>
+                         `;
+                         card.addEventListener('click', handleFoundRoomClick);
+                         return card;
+                     };
+
+                     // 2. ВЫВОДИМ "СВОИ" КАБИНЕТЫ (Приоритетные)
+                     if (currentLocRooms.length > 0) {
+                         currentLocRooms.forEach(room => {
+                             findResultsList.appendChild(createRoomCard(room));
+                     });
+                     } else if (hasSelectedBranch) {
+                         // Если в выбранной локации пусто, пишем об этом
+                         findResultsList.innerHTML += `<div class="alert alert-light border small text-muted text-center mb-3">В этой локации нет свободных кабинетов на выбранное время. Посмотрите другие варианты ниже.</div>`;
+                     }
+
+                     // 3. ВЫВОДИМ "ЧУЖИЕ" КАБИНЕТЫ (В гармошке)
+                     if (otherLocRooms.length > 0) {
+                         // Создаем контейнер для гармошки
+                         const accordionContainer = document.createElement('div');
+                         accordionContainer.className = 'mt-2';
+                         
+                         // Кнопка-переключатель
+                         accordionContainer.innerHTML = `
+                            <button class="btn btn-light w-100 text-secondary border fw-bold small py-3 mb-2" type="button" data-bs-toggle="collapse" data-bs-target="#otherLocationsCollapse" aria-expanded="false" style="border-radius: 16px;">
+                                <i class="fas fa-map-marker-alt me-2"></i> Показать кабинеты в других локациях (${otherLocRooms.length})
+                                <i class="fas fa-chevron-down ms-2 opacity-50"></i>
+                            </button>
+                            <div class="collapse" id="otherLocationsCollapse">
+                                <div class="pt-2" id="other_locs_list_inner"></div>
+                            </div>
+                         `;
+                         
+                         findResultsList.appendChild(accordionContainer);
+                         
+                         // Добавляем карточки внутрь скрытого блока
+                         const innerList = accordionContainer.querySelector('#other_locs_list_inner');
+                         otherLocRooms.forEach(room => {
+                             innerList.appendChild(createRoomCard(room));
+                         });
+                     }
+
                  } else { 
-                     findResultsList.innerHTML = `<div class="text-center py-4"><div class="alert alert-light border shadow-sm mb-3 text-muted small"><i class="fas fa-search mb-2 d-block fs-4 opacity-50"></i>К сожалению, на это время свободных кабинетов нет.</div><p class="small text-muted mb-1">Обратитесь к администратору</p><a href="https://wa.me/77073910808" target="_blank" class="btn btn-sm btn-outline-success rounded-pill px-4 shadow-sm"><i class="fab fa-whatsapp me-2"></i> Написать администратору</a></div>`; 
+                     // Если вообще ничего не найдено
+                     findResultsList.innerHTML = `<div class="text-center py-4"><div class="alert alert-light border shadow-sm mb-3 text-muted small"><i class="fas fa-search mb-2 d-block fs-4 opacity-50"></i>К сожалению, на это время свободных кабинетов нет нигде.</div><p class="small text-muted mb-1">Обратитесь к администратору</p><a href="https://wa.me/77073910808" target="_blank" class="btn btn-sm btn-outline-success rounded-pill px-4 shadow-sm"><i class="fab fa-whatsapp me-2"></i> Написать администратору</a></div>`; 
                  }
-             } catch (error) { findResultsList.innerHTML = '<div class="alert alert-danger text-center small">Ошибка.</div>'; } 
-             finally { findRoomsSubmitBtn.disabled = false; findRoomsSubmitBtn.innerHTML = '<i class="fas fa-search me-2"></i> Найти'; }
+             } catch (error) { 
+                 console.error(error);
+                 findResultsList.innerHTML = '<div class="alert alert-danger text-center small">Ошибка при поиске.</div>'; 
+             } 
+             finally { 
+                 findRoomsSubmitBtn.disabled = false; 
+                 findRoomsSubmitBtn.innerHTML = '<i class="fas fa-search me-2"></i> Найти'; 
+             }
         });
     }
-    
     async function handleFoundRoomClick(event) {
         const card = event.target.closest('.room-result-card');
         if (!card || isFetching) return;
@@ -3911,7 +4188,22 @@ if (data.balance) {
         if (bookingDurationSelect && state.duration) bookingDurationSelect.value = state.duration; 
         if (bookingPeopleInput && state.people) bookingPeopleInput.value = state.people; 
         if (clientNameInput && state.client_name) clientNameInput.value = state.client_name; 
-        if (clientPhoneInput && state.client_phone) clientPhoneInput.value = state.client_phone; 
+        if (clientPhoneInput && state.client_phone) { 
+            clientPhoneInput.value = state.client_phone;
+            // Заполняем маску
+            const ph = (state.client_phone || '').replace(/\D/g, '');
+            const dg = ph.startsWith('7') ? ph.substring(1) : ph;
+            if (dg.length === 10) {
+                const p1 = document.getElementById('phone_part1');
+                const p2 = document.getElementById('phone_part2');
+                const p3 = document.getElementById('phone_part3');
+                const p4 = document.getElementById('phone_part4');
+                if (p1) p1.value = dg.substring(0,3);
+                if (p2) p2.value = dg.substring(3,6);
+                if (p3) p3.value = dg.substring(6,8);
+                if (p4) p4.value = dg.substring(8,10);
+            }
+        }
         if (state.agreement1) { setTimeout(() => { const chk = document.getElementById('agreement_checkbox'); const btn = document.getElementById('show_payment_button'); if (chk) chk.checked = true; if (btn) btn.disabled = false; }, 50); }
         if (state.paymentAgreement) { setTimeout(() => { const payCheck = document.getElementById('payment_agreement_checkbox'); if (payCheck) payCheck.checked = true; }, 50); }
         const currentStep = state.currentStep || 1; showStep(currentStep); 
@@ -4427,6 +4719,3 @@ function formatHoursToText(hoursFloat) {
 }
 </script>
 {% endblock %}
-
-
-
