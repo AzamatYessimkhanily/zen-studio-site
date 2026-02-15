@@ -302,7 +302,8 @@ def get_my_bookings(request):
         try:
             pending = PendingBooking.objects.filter(
                 client_phone__icontains=phone_norm[-10:],
-                expires_at__gt=timezone.now()
+                expires_at__gt=timezone.now(),
+                is_confirmed=False  # Не показываем подтверждённые админом
             ).select_related('room')
             for p in pending:
                 start_local = timezone.localtime(p.start_time)
@@ -505,7 +506,7 @@ def get_subscription_client(phone):
 
 def cleanup_expired_holds():
     """Удаляет просроченные брони и уведомляет всех."""
-    expired_holds = PendingBooking.objects.filter(expires_at__lte=timezone.now())
+    expired_holds = PendingBooking.objects.filter(expires_at__lte=timezone.now(), is_confirmed=False)
     if not expired_holds.exists():
         return
 
@@ -1626,7 +1627,7 @@ def create_booking(request):
         hold_uuid = uuid.UUID(hold_id_str)
         pending_booking = get_object_or_404(PendingBooking, hold_id=hold_uuid)
         
-        if pending_booking.expires_at < timezone.now():
+        if pending_booking.expires_at < timezone.now() and not pending_booking.is_confirmed:
              return JsonResponse({'success': False, 'error': 'Время бронирования истекло. Пожалуйста, начните заново.'}, status=410)
 
         room = pending_booking.room
@@ -1881,6 +1882,189 @@ def create_booking(request):
             'studio_details': studio_details,
             'new_balance': current_balance_display if is_subscription else None
     })
+
+
+# ========================================
+# admin_confirm_booking — Подтверждение оплаты администратором
+# ========================================
+def admin_confirm_booking(pending_booking):
+    """
+    Вызывается из админки. Запускает полную логику бронирования:
+    календарь, Google Sheets, WhatsApp уведомления.
+    Возвращает (True, 'OK') или (False, 'описание ошибки').
+    """
+    try:
+        room = pending_booking.room
+        client_name = pending_booking.client_name
+        client_phone = pending_booking.client_phone
+        start_dt_aware = timezone.localtime(pending_booking.start_time)
+        end_dt_aware = timezone.localtime(pending_booking.end_time)
+        date_str = start_dt_aware.strftime('%Y-%m-%d')
+        start_time_str = start_dt_aware.strftime('%H:%M')
+        duration_hours = (end_dt_aware - start_dt_aware).total_seconds() / 3600
+        payment_info_text = "Подтверждено администратором"
+
+        # 1. ОБНОВЛЕНИЕ КАЛЕНДАРЯ
+        try:
+            service = get_calendar_service()
+            calendar_id = str(room.google_calendar_id).strip().replace('"', '').replace("'", "").replace(' ', '')
+            
+            desc_payment = payment_info_text
+
+            if room.hide_phone_in_calendar:
+                event_summary = f'Сайт:{client_name}'
+                event_description = (
+                    f'Клиент: {client_name}\n'
+                    f'Длительность: {duration_hours} ч.\n'
+                    f'Оплата: {desc_payment}\nИсточник: Сайт (Админ)'
+                )
+            else:
+                event_summary = f'Сайт:{client_name} ({client_phone})'
+                event_description = (
+                    f'Клиент: {client_name}\nТел: {client_phone}\n'
+                    f'Длительность: {duration_hours} ч.\n'
+                    f'Оплата: {desc_payment}\nИсточник: Сайт (Админ)'
+                )
+            
+            event_patch = {
+                'summary': event_summary,
+                'description': event_description,
+                'colorId': None,
+            }
+            
+            if pending_booking.google_event_id:
+                try:
+                    service.events().patch(
+                        calendarId=calendar_id,
+                        eventId=pending_booking.google_event_id,
+                        body=event_patch
+                    ).execute()
+                except Exception as e:
+                    print(f"Admin confirm: Failed to patch event, creating new: {e}")
+                    event_patch['start'] = {'dateTime': start_dt_aware.isoformat(), 'timeZone': settings.TIME_ZONE}
+                    event_patch['end'] = {'dateTime': end_dt_aware.isoformat(), 'timeZone': settings.TIME_ZONE}
+                    service.events().insert(calendarId=calendar_id, body=event_patch).execute()
+            else:
+                event_patch['start'] = {'dateTime': start_dt_aware.isoformat(), 'timeZone': settings.TIME_ZONE}
+                event_patch['end'] = {'dateTime': end_dt_aware.isoformat(), 'timeZone': settings.TIME_ZONE}
+                service.events().insert(calendarId=calendar_id, body=event_patch).execute()
+        except Exception as e:
+            print(f"Admin confirm: Calendar error (non-blocking): {e}")
+
+        # 2. ЗАПИСЬ В ИСТОРИЮ (Google Sheets)
+        try:
+            sheet_booking_data = {
+                "client_name": client_name,
+                "client_phone": client_phone,
+                "date": date_str,
+                "start_time": start_time_str,
+                "duration_hours": duration_hours,
+                "people_count": 1,
+                "room_name": room.name,
+                "price": "Подтверждено админом",
+                "is_client_new": True
+            }
+            save_booking_to_sheet(sheet_booking_data)
+        except Exception as e:
+            print(f"Admin confirm: Sheet error (non-blocking): {e}")
+
+        # 3. УВЕДОМЛЕНИЯ (WhatsApp)
+        try:
+            door_code, _, studio_details = get_door_code_and_instructions(room.name)
+            address = studio_details.get("address", "Адрес уточняется")
+            enter_instr = studio_details.get("enter_instruction", "")
+            general_info = studio_details.get("general_info", "")
+            
+            end_time_dt = start_dt_aware + datetime.timedelta(hours=duration_hours)
+            end_time_str = end_time_dt.strftime('%H:%M')
+            
+            settings_obj = SiteSettings.objects.first()
+            admin_phone = settings_obj.phone if settings_obj else "77073910808"
+            duration_display = format_hours_text(duration_hours)
+
+            client_message_text = (
+                f"✅ Ваша бронь кабинета {room.name} подтверждена!\n"
+                f"📍 Адрес: {address}\n"
+                f"🔑 Код двери: {door_code}\n"
+                f"🗓 {date_str} | с {start_time_str} до {end_time_str}\n"
+            )
+            if enter_instr:
+                client_message_text += f"\n🚪 Как открыть:\n{enter_instr}\n"
+            if general_info:
+                client_message_text += f"\n{general_info}\n"
+            client_message_text += f"\n📞 По вопросам обращайтесь к администратору: {admin_phone}"
+
+            group_message_text = (
+                "〰〰〰〰〰〰〰〰〰〰\n"
+                "📅 Бронь подтверждена (Админ)\n\n"
+                f"🏠 Кабинет: {room.name}\n"
+                f"🗓 Дата: {date_str} | с {start_time_str} до {end_time_str}\n"
+                f"⏳ Длительность: {duration_hours} ч\n"
+                f"👤 Клиент: {client_name} ({client_phone})\n"
+                f"💰 Оплата: {payment_info_text}\n"
+                "〰〰〰〰〰〰〰〰〰〰"
+            )
+
+            bot_api_url = getattr(settings, 'BOT_WHATSAPP_API_URL', None)
+            group_chat_id = getattr(settings, 'GROUP_CHAT_ID', None)
+
+            if bot_api_url:
+                client_chat_id = ''.join(filter(str.isdigit, client_phone)) + '@c.us'
+                if client_chat_id.startswith('8'): client_chat_id = '7' + client_chat_id[1:]
+                elif not client_chat_id.startswith('7') and len(client_chat_id.split('@')[0]) == 10:
+                    client_chat_id = '7' + client_chat_id
+
+                try: requests.post(bot_api_url, json={'chat_id': client_chat_id, 'message': client_message_text}, timeout=10)
+                except Exception as req_err: print(f"Admin confirm: WA client error: {req_err}")
+                
+                if group_chat_id:
+                    try: requests.post(bot_api_url, json={'chat_id': group_chat_id, 'message': group_message_text}, timeout=10)
+                    except Exception as req_err: print(f"Admin confirm: WA group error: {req_err}")
+        except Exception as e:
+            print(f"Admin confirm: WhatsApp error (non-blocking): {e}")
+
+        # 4. ПОМЕЧАЕМ КАК ПОДТВЕРЖДЁННУЮ (фронтенд увидит через polling)
+        pending_booking.is_confirmed = True
+        pending_booking.save()
+        
+        return (True, 'OK')
+
+    except Exception as e:
+        print(f"admin_confirm_booking error: {e}")
+        import traceback
+        traceback.print_exc()
+        return (False, str(e))
+
+
+# ========================================
+# api_check_hold_status — Проверка статуса резерва (polling с фронтенда)
+# ========================================
+@require_GET
+def api_check_hold_status(request):
+    """
+    Фронтенд опрашивает этот endpoint чтобы узнать, подтвердил ли админ оплату.
+    GET /api/check_hold_status/?hold_id=xxx
+    Возвращает: {status: 'active'|'confirmed'|'expired'|'not_found'}
+    """
+    hold_id_str = request.GET.get('hold_id')
+    if not hold_id_str:
+        return JsonResponse({'status': 'not_found'})
+    
+    try:
+        hold_uuid = uuid.UUID(hold_id_str)
+        pending = PendingBooking.objects.get(hold_id=hold_uuid)
+        
+        if pending.is_confirmed:
+            return JsonResponse({'status': 'confirmed'})
+        elif pending.is_expired():
+            return JsonResponse({'status': 'expired'})
+        else:
+            return JsonResponse({'status': 'active', 'expires_at': timezone.localtime(pending.expires_at).isoformat()})
+    
+    except PendingBooking.DoesNotExist:
+        return JsonResponse({'status': 'not_found'})
+    except Exception:
+        return JsonResponse({'status': 'not_found'})
 
 @require_GET
 def check_balance_api(request):
@@ -2693,4 +2877,3 @@ def cancel_booking_confirm(request):
         import traceback
         traceback.print_exc()
         return JsonResponse({'success': False, 'error': str(e)}, status=500)
-

@@ -34,6 +34,8 @@ urlpatterns = [
     path('api/get_my_bookings/', views.get_my_bookings, name='get_my_bookings'),
     path('api/cancel_booking_init/', views.cancel_booking_init, name='cancel_booking_init'),
     path('api/cancel_booking_confirm/', views.cancel_booking_confirm, name='cancel_booking_confirm'),
+    path('api/check_hold_status/', views.api_check_hold_status, name='api_check_hold_status'),
+
 
     
 ]

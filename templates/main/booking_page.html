@@ -2372,11 +2372,15 @@ document.addEventListener("DOMContentLoaded", function () {
         myAccountContainer.style.display = 'block';
         saveCurrentView('account');
         loadMyAccount();
+        // Обновляем active кнопку в нижнем меню
+        if (window._setNavActive) window._setNavActive('my_bookings');
     }
 
     function hideAccountPage() {
         myAccountContainer.style.display = 'none';
         if (_accountTimerInterval) { clearInterval(_accountTimerInterval); _accountTimerInterval = null; }
+        // Обновляем active кнопку
+        if (window._setNavActive) window._setNavActive('new_booking');
         // Если есть активная бронь с таймером — возвращаемся к ней
         const savedState = loadBookingState();
         if (savedState && savedState.holdId && savedState.timerEndTime && savedState.timerEndTime > Date.now() && !savedState._timerExpired) {
@@ -2451,6 +2455,7 @@ document.addEventListener("DOMContentLoaded", function () {
 
     function _startPendingTimers() {
         if (_accountTimerInterval) clearInterval(_accountTimerInterval);
+        let _accPollCounter = 0;
         _accountTimerInterval = setInterval(() => {
             document.querySelectorAll('[data-pending-expires]').forEach(el => {
                 const exp = parseInt(el.dataset.pendingExpires);
@@ -2463,6 +2468,23 @@ document.addEventListener("DOMContentLoaded", function () {
                     el.innerHTML = `<i class="fas fa-hourglass-half"></i> ${m}:${String(s).padStart(2,'0')}`;
                 }
             });
+            // Каждые 10 секунд проверяем подтверждение админом
+            _accPollCounter++;
+            if (_accPollCounter % 10 === 0 && window._pendingBookingsData && window._pendingBookingsData.length > 0) {
+                const firstPending = window._pendingBookingsData[0];
+                if (firstPending && firstPending.hold_id) {
+                    fetch('/api/check_hold_status/?hold_id=' + firstPending.hold_id)
+                        .then(r => r.json())
+                        .then(data => {
+                            if (data.status === 'confirmed') {
+                                // Админ подтвердил — обновляем ЛК
+                                clearBookingState();
+                                loadMyAccount();
+                            }
+                        })
+                        .catch(() => {});
+                }
+            }
         }, 1000);
     }
 
@@ -2912,6 +2934,64 @@ if (data.balance) {
                     modal.show();
                 }
             }
+        });
+    }
+
+    // === ПЕРЕХВАТ КНОПОК НИЖНЕЙ НАВИГАЦИИ (чтобы работало без перезагрузки) ===
+    const navMyBookingsBtn = document.getElementById('nav-my-bookings');
+    const navNewBookingBtn = document.getElementById('nav-new-booking');
+    
+    if (navMyBookingsBtn) {
+        navMyBookingsBtn.addEventListener('click', function(e) {
+            // Всегда перехватываем — мы уже на странице /booking/
+            e.preventDefault();
+            e.stopPropagation();
+            
+            // Если уже показан аккаунт — просто обновляем
+            if (myAccountContainer && myAccountContainer.style.display === 'block') {
+                loadMyAccount();
+                return;
+            }
+            
+            if (isUserLoggedIn) {
+                showAccountPage();
+            } else {
+                // Открываем авторизацию
+                document.getElementById('auth_step_phone').style.display = 'block';
+                document.getElementById('auth_step_code').style.display = 'none';
+                document.getElementById('auth_step_success').style.display = 'none';
+                document.getElementById('auth_phone_input').value = '';
+                document.getElementById('auth_code_input').value = '';
+                const titleEl = document.getElementById('authModalTitle');
+                if (titleEl) titleEl.innerHTML = '<i class="fas fa-user-lock text-success me-2"></i>Вход в систему';
+                if (authModalEl && typeof bootstrap !== 'undefined') {
+                    const modal = new bootstrap.Modal(authModalEl);
+                    modal.show();
+                }
+                window._afterAuthGoToAccount = true;
+            }
+        });
+    }
+    
+    if (navNewBookingBtn) {
+        navNewBookingBtn.addEventListener('click', function(e) {
+            // Всегда перехватываем — мы уже на странице /booking/
+            e.preventDefault();
+            e.stopPropagation();
+            
+            // Скрываем ВСЁ и показываем главное меню
+            if (myAccountContainer) myAccountContainer.style.display = 'none';
+            if (_accountTimerInterval) { clearInterval(_accountTimerInterval); _accountTimerInterval = null; }
+            if (moduleBookByRoom) moduleBookByRoom.style.display = 'none';
+            if (moduleFindByTime) moduleFindByTime.style.display = 'none';
+            if (moduleSubCalc) moduleSubCalc.style.display = 'none';
+            if (locationSelectionContainer) locationSelectionContainer.style.display = 'none';
+            if (roomSelectionContainer) roomSelectionContainer.style.display = 'none';
+            mainMenuContainer.style.display = 'block';
+            saveCurrentView('main_menu');
+            if (window._setNavActive) window._setNavActive('new_booking');
+            // Убираем хэш из URL
+            if (history.replaceState) history.replaceState(null, '', window.location.pathname);
         });
     }
 
@@ -4207,7 +4287,25 @@ if (data.balance) {
         if (state.agreement1) { setTimeout(() => { const chk = document.getElementById('agreement_checkbox'); const btn = document.getElementById('show_payment_button'); if (chk) chk.checked = true; if (btn) btn.disabled = false; }, 50); }
         if (state.paymentAgreement) { setTimeout(() => { const payCheck = document.getElementById('payment_agreement_checkbox'); if (payCheck) payCheck.checked = true; }, 50); }
         const currentStep = state.currentStep || 1; showStep(currentStep); 
-        if (timerEndTime && timerEndTime > Date.now()) { startTimer(timerEndTime); } else if (timerEndTime) { 
+        if (timerEndTime && timerEndTime > Date.now()) { 
+            // Перед запуском таймера — проверяем, не подтвердил ли админ
+            if (holdId) {
+                fetch('/api/check_hold_status/?hold_id=' + holdId)
+                    .then(r => r.json())
+                    .then(data => {
+                        if (data.status === 'confirmed') {
+                            stopTimer(); clearBookingState();
+                            showMessage('success', '✅ Ваша бронь подтверждена администратором! Проверьте WhatsApp для деталей.', true);
+                            showStep(1); holdId = null;
+                        } else {
+                            startTimer(timerEndTime);
+                        }
+                    })
+                    .catch(() => { startTimer(timerEndTime); });
+            } else {
+                startTimer(timerEndTime);
+            }
+        } else if (timerEndTime) { 
             // Таймер истёк между загрузкой и восстановлением
             stopTimer(); holdId = null; selectedSlot = null; clearBookingState();
             if (roomSelectionContainer) { 
@@ -4310,9 +4408,28 @@ if (data.balance) {
         if (bookingPriceSpan && selectedSlot && selectedSlot.price) bookingPriceSpan.textContent = selectedSlot.price + ' ₸';
     }
 
-    function startTimer(endTime) { stopTimer(); timerEndTime = endTime; updateTimerDisplay(); timerInterval = setInterval(updateTimerDisplay, 1000); saveBookingState(); }
+    function startTimer(endTime) { stopTimer(); timerEndTime = endTime; updateTimerDisplay(); timerInterval = setInterval(updateTimerDisplay, 1000); _holdPollCounter = 0; saveBookingState(); }
     function stopTimer() { if (timerInterval) { clearInterval(timerInterval); timerInterval = null; timerEndTime = null; if (timerDisplay) timerDisplay.textContent = '15:00'; } }
-    function updateTimerDisplay() { if (!timerEndTime || !timerDisplay) { stopTimer(); return; } const remaining = timerEndTime - Date.now(); if (remaining <= 0) { stopTimer(); showMessage('error', 'Время истекло!', true); showStep(1); if (holdId) cancelHold(false); clearBookingState(); } else { const minutes = Math.floor(remaining / 1000 / 60); const seconds = Math.floor((remaining / 1000) % 60); if (timerDisplay) timerDisplay.textContent = `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`; } }
+    let _holdPollCounter = 0;
+    function updateTimerDisplay() { if (!timerEndTime || !timerDisplay) { stopTimer(); return; } const remaining = timerEndTime - Date.now(); if (remaining <= 0) { stopTimer(); showMessage('error', 'Время истекло!', true); showStep(1); if (holdId) cancelHold(false); clearBookingState(); } else { const minutes = Math.floor(remaining / 1000 / 60); const seconds = Math.floor((remaining / 1000) % 60); if (timerDisplay) timerDisplay.textContent = `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`; }
+        // === POLLING: проверка подтверждения админом каждые 10 секунд ===
+        _holdPollCounter++;
+        if (_holdPollCounter % 10 === 0 && holdId) {
+            fetch('/api/check_hold_status/?hold_id=' + holdId)
+                .then(r => r.json())
+                .then(data => {
+                    if (data.status === 'confirmed') {
+                        // Админ подтвердил оплату!
+                        stopTimer();
+                        clearBookingState();
+                        showMessage('success', '✅ Ваша бронь подтверждена администратором! Проверьте WhatsApp для деталей.', true);
+                        showStep(1);
+                        holdId = null;
+                    }
+                })
+                .catch(() => {});
+        }
+    }
     
     async function handleBackToSlots() {
         if (holdId) { try { await fetch('/api/cancel_hold/', { method: 'POST', headers: { 'Content-Type': 'application/json', 'X-CSRFToken': getCookie('csrftoken') }, body: JSON.stringify({ hold_id: holdId }) }); } catch (e) { console.error(e); } }
@@ -4505,7 +4622,16 @@ if (data.balance) {
 
     function handleDirectLinks() {
         const hash = window.location.hash;
-        if (hash === '#subscription') { resetAll(false); startSubscriptionFlow(); saveBookingState(); return true; } 
+        if (hash === '#new') {
+            // "Новая бронь" — всегда показываем главное меню, чистим сохранённый вид
+            saveCurrentView('main_menu');
+            mainMenuContainer.style.display = 'block';
+            if (window._setNavActive) window._setNavActive('new_booking');
+            // Убираем хэш из URL чтобы при рефреше не повторялось
+            if (history.replaceState) history.replaceState(null, '', window.location.pathname);
+            return true;
+        }
+        else if (hash === '#subscription') { resetAll(false); startSubscriptionFlow(); saveBookingState(); return true; } 
         else if (hash === '#balance') { 
             mainMenuContainer.style.display = 'block'; 
             roomSelectionContainer.style.display = 'none';
@@ -4513,8 +4639,33 @@ if (data.balance) {
             if (modalEl && typeof bootstrap !== 'undefined') { const modal = new bootstrap.Modal(modalEl); modal.show(); } return true;
         }
         else if (hash === '#search') { resetAll(false); showScenario('time'); mainMenuContainer.style.display = 'none'; roomSelectionContainer.style.display = 'none'; if(locationSelectionContainer) locationSelectionContainer.style.display = 'none'; saveBookingState(); return true; }
-        else if (hash === '#account') { 
-            if (isUserLoggedIn) { showAccountPage(); return true; }
+        else if (hash === '#account' || hash === '#my_bookings') { 
+            // Убираем хэш чтобы при рефреше не зацикливалось
+            if (history.replaceState) history.replaceState(null, '', window.location.pathname);
+            if (isUserLoggedIn) { 
+                showAccountPage(); 
+                if (window._setNavActive) window._setNavActive('my_bookings');
+                return true; 
+            } else {
+                // Не залогинен → открываем авторизацию, а потом → ЛК
+                mainMenuContainer.style.display = 'block';
+                setTimeout(() => {
+                    document.getElementById('auth_step_phone').style.display = 'block';
+                    document.getElementById('auth_step_code').style.display = 'none';
+                    document.getElementById('auth_step_success').style.display = 'none';
+                    document.getElementById('auth_phone_input').value = '';
+                    document.getElementById('auth_code_input').value = '';
+                    const titleEl = document.getElementById('authModalTitle');
+                    if (titleEl) titleEl.innerHTML = '<i class="fas fa-user-lock text-success me-2"></i>Вход в систему';
+                    if (authModalEl && typeof bootstrap !== 'undefined') {
+                        const modal = new bootstrap.Modal(authModalEl);
+                        modal.show();
+                    }
+                }, 100);
+                // Ставим флаг чтобы после успешной авторизации открыть ЛК
+                window._afterAuthGoToAccount = true;
+                return true;
+            }
         }
         return false; 
     }
@@ -4578,18 +4729,46 @@ if (data.balance) {
             _penaltySeen = !!savedState.roomId;
             _cancelTermsSeen = !!savedState.roomId;
 
-            // --- Таймер истёк? Чистим бронь ---
+            // --- Таймер истёк? Проверяем подтверждение админом, потом чистим бронь ---
             if (savedState._timerExpired) {
                 const expiredHoldId = savedState.holdId;
-                clearBookingState();
-                saveCurrentView('room_select');
                 if (expiredHoldId) {
-                    fetch('/api/cancel_hold/', { method: 'POST', headers: { 'Content-Type': 'application/json', 'X-CSRFToken': getCookie('csrftoken') }, body: JSON.stringify({ hold_id: expiredHoldId }) }).catch(e => console.error(e));
+                    // Сначала проверяем, не подтвердил ли админ
+                    fetch('/api/check_hold_status/?hold_id=' + expiredHoldId)
+                        .then(r => r.json())
+                        .then(data => {
+                            if (data.status === 'confirmed') {
+                                clearBookingState();
+                                mainMenuContainer.style.display = 'block';
+                                saveCurrentView('main_menu');
+                                const msgDiv = document.getElementById('booking_success_message');
+                                if (msgDiv) { msgDiv.innerHTML = '✅ Ваша бронь подтверждена администратором! Проверьте WhatsApp для деталей.'; msgDiv.style.display = 'block'; }
+                            } else {
+                                clearBookingState();
+                                saveCurrentView('room_select');
+                                fetch('/api/cancel_hold/', { method: 'POST', headers: { 'Content-Type': 'application/json', 'X-CSRFToken': getCookie('csrftoken') }, body: JSON.stringify({ hold_id: expiredHoldId }) }).catch(e => console.error(e));
+                                if (roomSelectionContainer) { 
+                                    roomSelectionContainer.style.display = 'block'; 
+                                    if (selectedBranchId) filterRoomsByLocation(selectedBranchId);
+                                } else { mainMenuContainer.style.display = 'block'; }
+                            }
+                        })
+                        .catch(() => {
+                            clearBookingState();
+                            saveCurrentView('room_select');
+                            if (roomSelectionContainer) { 
+                                roomSelectionContainer.style.display = 'block'; 
+                                if (selectedBranchId) filterRoomsByLocation(selectedBranchId);
+                            } else { mainMenuContainer.style.display = 'block'; }
+                        });
+                } else {
+                    clearBookingState();
+                    saveCurrentView('room_select');
+                    if (roomSelectionContainer) { 
+                        roomSelectionContainer.style.display = 'block'; 
+                        if (selectedBranchId) filterRoomsByLocation(selectedBranchId);
+                    } else { mainMenuContainer.style.display = 'block'; }
                 }
-                if (roomSelectionContainer) { 
-                    roomSelectionContainer.style.display = 'block'; 
-                    if (selectedBranchId) filterRoomsByLocation(selectedBranchId);
-                } else { mainMenuContainer.style.display = 'block'; }
                 return;
             }
 

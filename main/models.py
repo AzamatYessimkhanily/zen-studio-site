@@ -526,6 +526,13 @@ class PendingBooking(models.Model):
     client_phone = models.CharField(max_length=50, blank=True, null=True, verbose_name="Телефон клиента")
     # ==========================
 
+    # Ручное подтверждение оплаты админом
+    is_confirmed = models.BooleanField(
+        default=False,
+        verbose_name="Оплата подтверждена",
+        help_text="Если True — админ вручную подтвердил оплату, бронь зафиксирована."
+    )
+
     class Meta:
         verbose_name = "Временный резерв (15 мин)"
         verbose_name_plural = "Временные резервы (15 мин)"
@@ -535,7 +542,9 @@ class PendingBooking(models.Model):
         ]
 
     def is_expired(self):
-        """Проверяет, истекло ли время резерва."""
+        """Проверяет, истекло ли время резерва. Подтверждённые резервы не истекают."""
+        if self.is_confirmed:
+            return False
         return timezone.now() >= self.expires_at
 
     def save(self, *args, **kwargs):
@@ -548,7 +557,8 @@ class PendingBooking(models.Model):
     def __str__(self):
         local_start = timezone.localtime(self.start_time)
         local_expires = timezone.localtime(self.expires_at)
-        return f"Резерв {self.room.name} с {local_start.strftime('%H:%M %d.%m')} до {local_expires.strftime('%H:%M:%S')}"
+        status = "✅ Подтверждён" if self.is_confirmed else f"до {local_expires.strftime('%H:%M:%S')}"
+        return f"Резерв {self.room.name} с {local_start.strftime('%H:%M %d.%m')} — {status}"
     
 
 class PageLink(models.Model):

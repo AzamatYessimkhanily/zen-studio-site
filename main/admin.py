@@ -374,27 +374,64 @@ class PageAdmin(nested_admin.NestedModelAdmin):
 
 @admin.register(PendingBooking)
 class PendingBookingAdmin(admin.ModelAdmin):
-    list_display = ('room', 'start_time_local', 'expires_at_local', 'hold_id', 'is_expired_display')
-    list_filter = ('room', 'created_at')
+    list_display = ('room', 'client_name', 'client_phone', 'start_time_local', 'end_time_local', 'expires_at_local', 'is_confirmed', 'is_expired_display')
+    list_filter = ('room', 'is_confirmed', 'created_at')
     readonly_fields = ('created_at', 'expires_at', 'hold_id', 'start_time', 'end_time')
-    search_fields = ('room__name', 'hold_id')
-    actions = ['delete_expired']
+    search_fields = ('room__name', 'hold_id', 'client_name', 'client_phone')
+    actions = ['confirm_payment', 'delete_expired']
 
-    @admin.display(description='Начало (локал.)', ordering='start_time')
+    @admin.display(description='Начало', ordering='start_time')
     def start_time_local(self, obj):
-        return timezone.localtime(obj.start_time).strftime('%d.%m %H:%M:%S') if obj.start_time else '-'
+        return timezone.localtime(obj.start_time).strftime('%d.%m %H:%M') if obj.start_time else '-'
+
+    @admin.display(description='Конец', ordering='end_time')
+    def end_time_local(self, obj):
+        return timezone.localtime(obj.end_time).strftime('%d.%m %H:%M') if obj.end_time else '-'
 
     @admin.display(description='Истекает (локал.)', ordering='expires_at')
     def expires_at_local(self, obj):
+        if obj.is_confirmed:
+            return '✅ Подтверждено'
         return timezone.localtime(obj.expires_at).strftime('%H:%M:%S') if obj.expires_at else '-'
 
     @admin.display(description='Истек?', boolean=True)
     def is_expired_display(self, obj):
         return obj.is_expired()
 
+    @admin.action(description='✅ Подтвердить оплату (зафиксировать бронь)')
+    def confirm_payment(self, request, queryset):
+        """Админ-действие: подтверждает оплату, запускает полную логику бронирования."""
+        from .views import admin_confirm_booking  # Импорт функции-помощника
+        
+        confirmed_count = 0
+        errors = []
+        
+        for pending in queryset:
+            if pending.is_confirmed:
+                errors.append(f"{pending.room.name} ({pending.client_name}) — уже подтверждена")
+                continue
+                
+            if not pending.client_name or not pending.client_phone:
+                errors.append(f"{pending.room.name} — нет имени/телефона клиента")
+                continue
+            
+            try:
+                success, msg = admin_confirm_booking(pending)
+                if success:
+                    confirmed_count += 1
+                else:
+                    errors.append(f"{pending.room.name} ({pending.client_name}) — {msg}")
+            except Exception as e:
+                errors.append(f"{pending.room.name} ({pending.client_name}) — ошибка: {str(e)}")
+        
+        if confirmed_count:
+            self.message_user(request, f"✅ Подтверждено бронирований: {confirmed_count}")
+        if errors:
+            self.message_user(request, f"⚠️ Ошибки: {'; '.join(errors)}", level='warning')
+
     @admin.action(description='Удалить истекшие резервы')
     def delete_expired(self, request, queryset):
-        expired = PendingBooking.objects.filter(expires_at__lte=timezone.now())
+        expired = PendingBooking.objects.filter(expires_at__lte=timezone.now(), is_confirmed=False)
         count = expired.count()
         expired.delete()
         self.message_user(request, f"Удалено {count} истекших резервов.")
