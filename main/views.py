@@ -1368,7 +1368,9 @@ def find_available_rooms(request):
                 'main_image_url': room.main_image.url if room.main_image else None,
                 'area': room.area_sq_m,
                 'short_description': room.short_description,
-                'price': room_price if room_price is not None else "N/A" # Добавляем цену
+                'price': room_price if room_price is not None else "N/A",
+                'capacity': room.capacity_display,
+                'address': room.location.address if hasattr(room, 'location') and room.location and room.location.address else '',
             })
         else:
             print(f"Room {room.name} skipped (Slot {start_time_str} not in free list)")

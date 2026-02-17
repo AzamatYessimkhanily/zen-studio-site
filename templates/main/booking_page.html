@@ -277,7 +277,7 @@ input[type="number"] {
       border: 1px solid #f0f0f0;
       border-radius: 16px;
       background: #ffffff;
-      margin-bottom: 10px;
+      margin-bottom: 6px;
       cursor: pointer;
       transition: all 0.2s;
       box-shadow: 0 3px 12px rgba(0,0,0,0.04);
@@ -289,8 +289,8 @@ input[type="number"] {
   }
 
   .room-result-img {
-      width: 70px;
-      height: 70px;
+      width: 65px;
+      height: 65px;
       border-radius: 12px;
       object-fit: cover;
       background: #f8f9fa;
@@ -301,6 +301,9 @@ input[type="number"] {
   .room-result-info {
       flex-grow: 1;
       min-width: 0;
+      display: flex;
+      flex-direction: column;
+      gap: 1px;
   }
 
   .room-result-info h5 {
@@ -316,6 +319,10 @@ input[type="number"] {
       color: #adb5bd;
       margin: 0;
       line-height: 1.3;
+  }
+  
+  .room-result-info .room-card-header .room-name {
+      font-size: 0.95rem;
   }
 
   .room-result-price {
@@ -658,7 +665,7 @@ input[type="number"] {
     padding: 6px;
     position: relative;
     user-select: none;
-    margin-bottom: 20px;
+    margin-bottom: 14px;
     border: 1px solid #e9ecef;
 }
 
@@ -670,7 +677,7 @@ input[type="number"] {
     font-weight: 700;
     border-radius: 12px;
     cursor: pointer;
-    color: #adb5bd; /* Цвет неактивного текста */
+    color: #2c2c2c; /* Цвет неактивного текста — тёмный */
     transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
     display: flex;
     align-items: center;
@@ -823,7 +830,7 @@ input[type="number"] {
 .room-choice-grid {
     display: grid;
     grid-template-columns: 1fr; /* Одна колонка (Список) */
-    gap: 10px;
+    gap: 6px;
 }
 
 /* На планшетах и ПК можно 2 колонки */
@@ -893,33 +900,68 @@ input[type="number"] {
 /* 4. Текст (Справа) */
 .room-card-info {
     flex-grow: 1;
-    text-align: left; /* Текст слева */
+    text-align: left;
     display: flex;
     flex-direction: column;
     justify-content: center;
+    gap: 1px;
+    min-width: 0;
+}
+
+.room-card-header {
+    display: flex;
+    align-items: baseline;
     gap: 4px;
 }
 
 .room-card-header .room-name {
     font-weight: 800;
-    font-size: 1rem;
+    font-size: 0.95rem;
     color: var(--zen-dark);
     line-height: 1.2;
+    min-width: 0;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.room-card-capacity {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    font-size: 0.72rem;
+    font-weight: 600;
+    color: #1a1a1a;
+    white-space: nowrap;
+    line-height: 1;
+}
+.room-card-capacity i {
+    font-size: 0.65rem;
+    color: #1a1a1a;
+    width: 12px;
+    text-align: center;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
 }
 
 /* Адрес */
 .room-meta {
-    font-size: 0.75rem;
+    font-size: 0.72rem;
     color: #8e8e93;
     display: flex;
     align-items: center;
-    gap: 6px;
+    gap: 4px;
     line-height: 1.3;
 }
 .room-meta i {
-    font-size: 0.8rem;
-    width: 12px; /* Фикс ширина иконки, чтобы текст ровно стоял */
+    font-size: 0.65rem;
+    width: 12px;
     text-align: center;
+    color: #8e8e93;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
 }
 
 footer, .footer, #footer, .site-footer {
@@ -1668,7 +1710,7 @@ footer, .footer, #footer, .site-footer {
                         <div class="location-card-name">{{ branch.display_name }}</div>
                         {% if branch.address %}
                         <div class="location-card-address">
-                            <i class="fas fa-map-marker-alt text-danger opacity-75"></i>
+                            <i class="fas fa-map-marker-alt" style="color: #8e8e93;"></i>
                             <span>{{ branch.address }}</span>
                         </div>
                         {% endif %}
@@ -1732,15 +1774,18 @@ footer, .footer, #footer, .site-footer {
                       <div class="room-card-header">
                           <span class="room-name">Кабинет {{ room.name }}</span>
                       </div>
-
-                      {# ВАЖНО: Оставляем старый адрес (RoomLocation) как вы просили #}
                       {% if room.location and room.location.address %}
                         <div class="room-meta">
-                            <i class="fas fa-map-marker-alt text-danger opacity-75"></i>
+                            <i class="fas fa-map-marker-alt"></i>
                             <span>{{ room.location.address }}</span>
                         </div>
                       {% else %}
-                         <div class="room-meta text-muted">Адрес уточняется</div>
+                         <div class="room-meta">Адрес уточняется</div>
+                      {% endif %}
+                      {% if room.capacity_display %}
+                      <div class="room-card-capacity">
+                          <i class="fas fa-users"></i><span>{{ room.capacity_display }}</span>
+                      </div>
                       {% endif %}
                   </div>
                 </button>
@@ -1971,11 +2016,15 @@ footer, .footer, #footer, .site-footer {
                                 <div class="small text-muted fw-bold mb-1">ОСТАЛОСЬ</div>
                                 <div id="booking_timer" class="fw-bold text-dark bg-white rounded-3 px-2 py-1 shadow-sm" style="font-family: monospace; font-size: 1.4rem;">15:00</div>
                             </div>
-                            <div class="border-start border-secondary border-opacity-25 ps-3">
+                            <div class="border-start border-secondary border-opacity-25 ps-3 flex-grow-1">
                                 <p class="mb-0 small text-dark lh-sm fw-medium">
                                 Для фиксации брони необходимо произвести оплату в течение <strong>15 минут</strong>
                                 </p>
                             </div>
+                        </div>
+                        <div id="step3_price_badge" class="d-flex justify-content-between align-items-center mt-3 pt-2 border-top border-secondary border-opacity-25 position-relative z-1" style="display:none!important;">
+                            <span class="text-dark fw-bold" style="font-size:0.9rem;">К оплате:</span>
+                            <span id="step3_price_value" class="fw-bold" style="font-size:1.3rem; color: var(--zen-green-dark, #2d8a4e);"></span>
                         </div>
                     </div>
 
@@ -1986,13 +2035,13 @@ footer, .footer, #footer, .site-footer {
 
                     <div class="tab-content">
                         <div id="pane-single" style="display: block;" role="tabpanel">
-                            <div class="form-check mb-4 d-flex align-items-start">
+                            <div class="form-check mb-3 d-flex align-items-start">
                                 <input class="form-check-input mt-1" type="checkbox" value="" id="payment_agreement_checkbox" checked style="cursor: pointer; min-width: 18px; height: 18px;">
                                 <label class="form-check-label small text-muted lh-sm ms-2" for="payment_agreement_checkbox" style="cursor: pointer; font-size: 0.85rem;">
                                     Я подтверждаю, что ознакомился с <a href="https://zenstudio.kz/page/rools/" target="_blank" class="text-decoration-none fw-bold" style="color: var(--zen-green);">условиями отмены</a>.
                                 </label>
                             </div>
-                            <div class="mb-4">
+                            <div class="mb-2">
                                 <div class="d-grid gap-2">
                                     <a id="kaspi_link" href="{{ settings.kaspi_payment_link|default:'https://pay.kaspi.kz/pay/p0zhptck' }}" target="_blank" rel="noopener" class="shadow-sm">Оплатить Kaspi</a>
                                     <button type="button" id="other_bank_toggle" class="btn shadow-sm" style="background: #2c3e50; color: white; border-radius: 14px; padding: 12px; font-weight: 600; display: flex; align-items: center; justify-content: center;" data-bs-toggle="collapse" data-bs-target="#bank_details_collapse">
@@ -2007,7 +2056,7 @@ footer, .footer, #footer, .site-footer {
                                     </div>
                                 </div>
                             </div>
-                            <div class="mb-4">
+                            <div class="mb-2">
                                 <button id="to_receipt_step_button" class="btn-zen-primary py-3 shadow-sm">Я оплатил(а), прикрепить чек <i class="fas fa-arrow-right ms-2"></i></button>
                             </div>
                         </div>
@@ -4092,12 +4141,21 @@ if (data.balance) {
                          card.dataset.people = people; 
                          card.dataset.price = room.price;
                          
+                         let line2 = '';
+                         if (room.address) {
+                             line2 = `<div class="room-meta"><i class="fas fa-map-marker-alt"></i><span>${room.address}</span></div>`;
+                         }
+                         let line3 = '';
+                         if (room.capacity) {
+                             line3 = `<div class="room-card-capacity"><i class="fas fa-users"></i><span>${room.capacity}</span></div>`;
+                         }
+                         
                          card.innerHTML = `
                             <img src="${room.main_image_url || '{% static "img/favicon-32x32.png" %}'}" alt="${room.name}" class="room-result-img">
                             <div class="room-result-info">
-                                <h5>Кабинет ${room.name}</h5>
-                                <p>${room.short_description || ''}</p>
-                                ${room.area ? `<p><strong>${room.area} м²</strong></p>` : ''}
+                                <div class="room-card-header"><span class="room-name">${'Кабинет ' + room.name}</span></div>
+                                ${line2}
+                                ${line3}
                             </div>
                             <div class="room-result-price">${room.price} ₸</div>
                          `;
@@ -4123,8 +4181,8 @@ if (data.balance) {
                          
                          // Кнопка-переключатель
                          accordionContainer.innerHTML = `
-                            <button class="btn btn-light w-100 text-secondary border fw-bold small py-3 mb-2" type="button" data-bs-toggle="collapse" data-bs-target="#otherLocationsCollapse" aria-expanded="false" style="border-radius: 16px;">
-                                <i class="fas fa-map-marker-alt me-2"></i> Показать кабинеты в других локациях (${otherLocRooms.length})
+                            <button class="btn w-100 fw-bold small py-3 mb-2" type="button" data-bs-toggle="collapse" data-bs-target="#otherLocationsCollapse" aria-expanded="false" style="border-radius: 16px; background: #fff; border: 1px solid #333; color: #333;">
+                                <i class="fas fa-map-marker-alt me-2" style="color: #333;"></i> Показать кабинеты в других локациях (${otherLocRooms.length})
                                 <i class="fas fa-chevron-down ms-2 opacity-50"></i>
                             </button>
                             <div class="collapse" id="otherLocationsCollapse">
@@ -4213,6 +4271,15 @@ if (data.balance) {
                 case 3: bookingSectionTitle.innerHTML = `<i class="fas fa-credit-card"></i> Оплата (Шаг 4 из 5)`; break;
                 case 4: bookingSectionTitle.innerHTML = `<i class="fas fa-file-upload"></i> Подтверждение (Шаг 5 из 5)`; break;
                 case 5: bookingSectionTitle.innerHTML = `<i class="fas fa-check-double text-success"></i> Бронь готова!`; break;
+            }
+        }
+        // При входе в step3 — показать цену в блоке таймера
+        if (stepNumber === 3 && selectedSlot && selectedSlot.price) {
+            const w = (currentScenario === 'room') ? bookingModuleWrapper1 : bookingModuleWrapper2;
+            if (w) {
+                const pb = w.querySelector('#step3_price_badge');
+                const pv = w.querySelector('#step3_price_value');
+                if (pb && pv) { pv.textContent = selectedSlot.price + ' ₸'; pb.style.cssText = 'display:flex!important;'; }
             }
         }
         setTimeout(() => { if (bookingSectionTitle) { const yOffset = -100; const y = bookingSectionTitle.getBoundingClientRect().top + window.pageYOffset + yOffset; window.scrollTo({top: y, behavior: 'smooth'}); } }, 100);
@@ -4467,6 +4534,17 @@ if (data.balance) {
         const phone = clientPhoneInput ? clientPhoneInput.value.trim() : '';
         const segSub = activeWrapper.querySelector('#seg_subscription');
         const isSubscription = segSub && segSub.classList.contains('active');
+        
+        // === Показываем цену в блоке с таймером ===
+        const priceBadge = activeWrapper.querySelector('#step3_price_badge');
+        const priceValue = activeWrapper.querySelector('#step3_price_value');
+        if (priceBadge && priceValue && selectedSlot && selectedSlot.price && !isSubscription) {
+            priceValue.textContent = selectedSlot.price + ' ₸';
+            priceBadge.style.cssText = 'display:flex!important;';
+        } else if (priceBadge) {
+            priceBadge.style.cssText = 'display:none!important;';
+        }
+        
         const subPhoneDisplay = activeWrapper.querySelector('#sub_check_phone_display');
         const subBalanceResult = activeWrapper.querySelector('#sub_balance_result');
         const btnCheckBalance = activeWrapper.querySelector('#btn_check_balance');

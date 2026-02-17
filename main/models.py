@@ -176,6 +176,15 @@ class Room(models.Model):
         verbose_name="Показывать в модуле бронирования",
         help_text="Если галочка СНЯТА, этот кабинет нельзя будет выбрать в модуле брони (он исчезнет из списков)."
     )
+    
+    capacity_min = models.PositiveIntegerField(
+        "Мин. кол-во человек", default=1, blank=True, null=True,
+        help_text="Минимальное кол-во гостей (для отображения на карточке)."
+    )
+    capacity_max = models.PositiveIntegerField(
+        "Макс. кол-во человек", default=None, blank=True, null=True,
+        help_text="Максимальное кол-во гостей. Если пусто — не показывается."
+    )
     # ==================
     class Meta:
         verbose_name = 'Кабинет'
@@ -184,6 +193,15 @@ class Room(models.Model):
     
     def __str__(self):
         return self.name
+
+    @property
+    def capacity_display(self):
+        """Строка вида 'до 8 чел' или '2–8 чел' для карточки."""
+        if not self.capacity_max:
+            return ""
+        if self.capacity_min and self.capacity_min > 1:
+            return f"{self.capacity_min}–{self.capacity_max} чел"
+        return f"до {self.capacity_max} чел"
 
 class RoomImage(models.Model):
     """Дополнительные изображения кабинета"""

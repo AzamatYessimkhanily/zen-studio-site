@@ -278,7 +278,7 @@ class RoomVideoInline(admin.TabularInline):
 
 @admin.register(Room)
 class RoomAdmin(admin.ModelAdmin):
-    list_display = ['name', 'branch', 'area_sq_m', 'google_calendar_id', 'order', 'is_active', 'show_in_booking', 'image_preview']   
+    list_display = ['name', 'branch', 'area_sq_m', 'capacity_display', 'google_calendar_id', 'order', 'is_active', 'show_in_booking', 'image_preview']   
     list_editable = ['order', 'is_active', 'show_in_booking'] # Добавил возможность менять галочку прямо из списка
     list_filter = ['branch', 'is_active', 'show_in_booking']
     search_fields = ['name', 'google_calendar_id','description']
@@ -298,7 +298,7 @@ class RoomAdmin(admin.ModelAdmin):
                     )
                 }),
             ("Характеристики", {
-                'fields': ('area_sq_m',)
+                'fields': ('area_sq_m', ('capacity_min', 'capacity_max'))
             }),
             ("Контент (без подпунктов)", {
                 'fields': ('equipment_text',)
@@ -312,6 +312,10 @@ class RoomAdmin(admin.ModelAdmin):
             return format_html('<img src="{}" style="width: 100px; height: 60px; object-fit: cover;"/>', obj.main_image.url)
         return '-'
     image_preview.short_description = 'Превью'
+
+    def capacity_display(self, obj):
+        return obj.capacity_display or '-'
+    capacity_display.short_description = 'Вместимость'
 
 
 
