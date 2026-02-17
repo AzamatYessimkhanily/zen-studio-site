@@ -2610,7 +2610,7 @@ if (data.balance) {
                     const pIdx = window._pendingBookingsData.length;
                     window._pendingBookingsData.push(b);
                     statusBadge = '<span class="booking-status-badge badge-pending"><i class="fas fa-clock"></i> К оплате</span>';
-                    actionBtn = `<button class="booking-card-action mt-2" style="background: rgba(255,193,7,0.12); color: #9a7b00;" onclick="window.accountGoToPayment(${pIdx})"><i class="fas fa-credit-card me-1"></i>Оплатить</button>`;
+                    actionBtn = `<button class="booking-card-action mt-2" style="background: rgba(255,193,7,0.12); color: #9a7b00;" onclick="window.accountGoToPayment(${pIdx})"><i class="fas fa-credit-card me-1"></i>Загрузить Чек</button>`;
                     if (b.expires_at) {
                         const expMs = new Date(b.expires_at).getTime();
                         timerHtml = `<div class="pending-timer-badge" data-pending-expires="${expMs}"><i class="fas fa-hourglass-half"></i> --:--</div>`;
@@ -2818,7 +2818,7 @@ if (data.balance) {
                 cancelBody.innerHTML = `
                     ${bookingInfoHtml}
                     <div class="cancel-block-icon"><i class="fas fa-exclamation-triangle"></i></div>
-                    <h6 class="fw-bold text-center mb-2">Отмена невозможна</h6>
+                    <h6 class="fw-bold text-center mb-2">Часы сгорают</h6>
                     <p class="text-center text-muted small mb-3">До начала брони осталось менее 3 часов.<br>Отмена доступна не позднее чем за 3 часа до начала.</p>
                     <div class="text-center"><a href="https://wa.me/77073910808" target="_blank" class="btn btn-sm btn-outline-secondary rounded-pill"><i class="fab fa-whatsapp me-1"></i>Связаться с администратором</a></div>`;
                 return;
@@ -4233,7 +4233,7 @@ if (data.balance) {
         [bookingDateInput, bookingDurationSelect, bookingPeopleInput].forEach(el => { if(el) el.disabled = true; });
 
         try {
-            const holdResponse = await fetch('/api/hold_slot/', { method: 'POST', headers: { 'Content-Type': 'application/json', 'X-CSRFToken': getCookie('csrftoken') }, body: JSON.stringify({ room_id: roomId, date: tempSelected.date, start_time: tempSelected.start, duration: tempSelected.duration }) });
+            const holdResponse = await fetch('/api/hold_slot/', { method: 'POST', headers: { 'Content-Type': 'application/json', 'X-CSRFToken': getCookie('csrftoken') }, body: JSON.stringify({ room_id: roomId, date: tempSelected.date, start_time: tempSelected.start, duration: tempSelected.duration, price: tempSelected.price || '', people_count: tempSelected.people || '' }) });
             const holdData = await holdResponse.json();
             if (!holdData.success) throw new Error(holdData.error);
             holdId = holdData.hold_id; selectedSlot = { ...tempSelected };
@@ -4448,7 +4448,7 @@ if (data.balance) {
         clickedButton.classList.add('active'); clickedButton.disabled = true; clickedButton.innerHTML = `<span class="loading-spinner1"></span>`; 
         const tempSelected = { start: clickedButton.dataset.start, end: clickedButton.dataset.end, date: bookingDateInput.value, duration: bookingDurationSelect.value, people: bookingPeopleInput.value || '1' }; 
         try { 
-            const holdResponse = await fetch('/api/hold_slot/', { method: 'POST', headers: { 'Content-Type': 'application/json', 'X-CSRFToken': getCookie('csrftoken'), "ngrok-skip-browser-warning": "true" }, body: JSON.stringify({ room_id: roomId, date: tempSelected.date, start_time: tempSelected.start, duration: tempSelected.duration }) }); 
+            const holdResponse = await fetch('/api/hold_slot/', { method: 'POST', headers: { 'Content-Type': 'application/json', 'X-CSRFToken': getCookie('csrftoken'), "ngrok-skip-browser-warning": "true" }, body: JSON.stringify({ room_id: roomId, date: tempSelected.date, start_time: tempSelected.start, duration: tempSelected.duration, people_count: tempSelected.people || '' }) }); 
             const holdData = await holdResponse.json(); 
             if (!holdData.success) throw new Error(holdData.error || 'Слот занят'); 
             holdId = holdData.hold_id; selectedSlot = { ...tempSelected }; isTimerRefreshed = false; 
@@ -4579,7 +4579,7 @@ if (data.balance) {
             if(btn) { btn.classList.add('is-loading'); btn.disabled = true; btn.innerHTML = '<span class="loading-spinner"></span>'; }
             try {
                 if (holdId) { await fetch('/api/cancel_hold/', { method: 'POST', headers: { 'Content-Type': 'application/json', 'X-CSRFToken': getCookie('csrftoken') }, body: JSON.stringify({ hold_id: holdId }) }); }
-                const holdResponse = await fetch('/api/hold_slot/', { method: 'POST', headers: { 'Content-Type': 'application/json', 'X-CSRFToken': getCookie('csrftoken') }, body: JSON.stringify({ room_id: roomId, date: selectedSlot.date, start_time: selectedSlot.start, duration: selectedSlot.duration, client_name: name, client_phone: normalizedPhone }) });
+                const holdResponse = await fetch('/api/hold_slot/', { method: 'POST', headers: { 'Content-Type': 'application/json', 'X-CSRFToken': getCookie('csrftoken') }, body: JSON.stringify({ room_id: roomId, date: selectedSlot.date, start_time: selectedSlot.start, duration: selectedSlot.duration, client_name: name, client_phone: normalizedPhone, price: selectedSlot.price || '', people_count: selectedSlot.people || '' }) });
                 const holdData = await holdResponse.json(); if (!holdData.success) { throw new Error('Слот был перехвачен.'); }
                 holdId = holdData.hold_id; timerEndTime = Date.now() + 15 * 60 * 1000; startTimer(timerEndTime); isTimerRefreshed = true; 
             } catch (error) { showMessage('error', error.message, true); handleBackToSlots(); return; } finally { if(btn) { btn.classList.remove('is-loading'); btn.disabled = false; btn.innerHTML = 'Далее <i class="fas fa-arrow-right ms-1"></i>'; } }

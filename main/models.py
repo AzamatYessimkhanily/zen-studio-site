@@ -542,6 +542,8 @@ class PendingBooking(models.Model):
     # === ДОБАВЛЯЕМ ЭТИ ПОЛЯ ===
     client_name = models.CharField(max_length=255, blank=True, null=True, verbose_name="Имя клиента")
     client_phone = models.CharField(max_length=50, blank=True, null=True, verbose_name="Телефон клиента")
+    price = models.CharField(max_length=50, blank=True, null=True, verbose_name="Цена")
+    people_count = models.CharField(max_length=10, blank=True, null=True, verbose_name="Кол-во людей")
     # ==========================
 
     # Ручное подтверждение оплаты админом

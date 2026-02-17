@@ -378,7 +378,7 @@ class PageAdmin(nested_admin.NestedModelAdmin):
 
 @admin.register(PendingBooking)
 class PendingBookingAdmin(admin.ModelAdmin):
-    list_display = ('room', 'client_name', 'client_phone', 'start_time_local', 'end_time_local', 'expires_at_local', 'is_confirmed', 'is_expired_display')
+    list_display = ('room', 'client_name', 'client_phone', 'price', 'start_time_local', 'end_time_local', 'expires_at_local', 'is_confirmed', 'is_expired_display')
     list_filter = ('room', 'is_confirmed', 'created_at')
     readonly_fields = ('created_at', 'expires_at', 'hold_id', 'start_time', 'end_time')
     search_fields = ('room__name', 'hold_id', 'client_name', 'client_phone')
@@ -464,4 +464,4 @@ class BranchAdmin(admin.ModelAdmin):
 
     def rooms_count(self, obj):
         return obj.rooms.filter(is_active=True).count()
-    rooms_count.short_description = 'Кабинетов'
+    rooms_count.short_description = 'Кабинетов' 

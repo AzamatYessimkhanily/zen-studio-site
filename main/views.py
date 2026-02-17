@@ -318,8 +318,8 @@ def get_my_bookings(request):
                     'duration_raw': dur_h,
                     'room': p.room.name,
                     'room_id': p.room.pk,
-                    'price': '',
-                    'people': '',
+                    'price': p.price or '',
+                    'people': p.people_count or '1',
                     'booking_id': str(p.hold_id),
                     'status': 'pending_payment',
                     'hold_id': str(p.hold_id),
@@ -1395,6 +1395,8 @@ def hold_slot(request):
         # Данные клиента (могут быть пустыми на 1 шаге)
         client_name = data.get('client_name')
         client_phone = data.get('client_phone')
+        slot_price = data.get('price', '')
+        slot_people = data.get('people_count', '')
 
         if not all([room_id, date_str, start_time_str, duration_str]):
             return JsonResponse({'success': False, 'error': 'Не все поля заполнены.'}, status=400)
@@ -1483,7 +1485,9 @@ def hold_slot(request):
             end_time=end_dt_aware,
             google_event_id=gcal_event_id,
             client_name=client_name,
-            client_phone=client_phone
+            client_phone=client_phone,
+            price=slot_price or '',
+            people_count=slot_people or ''
         )
 
         return JsonResponse({'success': True, 'hold_id': str(pending_booking.hold_id)})
@@ -1961,9 +1965,9 @@ def admin_confirm_booking(pending_booking):
                 "date": date_str,
                 "start_time": start_time_str,
                 "duration_hours": duration_hours,
-                "people_count": 1,
+                "people_count": pending_booking.people_count or 1,
                 "room_name": room.name,
-                "price": "Подтверждено админом",
+                "price": pending_booking.price if pending_booking.price else "Подтверждено админом",
                 "is_client_new": True
             }
             save_booking_to_sheet(sheet_booking_data)
