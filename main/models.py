@@ -196,11 +196,9 @@ class Room(models.Model):
 
     @property
     def capacity_display(self):
-        """Строка вида 'до 8 чел' или '2–8 чел' для карточки."""
+        """Строка вида 'до 30 чел' для карточки. Всегда 'до max'."""
         if not self.capacity_max:
             return ""
-        if self.capacity_min and self.capacity_min > 1:
-            return f"{self.capacity_min}–{self.capacity_max} чел"
         return f"до {self.capacity_max} чел"
 
 class RoomImage(models.Model):

@@ -324,6 +324,8 @@ def get_my_bookings(request):
                     'status': 'pending_payment',
                     'hold_id': str(p.hold_id),
                     'expires_at': expires_local.isoformat(),
+                    'capacity_min': p.room.capacity_min or 1,
+                    'capacity_max': p.room.capacity_max or 0,
                 })
         except Exception as e:
             print(f"Error reading pending bookings: {e}")
@@ -1314,7 +1316,7 @@ def find_available_rooms(request):
     date_str = request.GET.get('date')
     start_time_str = request.GET.get('start_time')
     duration_str = request.GET.get('duration')
-    people_count_str = request.GET.get('people_count', '1')
+    people_count_str = request.GET.get('people') or request.GET.get('people_count', '1')
 
     if not all([date_str, start_time_str, duration_str]):
         return HttpResponseBadRequest("Missing required parameters: date, start_time, duration")
@@ -1359,6 +1361,13 @@ def find_available_rooms(request):
         is_our_slot_available = any(slot['start'] == start_time_str for slot in all_free_slots_for_room)
 
         if is_our_slot_available:
+            # Фильтр по вместимости: если у кабинета задан capacity_min и он > people_count → пропуск
+            if room.capacity_min and room.capacity_min > 1 and people_count < room.capacity_min:
+                continue
+            # Если capacity_max задан и people_count > capacity_max → пропуск
+            if room.capacity_max and people_count > room.capacity_max:
+                continue
+                
             # 3. Слот точно свободен. Рассчитываем цену.
             room_price = get_price_from_sheet(Decimal(duration_str), people_count) # Используем Decimal
             
@@ -1370,6 +1379,8 @@ def find_available_rooms(request):
                 'short_description': room.short_description,
                 'price': room_price if room_price is not None else "N/A",
                 'capacity': room.capacity_display,
+                'capacity_min': room.capacity_min or 1,
+                'capacity_max': room.capacity_max or 0,
                 'address': room.location.address if hasattr(room, 'location') and room.location and room.location.address else '',
             })
         else:

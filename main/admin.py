@@ -464,4 +464,4 @@ class BranchAdmin(admin.ModelAdmin):
 
     def rooms_count(self, obj):
         return obj.rooms.filter(is_active=True).count()
-    rooms_count.short_description = 'Кабинетов' 
+    rooms_count.short_description = 'Кабинетов'
