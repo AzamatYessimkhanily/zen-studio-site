@@ -629,3 +629,19 @@ class FooterLink(models.Model):
 
     def __str__(self):
         return self.title
+
+
+class StatItem(models.Model):
+    """Цифры для секции 'О нас в цифрах' на главной странице."""
+    number = models.CharField("Цифра", max_length=20, help_text="Например: 2, 1200+, 10тыс+")
+    text = models.CharField("Подпись", max_length=100, help_text="Например: года работы, клиентов")
+    order = models.PositiveIntegerField("Порядок", default=0)
+    is_active = models.BooleanField("Активно", default=True)
+
+    class Meta:
+        verbose_name = 'Цифра (О нас)'
+        verbose_name_plural = 'Цифры (О нас в цифрах)'
+        ordering = ['order']
+
+    def __str__(self):
+        return f"{self.number} — {self.text}"

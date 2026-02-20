@@ -11,7 +11,7 @@ import datetime
 from django.http import JsonResponse, HttpResponseBadRequest
 from django.utils.timezone import make_aware # Для работы с часовыми поясами Django
 import pytz # Библиотека для часовых поясов
-from .models import Room, Tariff, SiteSettings # Убедись, что все модели импортированы
+from .models import Room, Tariff, SiteSettings,StatItem # Убедись, что все модели импортированы
 from django.db.models import Q # Для сложных запросов
 import gspread
 from google.oauth2.service_account import Credentials
@@ -2317,6 +2317,7 @@ class IndexView(TemplateView):
         settings = SiteSettings.objects.first()
         context['settings'] = settings
         context['rooms'] = Room.objects.filter(is_active=True)
+        context['stat_items'] = StatItem.objects.filter(is_active=True)
 
         if settings:
             # Слайды и тарифы, связанные с настройками сайта (inline)

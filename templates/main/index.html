@@ -1137,41 +1137,21 @@
   </div>
 </section>
 
-<!-- Statistics Section - ОБНОВЛЕННАЯ С 2 КОЛОНКАМИ НА МОБИЛЬНЫХ -->
+<!-- Statistics Section - ДИНАМИЧЕСКАЯ (из админки) -->
+{% if stat_items %}
 <section class="statistics-section">
   <div class="container">
     <h2 class="stats-title">О <span style="color: #9DD3AF;">НАС</span> В ЦИФРАХ</h2>
     <div class="stats-grid">
+      {% for item in stat_items %}
       <div class="stat-item">
-        <div class="stat-number">2</div>
-        <div class="stat-text">года работы</div>
+        <div class="stat-number">{{ item.number }}</div>
+        <div class="stat-text">{{ item.text }}</div>
       </div>
-      <div class="stat-item">
-        <div class="stat-number">9</div>
-        <div class="stat-text">кабинетов</div>
-      </div>
-      <div class="stat-item">
-        <div class="stat-number">5</div>
-        <div class="stat-text">локаций</div>
-      </div>
-      <div class="stat-item">
-        <div class="stat-number">1200+</div>
-        <div class="stat-text">клиентов</div>
-      </div>
-      <div class="stat-item">
-        <div class="stat-number">2тыс+</div>
-        <div class="stat-text">подписчиков</div>
-      </div>
-      <div class="stat-item">
-        <div class="stat-number">3тыс+</div>
-        <div class="stat-text">посетителей</div>
-      </div>
-      <div class="stat-item">
-        <div class="stat-number">10тыс+</div>
-        <div class="stat-text">бронирований</div>
-      </div>
+      {% endfor %}
     </div>
   </div>
 </section>
+{% endif %}
 
 {% endblock %}

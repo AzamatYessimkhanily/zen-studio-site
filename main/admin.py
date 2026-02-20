@@ -465,3 +465,10 @@ class BranchAdmin(admin.ModelAdmin):
     def rooms_count(self, obj):
         return obj.rooms.filter(is_active=True).count()
     rooms_count.short_description = 'Кабинетов'
+
+
+@admin.register(StatItem)
+class StatItemAdmin(admin.ModelAdmin):
+    list_display = ('number', 'text', 'order', 'is_active')
+    list_editable = ('order', 'is_active')
+    list_display_links = ('number',)
