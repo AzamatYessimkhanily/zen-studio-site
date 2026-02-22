@@ -4415,8 +4415,37 @@ if (data.balance) {
                 startTimer(timerEndTime);
             }
         } else if (timerEndTime) { 
-            // Таймер истёк между загрузкой и восстановлением
-            stopTimer(); holdId = null; selectedSlot = null; clearBookingState();
+            // Таймер истёк между загрузкой и восстановлением — проверяем, подтверждена ли бронь
+            stopTimer();
+            const expiredHold = holdId;
+            if (expiredHold) {
+                fetch('/api/check_hold_status/?hold_id=' + expiredHold)
+                    .then(r => r.json())
+                    .then(data => {
+                        if (data.status === 'confirmed') {
+                            clearBookingState();
+                            showMessage('success', '✅ Ваша бронь подтверждена администратором! Проверьте WhatsApp для деталей.', true);
+                            showStep(1); holdId = null;
+                        } else {
+                            holdId = null; selectedSlot = null; clearBookingState();
+                            if (roomSelectionContainer) { 
+                                if (moduleBookByRoom) moduleBookByRoom.style.display = 'none'; 
+                                if (moduleFindByTime) moduleFindByTime.style.display = 'none'; 
+                                roomSelectionContainer.style.display = 'block'; 
+                                if (selectedBranchId) filterRoomsByLocation(selectedBranchId);
+                            } else { mainMenuContainer.style.display = 'block'; }
+                            saveCurrentView('room_select');
+                        }
+                    })
+                    .catch(() => {
+                        holdId = null; selectedSlot = null; clearBookingState();
+                        if (roomSelectionContainer) { roomSelectionContainer.style.display = 'block'; }
+                        else { mainMenuContainer.style.display = 'block'; }
+                        saveCurrentView('room_select');
+                    });
+                return;
+            }
+            holdId = null; selectedSlot = null; clearBookingState();
             if (roomSelectionContainer) { 
                 if (moduleBookByRoom) moduleBookByRoom.style.display = 'none'; 
                 if (moduleFindByTime) moduleFindByTime.style.display = 'none'; 
@@ -4520,7 +4549,24 @@ if (data.balance) {
     function startTimer(endTime) { stopTimer(); timerEndTime = endTime; updateTimerDisplay(); timerInterval = setInterval(updateTimerDisplay, 1000); _holdPollCounter = 0; saveBookingState(); }
     function stopTimer() { if (timerInterval) { clearInterval(timerInterval); timerInterval = null; timerEndTime = null; if (timerDisplay) timerDisplay.textContent = '15:00'; } }
     let _holdPollCounter = 0;
-    function updateTimerDisplay() { if (!timerEndTime || !timerDisplay) { stopTimer(); return; } const remaining = timerEndTime - Date.now(); if (remaining <= 0) { stopTimer(); showMessage('error', 'Время истекло!', true); showStep(1); if (holdId) cancelHold(false); clearBookingState(); } else { const minutes = Math.floor(remaining / 1000 / 60); const seconds = Math.floor((remaining / 1000) % 60); if (timerDisplay) timerDisplay.textContent = `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`; }
+    function updateTimerDisplay() { if (!timerEndTime || !timerDisplay) { stopTimer(); return; } const remaining = timerEndTime - Date.now(); if (remaining <= 0) { stopTimer(); 
+            // === ПРОВЕРЯЕМ СТАТУС ПЕРЕД ОТМЕНОЙ (защита от отмены подтверждённых) ===
+            if (holdId) {
+                fetch('/api/check_hold_status/?hold_id=' + holdId)
+                    .then(r => r.json())
+                    .then(data => {
+                        if (data.status === 'confirmed') {
+                            clearBookingState();
+                            showMessage('success', '✅ Ваша бронь подтверждена администратором! Проверьте WhatsApp для деталей.', true);
+                            showStep(1); holdId = null;
+                        } else {
+                            showMessage('error', 'Время истекло!', true); showStep(1);
+                            cancelHold(false); clearBookingState();
+                        }
+                    })
+                    .catch(() => { showMessage('error', 'Время истекло!', true); showStep(1); cancelHold(false); clearBookingState(); });
+            } else { showMessage('error', 'Время истекло!', true); showStep(1); clearBookingState(); }
+        } else { const minutes = Math.floor(remaining / 1000 / 60); const seconds = Math.floor((remaining / 1000) % 60); if (timerDisplay) timerDisplay.textContent = `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`; }
         // === POLLING: проверка подтверждения админом каждые 10 секунд ===
         _holdPollCounter++;
         if (_holdPollCounter % 10 === 0 && holdId) {

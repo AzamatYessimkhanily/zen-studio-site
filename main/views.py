@@ -1518,6 +1518,11 @@ def cancel_hold(request):
             hold_id = uuid.UUID(hold_id_str)
             pending_booking = PendingBooking.objects.get(hold_id=hold_id)
             
+            # === ЗАЩИТА: Не отменять подтверждённые брони ===
+            if pending_booking.is_confirmed:
+                print(f"[CANCEL_HOLD] Бронь {hold_id_str} уже подтверждена админом — отмена заблокирована!")
+                return JsonResponse({'success': True, 'already_confirmed': True})
+            
             # Удаляем из Google
             if pending_booking.google_event_id and pending_booking.room.google_calendar_id:
                 try:

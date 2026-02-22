@@ -11,7 +11,7 @@ SECRET_KEY = 'django-insecure-e@#4!&8*@8)7!%5&0!9_6^2!3@1#4&5*@6)8!%9&0!1_2^3!'
 DEBUG = os.environ.get('DEBUG', 'True') == 'True'
 
 
-ALLOWED_HOSTS = ['zenstudio.kz', '194.32.140.210']
+ALLOWED_HOSTS = ['zenstudio.kz', '194.32.140.210', 'www.zenstudio.kz']
 # Доверенные источники для CSRF (нужно с указанием схемы!)
 CSRF_TRUSTED_ORIGINS = [
     "https://zenstudio.kz",
