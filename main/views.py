@@ -11,7 +11,7 @@ import datetime
 from django.http import JsonResponse, HttpResponseBadRequest
 from django.utils.timezone import make_aware # Для работы с часовыми поясами Django
 import pytz # Библиотека для часовых поясов
-from .models import Room, Tariff, SiteSettings,StatItem # Убедись, что все модели импортированы
+from .models import Room, Tariff, SiteSettings # Убедись, что все модели импортированы
 from django.db.models import Q # Для сложных запросов
 import gspread
 from google.oauth2.service_account import Credentials
@@ -734,7 +734,12 @@ def get_door_code_and_instructions(room_name):
                 headers = worksheet_doors.row_values(1)
                 room_details = dict(zip(headers, row_data))
 
-                door_code = room_details.get("🔑 Код от ключницы для открытия двери", "Код не найден")
+                door_code = room_details.get("🔑 Код от ключницы для открытия двери", "")
+                # Убираем "пустые" значения
+                if door_code and door_code.strip():
+                    door_code = door_code.strip()
+                else:
+                    door_code = None
                 address = room_details.get("Адрес", "")
                 instructions_text = room_details.get("Как открыть кабинет", "")
                 
@@ -763,7 +768,9 @@ def get_door_code_and_instructions(room_name):
         final_message = f"✅ Ваша бронь кабинета {room_name} подтверждена!\n"
         if address: final_message += f"📍 Адрес: {address}\n"
         if door_code: final_message += f"🔑 Код двери: {door_code}\n"
-        else: final_message += f"🔑 Код двери: Не найден\n"
+        
+        # Добавляем в details для фронтенда
+        details["has_door_code"] = bool(door_code)
 
         if instructions_text: final_message += f"\n🚪 Как открыть:\n{instructions_text}\n"
         if post_payment_instructions: final_message += f"\n{post_payment_instructions}\n"
@@ -1733,27 +1740,24 @@ def create_booking(request):
             desc_payment = payment_info_text
 
         # === СКРЫТИЕ НОМЕРА (Зеленая бронь) ===
+        booked_at = timezone.localtime(timezone.now()).strftime('%d.%m.%Y в %H:%M')
         if room.hide_phone_in_calendar:
-            # 1. Заголовок БЕЗ телефона
             event_summary = f'Сайт:{client_name}' 
-            
-            # 2. Описание БЕЗ строки "Тел:" вообще
             event_description = (
                 f'Клиент: {client_name}\n'
                 f'Кол-во: {people_count}\n'
                 f'Длительность: {duration_hours} ч.\nЦена: {data.get("price", price)} тг\n'
-                f'Оплата: {desc_payment}\nИсточник: Сайт' 
+                f'Оплата: {desc_payment}\nИсточник: Сайт\n'
+                f'Забронировано: {booked_at}' 
             )
         else:
-            # 1. Заголовок С телефоном
             event_summary = f'Сайт:{client_name} ({client_phone})'
-            
-            # 2. Описание С телефоном
             event_description = (
                 f'Клиент: {client_name}\nТел: {client_phone}\n'
                 f'Кол-во: {people_count}\n'
                 f'Длительность: {duration_hours} ч.\nЦена: {data.get("price", price)} тг\n'
-                f'Оплата: {desc_payment}\nИсточник: Сайт' 
+                f'Оплата: {desc_payment}\nИсточник: Сайт\n'
+                f'Забронировано: {booked_at}' 
             )
         # ======================================
         
@@ -1837,9 +1841,10 @@ def create_booking(request):
         client_message_text = (
             f"✅ Ваша бронь кабинета {room.name} подтверждена!\n"
             f"📍 Адрес: {address}\n"
-            f"🔑 Код двери: {door_code}\n"
-            f"🗓 {date_str} | с {start_time_str} до {end_time_str}\n"
         )
+        if door_code:
+            client_message_text += f"🔑 Код двери: {door_code}\n"
+        client_message_text += f"🗓 {date_str} | с {start_time_str} до {end_time_str}\n"
 
         # Если это абонемент — вставляем остаток СРАЗУ ПОСЛЕ времени
         if is_subscription:
@@ -1938,14 +1943,16 @@ def admin_confirm_booking(pending_booking):
                 event_description = (
                     f'Клиент: {client_name}\n'
                     f'Длительность: {duration_hours} ч.\n'
-                    f'Оплата: {desc_payment}\nИсточник: Сайт (Админ)'
+                    f'Оплата: {desc_payment}\nИсточник: Сайт (Админ)\n'
+                    f'Забронировано: {timezone.localtime(pending_booking.created_at).strftime("%d.%m.%Y в %H:%M")}'
                 )
             else:
                 event_summary = f'Сайт:{client_name} ({client_phone})'
                 event_description = (
                     f'Клиент: {client_name}\nТел: {client_phone}\n'
                     f'Длительность: {duration_hours} ч.\n'
-                    f'Оплата: {desc_payment}\nИсточник: Сайт (Админ)'
+                    f'Оплата: {desc_payment}\nИсточник: Сайт (Админ)\n'
+                    f'Забронировано: {timezone.localtime(pending_booking.created_at).strftime("%d.%m.%Y в %H:%M")}'
                 )
             
             event_patch = {
@@ -2007,9 +2014,10 @@ def admin_confirm_booking(pending_booking):
             client_message_text = (
                 f"✅ Ваша бронь кабинета {room.name} подтверждена!\n"
                 f"📍 Адрес: {address}\n"
-                f"🔑 Код двери: {door_code}\n"
-                f"🗓 {date_str} | с {start_time_str} до {end_time_str}\n"
             )
+            if door_code:
+                client_message_text += f"🔑 Код двери: {door_code}\n"
+            client_message_text += f"🗓 {date_str} | с {start_time_str} до {end_time_str}\n"
             if enter_instr:
                 client_message_text += f"\n🚪 Как открыть:\n{enter_instr}\n"
             if general_info:

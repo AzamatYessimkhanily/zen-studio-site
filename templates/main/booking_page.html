@@ -1417,6 +1417,17 @@ footer, .footer, #footer, .site-footer {
     line-height: 1.6;
     color: #555;
 }
+/* === ДЕНЬ НЕДЕЛИ ПОД ДАТОЙ === */
+.date-day-label {
+    display: block;
+    text-align: center;
+    font-size: 0.72rem;
+    font-weight: 600;
+    color: var(--zen-green-dark, #4a9d6e);
+    margin-top: 2px;
+    pointer-events: none;
+}
+
 /* === НОВЫЙ СТИЛЬ ТЕЛЕФОНА (Compact & Match Name Field) === */
 #phone_mask_wrapper {
     background-color: #f2f2f7 !important;
@@ -1685,7 +1696,7 @@ footer, .footer, #footer, .site-footer {
                 {# Кнопка "Все кабинеты" #}
                 <div class="location-card all-locations" data-branch-id="all">
                     <div class="location-card-placeholder">
-                        <i class="fas fa-th-large"></i>
+                        <img src="/static/img/all-locations.png" alt="Любая локация" class="location-card-img">
                     </div>
                     <div class="location-card-body">
                         <div class="location-card-name">Любая локация</div>
@@ -4293,7 +4304,39 @@ if (data.balance) {
         } finally { isFetching = false; }
     }
 
-    function setDefaultDate(dateInput) { if (!dateInput) return; const today = new Date(); const yyyy = today.getFullYear(); const mm = String(today.getMonth() + 1).padStart(2, '0'); const dd = String(today.getDate()).padStart(2, '0'); dateInput.value = `${yyyy}-${mm}-${dd}`; dateInput.min = dateInput.value; }
+    function setDefaultDate(dateInput) { if (!dateInput) return; const today = new Date(); const yyyy = today.getFullYear(); const mm = String(today.getMonth() + 1).padStart(2, '0'); const dd = String(today.getDate()).padStart(2, '0'); dateInput.value = `${yyyy}-${mm}-${dd}`; dateInput.min = dateInput.value; _updateDateLabel(dateInput); }
+
+    // === День недели рядом с датой ===
+    const _dayNames = ['Воскресенье', 'Понедельник', 'Вторник', 'Среда', 'Четверг', 'Пятница', 'Суббота'];
+    function _updateDateLabel(dateInput) {
+        if (!dateInput || !dateInput.value) return;
+        // Удаляем старый лейбл если есть
+        const existingLabel = dateInput.parentNode.querySelector('.date-day-label');
+        if (existingLabel) existingLabel.remove();
+        
+        const parts = dateInput.value.split('-');
+        const d = new Date(parseInt(parts[0]), parseInt(parts[1]) - 1, parseInt(parts[2]));
+        if (isNaN(d.getTime())) return;
+        
+        const today = new Date(); today.setHours(0,0,0,0);
+        const tomorrow = new Date(today); tomorrow.setDate(tomorrow.getDate() + 1);
+        const selectedDay = new Date(d); selectedDay.setHours(0,0,0,0);
+        
+        let label = '';
+        if (selectedDay.getTime() === today.getTime()) { label = 'Сегодня'; }
+        else if (selectedDay.getTime() === tomorrow.getTime()) { label = 'Завтра'; }
+        else { label = _dayNames[d.getDay()]; }
+        
+        const span = document.createElement('span');
+        span.className = 'date-day-label';
+        span.textContent = label;
+        dateInput.parentNode.style.position = 'relative';
+        dateInput.parentNode.appendChild(span);
+    }
+    // Слушатель на все date-инпуты
+    document.addEventListener('change', function(e) {
+        if (e.target && e.target.type === 'date') { _updateDateLabel(e.target); }
+    });
     
     function showStep(stepNumber) { 
         if(!step1 || !step2 || !step3 || !stepReceipt) return;
@@ -4373,7 +4416,7 @@ if (data.balance) {
         // Обновляем селектор людей по вместимости ПЕРЕД установкой значения
         const activeW = (state.scenario === 'room') ? bookingModuleWrapper1 : bookingModuleWrapper2;
         _updatePeopleSelector(activeW);
-        if (bookingDateInput && state.date) bookingDateInput.value = state.date; 
+        if (bookingDateInput && state.date) { bookingDateInput.value = state.date; _updateDateLabel(bookingDateInput); }
         if (bookingDurationSelect && state.duration) bookingDurationSelect.value = state.duration; 
         if (bookingPeopleInput && state.people) bookingPeopleInput.value = state.people; 
         if (clientNameInput && state.client_name) clientNameInput.value = state.client_name; 
@@ -4729,10 +4772,15 @@ if (data.balance) {
         const realAddress = details.address || "Адрес уточняется у администратора";
         const enterInstr = details.enter_instruction || "";
         const generalInfo = details.general_info || "";
+        const hasDoorCode = details.has_door_code || false;
         const formattedGeneralInfo = generalInfo.replace(/\n/g, '<br>');
         let formattedEnterInstr = enterInstr.replace(/\n/g, '<br>').replace(/(https?:\/\/[^\s]+)/g, '');
         let balanceHTML = ''; if (data.balance) { balanceHTML = `<div class="w-100 bg-light rounded-4 p-3 mb-4 text-center border border-success border-opacity-25 shadow-sm"><div class="text-muted small text-uppercase fw-bold mb-1" style="font-size: 0.75rem; letter-spacing: 1px;">Остаток абонемента</div><div class="fw-bold text-success display-6">${data.balance}</div></div>`; }
-        const successHTML = `<div id="booking-section" class="info-section animated-item"><div class="d-flex align-items-center mb-4"><h4 class="info-title mb-0" style="display: flex; align-items: center; gap: 10px;"><i class="fas fa-check-double text-success"></i> Бронь подтверждена!</h4></div><div class="booking-step visible" style="display: block; height: auto; opacity: 1;">${balanceHTML} <div class="d-flex align-items-center gap-3 p-3 rounded-4 bg-secondary bg-opacity-10 mb-4 border border-secondary border-opacity-25"><i class="fas fa-key fs-1 text-warning"></i><div><div class="fw-bold text-dark">Код доступа</div><div class="small text-dark lh-sm">В целях безопасности код от двери отправлен вам в <span class="text-success fw-bold"><i class="fab fa-whatsapp"></i> WhatsApp</span> на номер ${data.clientPhone}.</div></div></div><h6 class="fw-bold text-muted small text-uppercase mb-2 ms-1">Информация о студии:</h6><div class="accordion mb-4" id="successInfoAccordion"><div class="accordion-item border-0 mb-2 rounded-3 overflow-hidden shadow-sm"><h2 class="accordion-header"><button class="accordion-button collapsed bg-white" type="button" data-bs-toggle="collapse" data-bs-target="#collapseAddress"><div class="d-flex align-items-center"><div class="bg-secondary bg-opacity-10 text-dark rounded-circle p-2 me-3" style="width: 35px; height: 35px; display: flex; align-items: center; justify-content: center;"><i class="fas fa-map-marker-alt"></i></div><span class="fw-bold text-dark">Адрес студии</span></div></button></h2><div id="collapseAddress" class="accordion-collapse collapse" data-bs-parent="#successInfoAccordion"><div class="accordion-body bg-white small text-secondary pt-0"><p class="mb-0 fw-bold text-dark fs-6">${realAddress}</p></div></div></div>${enterInstr ? `<div class="accordion-item border-0 mb-2 rounded-3 overflow-hidden shadow-sm"><h2 class="accordion-header"><button class="accordion-button collapsed bg-white" type="button" data-bs-toggle="collapse" data-bs-target="#collapseEnter"><div class="d-flex align-items-center"><div class="bg-secondary bg-opacity-10 text-dark rounded-circle p-2 me-3" style="width: 35px; height: 35px; display: flex; align-items: center; justify-content: center;"><i class="fas fa-door-closed"></i></div><span class="fw-bold text-dark">Как открыть кабинет</span></div></button></h2><div id="collapseEnter" class="accordion-collapse collapse" data-bs-parent="#successInfoAccordion"><div class="accordion-body bg-white small text-secondary pt-0"><div class="mb-3">${formattedEnterInstr}</div><a href="https://youtube.com/shorts/44B-tXYBQNc?si=uEUDuIC0-wPpBPPp" target="_blank" class="btn btn-light border w-100 py-2 rounded-4 shadow-sm d-flex align-items-center text-start text-decoration-none overflow-hidden"><i class="fab fa-youtube text-danger fa-2x me-3 flex-shrink-0"></i><div style="min-width: 0;"><div class="text-dark fw-bold">Видео: Как открыть дверь</div><div class="text-muted small text-truncate">Нажмите для просмотра</div></div></a></div></div></div>` : ''}${generalInfo ? `<div class="accordion-item border-0 rounded-3 overflow-hidden shadow-sm"><h2 class="accordion-header"><button class="accordion-button collapsed bg-white" type="button" data-bs-toggle="collapse" data-bs-target="#collapseInfo"><div class="d-flex align-items-center"><div class="bg-secondary bg-opacity-10 text-dark rounded-circle p-2 me-3" style="width: 35px; height: 35px; display: flex; align-items: center; justify-content: center;"><i class="fas fa-info"></i></div><span class="fw-bold text-dark">Правила посещения</span></div></button></h2><div id="collapseInfo" class="accordion-collapse collapse" data-bs-parent="#successInfoAccordion"><div class="accordion-body bg-white small text-secondary pt-0" style="line-height: 1.6;">${formattedGeneralInfo}</div></div></div>` : ''}</div><div class="mb-4 small" style="font-size: 0.9rem;"><div class="d-flex justify-content-between align-items-center py-2 border-bottom"><span class="text-secondary">Кабинет:</span> <span class="fw-bold text-dark">${data.roomName}</span></div><div class="d-flex justify-content-between align-items-center py-2 border-bottom"><span class="text-secondary">Дата:</span> <span class="fw-bold text-dark">${data.date}</span></div><div class="d-flex justify-content-between align-items-center py-2"><span class="text-secondary">Время:</span> <span class="fw-bold text-dark">${data.time}</span></div></div><button onclick="window.location.reload()" class="btn-zen-primary py-3 shadow"><i class="fas fa-check me-2"></i> Всё понятно, спасибо</button><div class="text-center mt-4"><a href="https://wa.me/{{ settings.phone|default:'77073910808'|cut:' ' }}" target="_blank" class="btn btn-link text-decoration-none text-muted small p-0"><i class="fab fa-whatsapp text-success me-1"></i> Связаться с администратором</a></div></div></div>`;
+        let doorCodeHTML = '';
+        if (hasDoorCode) {
+            doorCodeHTML = `<div class="d-flex align-items-center gap-3 p-3 rounded-4 bg-secondary bg-opacity-10 mb-4 border border-secondary border-opacity-25"><i class="fas fa-key fs-1 text-warning"></i><div><div class="fw-bold text-dark">Код доступа</div><div class="small text-dark lh-sm">В целях безопасности код от двери отправлен вам в <span class="text-success fw-bold"><i class="fab fa-whatsapp"></i> WhatsApp</span> на номер ${data.clientPhone}.</div></div></div>`;
+        }
+        const successHTML = `<div id="booking-section" class="info-section animated-item"><div class="d-flex align-items-center mb-4"><h4 class="info-title mb-0" style="display: flex; align-items: center; gap: 10px;"><i class="fas fa-check-double text-success"></i> Бронь подтверждена!</h4></div><div class="booking-step visible" style="display: block; height: auto; opacity: 1;">${balanceHTML} ${doorCodeHTML}<h6 class="fw-bold text-muted small text-uppercase mb-2 ms-1">Информация о студии:</h6><div class="accordion mb-4" id="successInfoAccordion"><div class="accordion-item border-0 mb-2 rounded-3 overflow-hidden shadow-sm"><h2 class="accordion-header"><button class="accordion-button collapsed bg-white" type="button" data-bs-toggle="collapse" data-bs-target="#collapseAddress"><div class="d-flex align-items-center"><div class="bg-secondary bg-opacity-10 text-dark rounded-circle p-2 me-3" style="width: 35px; height: 35px; display: flex; align-items: center; justify-content: center;"><i class="fas fa-map-marker-alt"></i></div><span class="fw-bold text-dark">Адрес студии</span></div></button></h2><div id="collapseAddress" class="accordion-collapse collapse" data-bs-parent="#successInfoAccordion"><div class="accordion-body bg-white small text-secondary pt-0"><p class="mb-0 fw-bold text-dark fs-6">${realAddress}</p></div></div></div>${enterInstr ? `<div class="accordion-item border-0 mb-2 rounded-3 overflow-hidden shadow-sm"><h2 class="accordion-header"><button class="accordion-button collapsed bg-white" type="button" data-bs-toggle="collapse" data-bs-target="#collapseEnter"><div class="d-flex align-items-center"><div class="bg-secondary bg-opacity-10 text-dark rounded-circle p-2 me-3" style="width: 35px; height: 35px; display: flex; align-items: center; justify-content: center;"><i class="fas fa-door-closed"></i></div><span class="fw-bold text-dark">Как открыть кабинет</span></div></button></h2><div id="collapseEnter" class="accordion-collapse collapse" data-bs-parent="#successInfoAccordion"><div class="accordion-body bg-white small text-secondary pt-0"><div class="mb-3">${formattedEnterInstr}</div><a href="https://youtube.com/shorts/44B-tXYBQNc?si=uEUDuIC0-wPpBPPp" target="_blank" class="btn btn-light border w-100 py-2 rounded-4 shadow-sm d-flex align-items-center text-start text-decoration-none overflow-hidden"><i class="fab fa-youtube text-danger fa-2x me-3 flex-shrink-0"></i><div style="min-width: 0;"><div class="text-dark fw-bold">Видео: Как открыть дверь</div><div class="text-muted small text-truncate">Нажмите для просмотра</div></div></a></div></div></div>` : ''}${generalInfo ? `<div class="accordion-item border-0 rounded-3 overflow-hidden shadow-sm"><h2 class="accordion-header"><button class="accordion-button collapsed bg-white" type="button" data-bs-toggle="collapse" data-bs-target="#collapseInfo"><div class="d-flex align-items-center"><div class="bg-secondary bg-opacity-10 text-dark rounded-circle p-2 me-3" style="width: 35px; height: 35px; display: flex; align-items: center; justify-content: center;"><i class="fas fa-info"></i></div><span class="fw-bold text-dark">Правила посещения</span></div></button></h2><div id="collapseInfo" class="accordion-collapse collapse" data-bs-parent="#successInfoAccordion"><div class="accordion-body bg-white small text-secondary pt-0" style="line-height: 1.6;">${formattedGeneralInfo}</div></div></div>` : ''}</div><div class="mb-4 small" style="font-size: 0.9rem;"><div class="d-flex justify-content-between align-items-center py-2 border-bottom"><span class="text-secondary">Кабинет:</span> <span class="fw-bold text-dark">${data.roomName}</span></div><div class="d-flex justify-content-between align-items-center py-2 border-bottom"><span class="text-secondary">Дата:</span> <span class="fw-bold text-dark">${data.date}</span></div><div class="d-flex justify-content-between align-items-center py-2"><span class="text-secondary">Время:</span> <span class="fw-bold text-dark">${data.time}</span></div></div><button onclick="window.location.reload()" class="btn-zen-primary py-3 shadow"><i class="fas fa-check me-2"></i> Всё понятно, спасибо</button><div class="text-center mt-4"><a href="https://wa.me/{{ settings.phone|default:'77073910808'|cut:' ' }}" target="_blank" class="btn btn-link text-decoration-none text-muted small p-0"><i class="fab fa-whatsapp text-success me-1"></i> Связаться с администратором</a></div></div></div>`;
         container.innerHTML = successHTML;
         if (roomSelectionContainer) roomSelectionContainer.style.display = 'none';
         if (searchInterfaceContainer) searchInterfaceContainer.style.display = 'none';
