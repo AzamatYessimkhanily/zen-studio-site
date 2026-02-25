@@ -35,6 +35,7 @@ class Command(BaseCommand):
 
             records = ws.get_all_records()
             headers = ws.row_values(1)
+            headers_lower = [h.lower().strip() for h in headers]
             
             if "Напоминание" not in headers:
                 new_col_idx = len(headers) + 1
@@ -44,12 +45,49 @@ class Command(BaseCommand):
             else:
                 remind_col_idx = headers.index("Напоминание") + 1
 
+            # Находим колонки цены и статуса для проверки отмены
+            price_col_name = None
+            for name in ['цена', 'стоимость', 'оплата']:
+                if name in headers_lower:
+                    price_col_name = headers[headers_lower.index(name)]
+                    break
+
+            # Собираем все колонки статуса/примечания
+            status_col_names = []
+            for i, h in enumerate(headers_lower):
+                if 'статус' in h or 'примечан' in h:
+                    status_col_names.append(headers[i])
+
             updates_count = 0
+            skipped_cancelled = 0
+
             for i, row in enumerate(records):
                 row_num = i + 2 
                 status = str(row.get("Напоминание", "")).lower()
                 if status in ["да", "yes", "sent", "отправлено"]:
                     continue
+
+                # === ПРОВЕРКА ОТМЕНЫ ===
+                is_cancelled = False
+
+                # 1. Проверяем колонку цены
+                if price_col_name:
+                    price_val = str(row.get(price_col_name, "")).lower().strip()
+                    if 'отменен' in price_val or 'отмена' in price_val:
+                        is_cancelled = True
+
+                # 2. Проверяем колонки статуса/примечания
+                if not is_cancelled:
+                    for col_name in status_col_names:
+                        cell_val = str(row.get(col_name, "")).lower().strip()
+                        if 'отменен' in cell_val or 'отмена' in cell_val:
+                            is_cancelled = True
+                            break
+
+                if is_cancelled:
+                    skipped_cancelled += 1
+                    continue
+                # === КОНЕЦ ПРОВЕРКИ ОТМЕНЫ ===
 
                 date_str = str(row.get("Дата", "")).strip()
                 time_str = str(row.get("Время", "")).strip()
@@ -67,16 +105,13 @@ class Command(BaseCommand):
                 # === УМНОЕ УСЛОВИЕ ===
                 is_morning_booking = (booking_start.hour < 10)  # Если бронь до 10:00 утра
 
-                # 1. Если это утро (до 10:00) — напоминаем заранее (с вечера, за 12 часов)
-                # 2. Если это день/вечер — напоминаем как обычно (за 3 часа)
-                
                 should_remind = False
                 
                 if is_morning_booking:
-                    if 0.25 <= hours_diff <= 14: # Ловим утренних с вечера (до 14 часов заранее)
+                    if 0.25 <= hours_diff <= 14:
                         should_remind = True
                 else:
-                    if 0.25 <= hours_diff <= 3: # Остальных — строго за 3 часа
+                    if 0.25 <= hours_diff <= 3:
                         should_remind = True
 
                 if should_remind:
@@ -85,22 +120,23 @@ class Command(BaseCommand):
                     if not client_phone: continue
 
                     door_code, _, _ = get_door_code_and_instructions(room_name)
-                    if not door_code: door_code = "Код уточняется"
 
+                    # Формируем сообщение (без кода двери если его нет)
                     message = (
                         f"👋 Напоминание! Ждем вас.\n\n"
                         f"🏠 Кабинет: {room_name}\n"
                         f"🗓 Время: {time_str}\n"
-                        f"🔑 Код от двери: *{door_code}*\n\n"
-                        f"Zen Studio 🌿"
                     )
+                    if door_code:
+                        message += f"🔑 Код от двери: *{door_code}*\n"
+                    message += f"\nZen Studio 🌿"
 
                     self.send_whatsapp(client_phone, message)
                     ws.update_cell(row_num, remind_col_idx, "Отправлено")
-                    self.stdout.write(self.style.SUCCESS(f"✅ Отправлено: {client_phone}"))
+                    self.stdout.write(self.style.SUCCESS(f"✅ Отправлено: {client_phone} ({room_name})"))
                     updates_count += 1
 
-            self.stdout.write(f"Итог: отправлено {updates_count}")
+            self.stdout.write(f"Итог: отправлено {updates_count}, пропущено отменённых {skipped_cancelled}")
 
         except Exception as e:
             self.stdout.write(self.style.ERROR(f"Ошибка: {e}"))
