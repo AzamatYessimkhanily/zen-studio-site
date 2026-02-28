@@ -2828,14 +2828,23 @@ if (data.balance) {
                     <div class="text-muted small"><i class="far fa-calendar me-1"></i>${dateF} &nbsp; <i class="far fa-clock me-1"></i>${timeR}</div>
                 </div>`;
 
-            // ---- ОТМЕНА НЕВОЗМОЖНА (< 3ч) ----
-            if (!info.can_cancel) {
+            // ---- ОТМЕНА МЕНЕЕ 3Ч (предупреждение + кнопка) ----
+            if (info.is_late_cancel) {
                 cancelBody.innerHTML = `
                     ${bookingInfoHtml}
                     <div class="cancel-block-icon"><i class="fas fa-exclamation-triangle"></i></div>
                     <h6 class="fw-bold text-center mb-2">Часы сгорают</h6>
                     <p class="text-center text-muted small mb-3">До начала брони осталось менее 3 часов.<br>Отмена доступна не позднее чем за 3 часа до начала.</p>
-                    <div class="text-center"><a href="https://wa.me/77073910808" target="_blank" class="btn btn-sm btn-outline-secondary rounded-pill"><i class="fab fa-whatsapp me-1"></i>Связаться с администратором</a></div>`;
+                    <div class="text-center mb-3"><a href="https://wa.me/77073910808" target="_blank" class="btn btn-sm btn-outline-secondary rounded-pill"><i class="fab fa-whatsapp me-1"></i>Связаться с администратором</a></div>
+                    <button class="btn w-100 py-2" id="btn_confirm_late_cancel" style="border-radius: 12px; background: #fff; color: #dc3545; border: 1px solid #dc3545; font-weight: 500;">
+                        <i class="fas fa-times me-1"></i>Отменить
+                    </button>`;
+
+                document.getElementById('btn_confirm_late_cancel').addEventListener('click', async function() {
+                    this.disabled = true;
+                    this.innerHTML = '<span class="spinner-border spinner-border-sm"></span> Отменяем...';
+                    await _executeCancellation(bData, info, null, null, null, 'none');
+                });
                 return;
             }
 
@@ -2920,6 +2929,7 @@ if (data.balance) {
                     has_penalty: info.has_penalty,
                     penalty_amount: info.penalty_amount,
                     base_price: info.base_price,
+                    is_late_cancel: info.is_late_cancel || false,
                     payment_method: payMethod,
                     receipt_file_data: fileData,
                     receipt_file_name: fileName,
@@ -2936,12 +2946,19 @@ if (data.balance) {
             // Успех! Сбрасываем кэш ЛК
             try { localStorage.removeItem('zenMyBookingsCache'); } catch(e) {}
 
+            const isLate = info.is_late_cancel || false;
+            let refundHtml = '';
+            if (!isLate) {
+                refundHtml = `
+                    <p class="text-muted small mb-1">Возвращено: <strong>${result.refund_hours}</strong></p>
+                    <p class="text-muted small mb-3">Баланс абонемента: <strong>${result.new_balance}</strong></p>`;
+            }
+
             cancelBody.innerHTML = `
                 <div class="text-center py-3">
                     <div class="cancel-block-icon cancel-free"><i class="fas fa-check-circle"></i></div>
                     <h6 class="fw-bold mb-2">Бронь отменена</h6>
-                    <p class="text-muted small mb-1">Возвращено: <strong>${result.refund_hours}</strong></p>
-                    <p class="text-muted small mb-3">Баланс абонемента: <strong>${result.new_balance}</strong></p>
+                    ${refundHtml}
                     ${!result.sheet_updated ? '<p class="small text-warning"><i class="fas fa-exclamation-triangle me-1"></i>Обновление таблицы может занять время</p>' : ''}
                     ${result.had_penalty ? `<p class="small text-warning"><i class="fas fa-info-circle me-1"></i>Штраф ${result.penalty_amount} ₸ учтён</p>` : ''}
                     <button class="btn-zen-primary w-100 py-2" style="border-radius:12px;" onclick="document.getElementById('cancelBookingModal').querySelector('.btn-close').click(); loadMyAccount();">

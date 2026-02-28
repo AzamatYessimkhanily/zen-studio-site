@@ -2426,7 +2426,7 @@ class RoomDetailView(DetailView):
 def cancel_booking_init(request):
     """
     Принимает данные брони, определяет штрафной тариф:
-    < 3ч  → отмена невозможна
+    < 3ч  → штраф 25% (ранее отмена была невозможна)
     3-12ч → штраф 25%
     > 12ч → бесплатная отмена
     """
@@ -2452,16 +2452,6 @@ def cancel_booking_init(request):
         now = timezone.now()
         hours_until = (booking_dt_aware - now).total_seconds() / 3600
 
-        # --- ОПРЕДЕЛЯЕМ ТАРИФ ---
-        if hours_until < 3:
-            return JsonResponse({
-                'success': True,
-                'can_cancel': False,
-                'reason': 'too_late',
-                'hours_until': round(hours_until, 1),
-                'message': 'Отмена невозможна менее чем за 3 часа до начала.'
-            })
-
         # Определяем цену для штрафа
         is_subscription_booking = False
         base_price = 0
@@ -2484,8 +2474,14 @@ def cancel_booking_init(request):
 
         penalty_amount = 0
         has_penalty = False
+        is_late_cancel = False
 
-        if hours_until < 12:
+        if hours_until < 3:
+            # Менее 3 часов — отмена без штрафа, без возврата часов
+            has_penalty = False
+            penalty_amount = 0
+            is_late_cancel = True
+        elif hours_until < 12:
             has_penalty = True
             penalty_amount = round(base_price * 0.25)
 
@@ -2498,6 +2494,7 @@ def cancel_booking_init(request):
             'penalty_amount': penalty_amount,
             'base_price': base_price,
             'is_subscription_booking': is_subscription_booking,
+            'is_late_cancel': is_late_cancel,
             'hours_until': round(hours_until, 1),
             'refund_hours': dur_h,
             'duration_display': format_hours_text(dur_h),
@@ -2611,7 +2608,7 @@ def cancel_booking_confirm(request):
 
         # --- 0. ВАЛИДАЦИЯ ЧЕКА (если штраф переводом) ---
         receipt_info = ""
-        if has_penalty and payment_method != 'subscription':
+        if has_penalty and payment_method not in ('subscription', 'none'):
             if not receipt_file_data and not receipt_number:
                 return JsonResponse({'success': False, 'error': 'Прикрепите чек или номер квитанции'}, status=400)
             if receipt_file_data:
@@ -2774,41 +2771,49 @@ def cancel_booking_confirm(request):
                 return JsonResponse({'success': False, 'error': f'Ошибка списания штрафа: {e}'}, status=500)
 
         # ============================================================
-        # --- 3. ВОЗВРАТ ЧАСОВ В АБОНЕМЕНТ ---
+        # --- 3. ВОЗВРАТ ЧАСОВ В АБОНЕМЕНТ (пропуск при поздней отмене) ---
         # ============================================================
+        is_late_cancel = data.get('is_late_cancel', False)
         new_balance_display = ""
-        try:
-            _time.sleep(1)
-            ws_sub = sh.worksheet("Абонементы")
-            sub_phone_col, sub_balance_col = _find_sub_columns(ws_sub)
+        
+        if is_late_cancel:
+            # Поздняя отмена — часы НЕ возвращаются
+            new_balance_display = "—"
+            refund_display = "не возвращено (поздняя отмена)"
+            print(f"[CANCEL] Поздняя отмена — часы не возвращаются")
+        else:
+            try:
+                _time.sleep(1)
+                ws_sub = sh.worksheet("Абонементы")
+                sub_phone_col, sub_balance_col = _find_sub_columns(ws_sub)
 
-            if sub_phone_col and sub_balance_col:
-                phones_list = ws_sub.col_values(sub_phone_col)
-                if phone_norm in phones_list:
-                    sub_row = phones_list.index(phone_norm) + 1
-                    balance_str = str(ws_sub.cell(sub_row, sub_balance_col).value or '0').replace(',', '.')
-                    try:
-                        current_balance = float(balance_str)
-                    except:
-                        current_balance = 0
+                if sub_phone_col and sub_balance_col:
+                    phones_list = ws_sub.col_values(sub_phone_col)
+                    if phone_norm in phones_list:
+                        sub_row = phones_list.index(phone_norm) + 1
+                        balance_str = str(ws_sub.cell(sub_row, sub_balance_col).value or '0').replace(',', '.')
+                        try:
+                            current_balance = float(balance_str)
+                        except:
+                            current_balance = 0
 
-                    new_balance = current_balance + refund_hours
-                    ws_sub.update_cell(sub_row, sub_balance_col, new_balance)
-                    new_balance_display = format_hours_text(new_balance)
-                    print(f"[CANCEL] Возврат: +{refund_hours}ч, баланс: {new_balance}")
+                        new_balance = current_balance + refund_hours
+                        ws_sub.update_cell(sub_row, sub_balance_col, new_balance)
+                        new_balance_display = format_hours_text(new_balance)
+                        print(f"[CANCEL] Возврат: +{refund_hours}ч, баланс: {new_balance}")
+                    else:
+                        success = add_new_subscription_to_sheet({
+                            'name': client_name or 'Клиент',
+                            'phone': phone,
+                            'hours': refund_hours,
+                            'price': 0
+                        })
+                        new_balance_display = format_hours_text(refund_hours) if success else "ошибка записи"
                 else:
-                    success = add_new_subscription_to_sheet({
-                        'name': client_name or 'Клиент',
-                        'phone': phone,
-                        'hours': refund_hours,
-                        'price': 0
-                    })
-                    new_balance_display = format_hours_text(refund_hours) if success else "ошибка записи"
-            else:
+                    new_balance_display = "ошибка"
+            except Exception as e:
+                print(f"[CANCEL] Ошибка возврата: {e}")
                 new_balance_display = "ошибка"
-        except Exception as e:
-            print(f"[CANCEL] Ошибка возврата: {e}")
-            new_balance_display = "ошибка"
 
         # ============================================================
         # --- 4. УДАЛЯЕМ ИЗ GOOGLE CALENDAR ---
@@ -2858,35 +2863,61 @@ def cancel_booking_confirm(request):
         # --- 5. WHATSAPP УВЕДОМЛЕНИЯ ---
         # ============================================================
         duration_display = format_hours_text(duration)
-        penalty_text = f"💸 Штраф: {penalty_amount} ₸ ({receipt_info})" if has_penalty else "✅ Без штрафа"
+        if is_late_cancel:
+            penalty_text = "⚠️ Поздняя отмена (менее 3ч)"
+        elif has_penalty:
+            penalty_text = f"💸 Штраф: {penalty_amount} ₸ ({receipt_info})"
+        else:
+            penalty_text = "✅ Без штрафа"
 
         try:
-            group_msg = (
-                "〰〰〰〰〰〰〰〰〰〰\n"
-                "🔄 ОТМЕНА БРОНИ (Сайт)\n\n"
-                f"🏠 Кабинет: {room_name}\n"
-                f"🗓 Дата: {date_str} | {time_str}\n"
-                f"⏳ Длительность: {duration_display}\n"
-                f"👤 Клиент: {client_name} ({phone})\n\n"
-                f"{penalty_text}\n"
-                f"🔁 Возврат в абонемент: {refund_display}\n"
-                f"💰 Новый баланс: {new_balance_display}\n"
-                "〰〰〰〰〰〰〰〰〰〰"
-            )
+            if is_late_cancel:
+                # Поздняя отмена — без информации о возврате
+                group_msg = (
+                    "〰〰〰〰〰〰〰〰〰〰\n"
+                    "🔄 ОТМЕНА БРОНИ (Сайт)\n\n"
+                    f"🏠 Кабинет: {room_name}\n"
+                    f"🗓 Дата: {date_str} | {time_str}\n"
+                    f"⏳ Длительность: {duration_display}\n"
+                    f"👤 Клиент: {client_name} ({phone})\n\n"
+                    f"{penalty_text}\n"
+                    "〰〰〰〰〰〰〰〰〰〰"
+                )
+                client_msg = (
+                    "〰〰〰〰〰〰〰〰〰〰\n"
+                    "🔄 Ваша бронь отменена\n\n"
+                    f"🏠 Кабинет: {room_name}\n"
+                    f"🗓 Дата: {date_str} | {time_str}\n"
+                    f"⏳ Длительность: {duration_display}\n\n"
+                    "Если хотите забронировать другое время — выберите слот на сайте.\n"
+                    "〰〰〰〰〰〰〰〰〰〰"
+                )
+            else:
+                group_msg = (
+                    "〰〰〰〰〰〰〰〰〰〰\n"
+                    "🔄 ОТМЕНА БРОНИ (Сайт)\n\n"
+                    f"🏠 Кабинет: {room_name}\n"
+                    f"🗓 Дата: {date_str} | {time_str}\n"
+                    f"⏳ Длительность: {duration_display}\n"
+                    f"👤 Клиент: {client_name} ({phone})\n\n"
+                    f"{penalty_text}\n"
+                    f"🔁 Возврат в абонемент: {refund_display}\n"
+                    f"💰 Новый баланс: {new_balance_display}\n"
+                    "〰〰〰〰〰〰〰〰〰〰"
+                )
+                client_msg = (
+                    "〰〰〰〰〰〰〰〰〰〰\n"
+                    "🔄 Ваша бронь отменена\n\n"
+                    f"🏠 Кабинет: {room_name}\n"
+                    f"🗓 Дата: {date_str} | {time_str}\n"
+                    f"⏳ Длительность: {duration_display}\n\n"
+                    f"{penalty_text}\n"
+                    f"🔁 Возвращено в абонемент: {refund_display}\n"
+                    f"💰 Ваш баланс: {new_balance_display}\n\n"
+                    "Если хотите забронировать другое время — выберите слот на сайте.\n"
+                    "〰〰〰〰〰〰〰〰〰〰"
+                )
             send_whatsapp_group(group_msg)
-
-            client_msg = (
-                "〰〰〰〰〰〰〰〰〰〰\n"
-                "🔄 Ваша бронь отменена\n\n"
-                f"🏠 Кабинет: {room_name}\n"
-                f"🗓 Дата: {date_str} | {time_str}\n"
-                f"⏳ Длительность: {duration_display}\n\n"
-                f"{penalty_text}\n"
-                f"🔁 Возвращено в абонемент: {refund_display}\n"
-                f"💰 Ваш баланс: {new_balance_display}\n\n"
-                "Если хотите забронировать другое время — выберите слот на сайте.\n"
-                "〰〰〰〰〰〰〰〰〰〰"
-            )
             send_whatsapp_client(phone, client_msg)
         except Exception as e:
             print(f"[CANCEL] Ошибка WhatsApp: {e}")
