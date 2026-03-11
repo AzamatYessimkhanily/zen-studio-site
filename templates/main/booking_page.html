@@ -4671,6 +4671,33 @@ if (data.balance) {
         if (currentHoldId) { try { fetch('/api/cancel_hold/', { method: 'POST', headers: { 'Content-Type': 'application/json', 'X-CSRFToken': getCookie('csrftoken') }, body: JSON.stringify({ hold_id: currentHoldId }) }); if (showCancelMessage) showMessage('info', 'Отменено', true); } catch (e) { console.error(e); } } else { if (showCancelMessage) showMessage('info', 'Отменено', true); } 
     }
     
+    // Пытаемся автоматически отменить резерв, если пользователь просто уходит со страницы
+    // Но только на ранних шагах (до оплаты), чтобы не мешать тем, кто уже на шаге оплаты.
+    window.addEventListener('beforeunload', function () {
+        try {
+            if (!holdId || typeof getCurrentStep !== 'function') return;
+            const currentStep = getCurrentStep();
+            // Отменяем авто‑резерв только если пользователь не дошёл до шага оплаты
+            // (например, ушёл со страницы на шагах выбора времени/ввода телефона).
+            if (currentStep >= 3) return;
+
+            const payload = JSON.stringify({ hold_id: holdId });
+            if (navigator.sendBeacon) {
+                const blob = new Blob([payload], { type: 'application/json' });
+                navigator.sendBeacon('/api/cancel_hold/', blob);
+            } else {
+                fetch('/api/cancel_hold/', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', 'X-CSRFToken': getCookie('csrftoken') },
+                    body: payload,
+                    keepalive: true
+                }).catch(() => {});
+            }
+        } catch (e) {
+            console.error(e);
+        }
+    });
+    
     function getCookie(name) { let cookieValue = null; if (document.cookie && document.cookie !== '') { const cookies = document.cookie.split(';'); for (let i = 0; i < cookies.length; i++) { const cookie = cookies[i].trim(); if (cookie.substring(0, name.length + 1) === (name + '=')) { cookieValue = decodeURIComponent(cookie.substring(name.length + 1)); break; } } } return cookieValue; }
     function validateAndNormalizePhone(phone) { let normalizedPhone = phone.replace(/\D/g, ''); if (normalizedPhone.length === 11 && normalizedPhone.startsWith('8')) normalizedPhone = '7' + normalizedPhone.substring(1); if (normalizedPhone.length === 10 && !normalizedPhone.startsWith('7')) normalizedPhone = '7' + normalizedPhone; return (normalizedPhone.length === 11 && normalizedPhone.startsWith('7')) ? normalizedPhone : null; }
     

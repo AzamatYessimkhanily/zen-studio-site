@@ -564,6 +564,9 @@ def cleanup_expired_holds():
 def get_google_calendar_free_slots(room, date_str, duration_minutes=60):
     """Получает список свободных слотов из Google Календаря, учитывая резервы."""
     
+    # Перед любыми расчётами чистим просроченные резервы и их события в календаре
+    cleanup_expired_holds()
+
     # === ИСПРАВЛЕНИЕ ===
     if not room.google_calendar_id:
         print(f"Error: Calendar ID is missing for room {room.pk}.")
@@ -1931,11 +1934,33 @@ def admin_confirm_booking(pending_booking):
         duration_hours = (end_dt_aware - start_dt_aware).total_seconds() / 3600
         payment_info_text = "Подтверждено администратором"
 
-        # 1. ОБНОВЛЕНИЕ КАЛЕНДАРЯ
+        # 1. ОБНОВЛЕНИЕ КАЛЕНДАРЯ (с проверкой конфликтов)
         try:
             service = get_calendar_service()
             calendar_id = str(room.google_calendar_id).strip().replace('"', '').replace("'", "").replace(' ', '')
-            
+
+            # Перед изменением события проверяем, нет ли уже других броней на это время
+            try:
+                events_result = service.events().list(
+                    calendarId=calendar_id,
+                    timeMin=start_dt_aware.isoformat(),
+                    timeMax=end_dt_aware.isoformat(),
+                    singleEvents=True
+                ).execute()
+                existing_events = events_result.get('items', [])
+                for ev in existing_events:
+                    ev_id = ev.get('id')
+                    # Игнорируем собственный временный резерв, если он есть
+                    if pending_booking.google_event_id and ev_id == pending_booking.google_event_id:
+                        continue
+                    # Нашли другое событие в этом диапазоне — не даём сделать накладку
+                    print(f"Admin confirm: Calendar conflict detected for room {room.name}, event id={ev_id}")
+                    return (False, 'В это время уже есть бронь в календаре. Проверьте Google Calendar.')
+            except Exception as e:
+                # Если проверка календаря упала, лучше не создавать дубли
+                print(f"Admin confirm: Failed to check calendar conflicts: {e}")
+                return (False, 'Ошибка проверки Google Calendar. Повторите позже.')
+
             desc_payment = payment_info_text
 
             if room.hide_phone_in_calendar:
@@ -1954,13 +1979,13 @@ def admin_confirm_booking(pending_booking):
                     f'Оплата: {desc_payment}\nИсточник: Сайт (Админ)\n'
                     f'Забронировано: {timezone.localtime(pending_booking.created_at).strftime("%d.%m.%Y в %H:%M")}'
                 )
-            
+
             event_patch = {
                 'summary': event_summary,
                 'description': event_description,
                 'colorId': None,
             }
-            
+
             if pending_booking.google_event_id:
                 try:
                     service.events().patch(
